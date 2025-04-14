@@ -16,10 +16,11 @@ CORS(app, resources={
     r"/api/*": {
         "origins": [
             "http://localhost:3000",
-            "https://financial-first.vercel.app"
+            "https://financial-first.vercel.app",
+            "https://grownxt-server.onrender.com"
         ],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization", "Origin"]
     }
 })
 
@@ -35,26 +36,32 @@ def check_env_vars():
 
 @app.route('/api/search', methods=['GET'])
 def search_stocks():
-    # Add CORS headers explicitly for this route
     if request.method == 'OPTIONS':
         headers = {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'Content-Type'
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Origin'
         }
         return ('', 204, headers)
 
-    query = request.args.get('q', '')
-    if not query or len(query) < 3:
-        return jsonify([])
-    
-    output_dir = DATA_DIR
-    output_dir.mkdir(exist_ok=True)
-    
-    searcher = StockSearch(output_dir)
-    results = searcher.instant_search(query)
-    
-    return jsonify(results)
+    try:
+        query = request.args.get('q', '')
+        if not query or len(query) < 3:
+            return jsonify([])
+        
+        output_dir = DATA_DIR
+        output_dir.mkdir(exist_ok=True)
+        
+        searcher = StockSearch(output_dir)
+        results = searcher.instant_search(query)
+        
+        if not results:
+            return jsonify({"error": "Search failed or no results found"}), 404
+            
+        return jsonify(results)
+    except Exception as e:
+        print(f"Search error: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/api/stock/save', methods=['POST'])
 def save_stock():

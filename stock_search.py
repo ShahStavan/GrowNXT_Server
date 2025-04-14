@@ -24,14 +24,24 @@ class StockSearch:
             "pageNumber": 0
         }
         
+        headers = {
+            **self.headers,
+            'Origin': 'https://grownxt-server.onrender.com',
+            'Referer': 'https://grownxt-server.onrender.com/'
+        }
+        
         try:
             response = requests.get(
                 self.search_url, 
                 params=params, 
-                headers=self.headers,
+                headers=headers,
                 timeout=10
             )
             
+            if response.status_code == 403:
+                print("Access forbidden. Please check API permissions.")
+                return []
+                
             response.raise_for_status()
             data = response.json()
             
@@ -39,7 +49,6 @@ class StockSearch:
                 print(f"API Error: {data.get('message', 'Unknown error')}")
                 return []
                 
-            # Return the complete items array without filtering
             return data.get('data', {}).get('items', [])
             
         except requests.RequestException as e:
