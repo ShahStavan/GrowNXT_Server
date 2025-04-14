@@ -1471,3 +1471,25 @@ justification
 2025-04-14 18:41:17,922 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:41:17] "GET /api/search?q=more HTTP/1.1" 200 -
 2025-04-14 18:41:19,655 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:41:19] "OPTIONS /api/stocks/save HTTP/1.1" 200 -
 2025-04-14 18:41:19,908 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:41:19] "[31m[1mPOST /api/stocks/save HTTP/1.1[0m" 405 -
+2025-04-14 18:45:05,921 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:45:05] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-14 18:45:14,463 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 18:45:14,464 - background_tasks - INFO - Starting background download task for MOREPENLAB
+2025-04-14 18:45:14,467 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:45:14] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-14 18:45:14,467 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 18:45:14,469 - background_tasks - INFO - Stock 'MOREPENLAB' not found in listings, attempting to scrape...
+2025-04-14 18:45:15,790 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:45:15] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 18:45:16,119 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:45:16] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 18:45:46,237 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 18:45:46,237 - background_tasks - ERROR - Failed to find or scrape stock information for 'MOREPENLAB'
+2025-04-14 18:47:35,422 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:47:35] "GET /api/search?q=mor HTTP/1.1" 200 -
+2025-04-14 18:47:35,790 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:47:35] "GET /api/search?q=more HTTP/1.1" 200 -
+2025-04-14 18:47:38,903 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:47:38] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-14 18:47:44,808 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 18:47:44,810 - background_tasks - INFO - Starting background download task for MOREPENLAB
+2025-04-14 18:47:44,812 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:47:44] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-14 18:47:44,813 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 18:47:44,814 - background_tasks - INFO - Stock 'MOREPENLAB' not found in listings, attempting to scrape...
+2025-04-14 18:47:45,497 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:47:45] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 18:47:45,853 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:47:45] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 18:47:51,446 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 18:47:51,448 - background_tasks - ERROR - Failed to find or scrape stock information for 'MOREPENLAB'
