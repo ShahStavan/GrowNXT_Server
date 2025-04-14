@@ -1,7 +1,7 @@
 from pathlib import Path
-import os
+
 # Base paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_FOLDER = BASE_DIR / "output"
 DATA_DIR = BASE_DIR / "data"
 
