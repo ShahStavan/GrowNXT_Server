@@ -1447,3 +1447,27 @@ justification
 2025-04-14 15:33:36,571 - werkzeug - WARNING -  * Debugger is active!
 2025-04-14 15:33:36,587 - werkzeug - INFO -  * Debugger PIN: 909-100-723
 2025-04-14 16:32:41,962 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 16:32:41] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-14 18:18:40,689 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-14 18:18:40,719 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-14 18:29:07,429 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:29:07] "GET /api/search?q=mor HTTP/1.1" 200 -
+2025-04-14 18:29:07,663 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:29:07] "GET /api/search?q=more HTTP/1.1" 200 -
+2025-04-14 18:29:10,457 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:29:10] "OPTIONS /api/stocks/save HTTP/1.1" 200 -
+2025-04-14 18:29:10,987 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:29:10] "[31m[1mPOST /api/stocks/save HTTP/1.1[0m" 405 -
+2025-04-14 18:29:31,976 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:29:31] "OPTIONS /api/stocks/save HTTP/1.1" 200 -
+2025-04-14 18:29:32,240 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:29:32] "[31m[1mPOST /api/stocks/save HTTP/1.1[0m" 405 -
+2025-04-14 18:31:32,833 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:31:32] "GET /api/search?q=more HTTP/1.1" 200 -
+2025-04-14 18:31:37,257 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:31:37] "OPTIONS /api/stocks/save HTTP/1.1" 200 -
+2025-04-14 18:31:37,289 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:31:37] "[31m[1mPOST /api/stocks/save HTTP/1.1[0m" 405 -
+2025-04-14 18:35:14,623 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:35:14] "GET /api/search?q=more HTTP/1.1" 200 -
+2025-04-14 18:35:16,239 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:35:16] "OPTIONS /api/stocks/save HTTP/1.1" 200 -
+2025-04-14 18:35:17,954 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:35:17] "[31m[1mPOST /api/stocks/save HTTP/1.1[0m" 405 -
+2025-04-14 18:36:32,029 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:36:32] "OPTIONS /api/stocks/save HTTP/1.1" 200 -
+2025-04-14 18:36:32,289 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:36:32] "[31m[1mPOST /api/stocks/save HTTP/1.1[0m" 405 -
+2025-04-14 18:40:22,123 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:40:22] "[33mGET /api/stocks/IGIL HTTP/1.1[0m" 404 -
+2025-04-14 18:40:22,238 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:40:22] "[33mGET /api/stocks/IGIL HTTP/1.1[0m" 404 -
+2025-04-14 18:41:17,922 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:41:17] "GET /api/search?q=more HTTP/1.1" 200 -
+2025-04-14 18:41:19,655 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:41:19] "OPTIONS /api/stocks/save HTTP/1.1" 200 -
+2025-04-14 18:41:19,908 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:41:19] "[31m[1mPOST /api/stocks/save HTTP/1.1[0m" 405 -
