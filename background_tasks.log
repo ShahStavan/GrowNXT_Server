@@ -1,0 +1,1449 @@
+2025-04-04 20:19:47,489 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-04 20:19:47,489 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-04 20:19:47,508 - werkzeug - INFO -  * Restarting with stat
+2025-04-04 20:19:54,935 - werkzeug - WARNING -  * Debugger is active!
+2025-04-04 20:19:54,949 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-04 20:19:59,666 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:19:59] "GET /api/search?q=siem HTTP/1.1" 200 -
+2025-04-04 20:20:02,441 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:20:02] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:20:22,465 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:20:22] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:20:35,642 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:20:35] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:20:38,508 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:20:38] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-04 20:20:38,547 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:20:38] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-04 20:20:45,092 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:20:45] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-04 20:20:49,571 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:20:49] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:21:00,068 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:21:00] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-04 20:23:25,641 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:23:25] "GET /api/stocks/SIEMENS/analysis HTTP/1.1" 200 -
+2025-04-04 20:27:28,797 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:27:28] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-04 20:27:28,846 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:27:28] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-04 20:27:47,897 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:27:47] "GET /api/search?q=tcs HTTP/1.1" 200 -
+2025-04-04 20:27:50,689 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:27:50] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:27:59,761 - utils - INFO - No matching stock found for 'TCS'
+2025-04-04 20:27:59,764 - background_tasks - INFO - Starting background download task for TCS
+2025-04-04 20:27:59,765 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:27:59] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:28:00,192 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:28:00] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:28:00,320 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:28:00] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:28:01,732 - utils - INFO - No matching stock found for 'TCS'
+2025-04-04 20:28:01,732 - background_tasks - INFO - Stock 'TCS' not found in listings, attempting to scrape...
+2025-04-04 20:28:31,022 - utils - INFO - No matching stock found for 'TCS'
+2025-04-04 20:28:31,022 - background_tasks - ERROR - Failed to find or scrape stock information for 'TCS'
+2025-04-04 20:29:15,892 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:29:15] "GET /api/stocks/TCS/analysis HTTP/1.1" 200 -
+2025-04-04 20:31:44,403 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:31:44] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:31:44,443 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:31:44] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:32:17,200 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:32:17] "GET /api/stocks/TCS/analysis HTTP/1.1" 200 -
+2025-04-04 20:32:27,121 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:32:27] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:32:27,143 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:32:27] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:32:28,710 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:32:28] "GET /api/stocks/TCS/analysis HTTP/1.1" 200 -
+2025-04-04 20:35:17,561 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:35:17] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:35:17,604 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:35:17] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:37:39,522 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:37:39] "GET /api/stocks/TCS/analysis HTTP/1.1" 200 -
+2025-04-04 20:38:21,051 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:21] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:38:21,094 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:21] "GET /api/stocks/TCS HTTP/1.1" 200 -
+2025-04-04 20:38:25,478 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:25] "GET /api/search?q=bosc HTTP/1.1" 200 -
+2025-04-04 20:38:26,933 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:26] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:38:32,363 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:32] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:38:32,775 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:32] "GET /api/stocks/BOSCHLTD HTTP/1.1" 200 -
+2025-04-04 20:38:32,805 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:32] "GET /api/stocks/BOSCHLTD HTTP/1.1" 200 -
+2025-04-04 20:38:34,990 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:38:34] "GET /api/stocks/BOSCHLTD/analysis HTTP/1.1" 200 -
+2025-04-04 20:39:15,034 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:39:15] "GET /api/stocks/BOSCHLTD HTTP/1.1" 200 -
+2025-04-04 20:39:15,075 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:39:15] "GET /api/stocks/BOSCHLTD HTTP/1.1" 200 -
+2025-04-04 20:40:18,628 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:40:18] "GET /api/stocks/BOSCHLTD HTTP/1.1" 200 -
+2025-04-04 20:40:29,126 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:40:29] "GET /api/stocks/BOSCHLTD HTTP/1.1" 200 -
+2025-04-04 20:42:54,654 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:42:54] "GET /api/search?q=trent HTTP/1.1" 200 -
+2025-04-04 20:42:57,216 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:42:57] "GET /api/search?q=trid HTTP/1.1" 200 -
+2025-04-04 20:42:58,609 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:42:58] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:43:06,646 - utils - INFO - Found 4 matching stocks for 'TRIDENT'
+2025-04-04 20:43:06,680 - background_tasks - INFO - Starting background download task for TRIDENT
+2025-04-04 20:43:06,682 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:43:06] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:43:06,685 - background_tasks - INFO - Downloading latest report for TRIDENT
+2025-04-04 20:43:06,690 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6725a386-9be6-4fd2-952f-aede7a622b13.pdf
+2025-04-04 20:43:06,988 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:43:06] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-04 20:43:07,026 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:43:07] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-04 20:43:28,546 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\trident\report\LatestReport_TRIDENT.pdf
+2025-04-04 20:43:28,547 - background_tasks - INFO - Successfully downloaded latest report for TRIDENT
+2025-04-04 20:43:28,548 - background_tasks - INFO - Downloading latest presentation for TRIDENT
+2025-04-04 20:43:28,549 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=7a753a2e-a545-4872-9c79-fe7e983d7b2f.pdf
+2025-04-04 20:43:50,584 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\trident\ppt\LatestPresentation_TRIDENT.pdf
+2025-04-04 20:43:50,585 - background_tasks - INFO - Successfully downloaded latest presentation for TRIDENT
+2025-04-04 20:43:50,586 - background_tasks - INFO - Completed background download task for TRIDENT
+2025-04-04 20:44:12,599 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:44:12] "GET /api/stocks/TRIDENT/analysis HTTP/1.1" 200 -
+2025-04-04 20:45:27,365 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:45:27] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-04 20:45:27,402 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:45:27] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-04 20:45:57,456 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:45:57] "GET /api/search?q=rik HTTP/1.1" 200 -
+2025-04-04 20:45:57,807 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:45:57] "GET /api/search?q=rikh HTTP/1.1" 200 -
+2025-04-04 20:46:01,203 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:46:01] "GET /api/search?q=rikha HTTP/1.1" 200 -
+2025-04-04 20:46:01,835 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:46:01] "GET /api/search?q=rikhav HTTP/1.1" 200 -
+2025-04-04 20:46:13,824 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:46:13] "GET /api/search?q=apco HTTP/1.1" 200 -
+2025-04-04 20:46:16,458 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:46:16] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:46:24,415 - utils - INFO - No matching stock found for 'APCOTEXIND'
+2025-04-04 20:46:24,415 - background_tasks - INFO - Starting background download task for APCOTEXIND
+2025-04-04 20:46:24,415 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:46:24] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:46:24,754 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:46:24] "GET /api/stocks/APCOTEXIND HTTP/1.1" 200 -
+2025-04-04 20:46:24,864 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:46:24] "GET /api/stocks/APCOTEXIND HTTP/1.1" 200 -
+2025-04-04 20:46:26,214 - utils - INFO - No matching stock found for 'APCOTEXIND'
+2025-04-04 20:46:26,214 - background_tasks - INFO - Stock 'APCOTEXIND' not found in listings, attempting to scrape...
+2025-04-04 20:46:49,043 - utils - INFO - Found 1 matching stocks for 'APCOTEXIND'
+2025-04-04 20:46:49,043 - background_tasks - INFO - Downloading latest report for APCOTEXIND
+2025-04-04 20:46:49,043 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=bbca1837-de4a-45fa-8912-5648c00cae85.pdf
+2025-04-04 20:46:51,762 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\apcotexind\report\LatestReport_APCOTEXIND.pdf
+2025-04-04 20:46:51,762 - background_tasks - INFO - Successfully downloaded latest report for APCOTEXIND
+2025-04-04 20:46:51,762 - background_tasks - INFO - Downloading latest presentation for APCOTEXIND
+2025-04-04 20:46:51,762 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=886de76e-2626-45d4-af37-aed2aa321bda.pdf
+2025-04-04 20:46:55,009 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\apcotexind\ppt\LatestPresentation_APCOTEXIND.pdf
+2025-04-04 20:46:55,009 - background_tasks - INFO - Successfully downloaded latest presentation for APCOTEXIND
+2025-04-04 20:46:55,009 - background_tasks - INFO - Completed background download task for APCOTEXIND
+2025-04-04 20:47:31,736 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:47:31] "GET /api/stocks/APCOTEXIND/analysis HTTP/1.1" 200 -
+2025-04-04 20:48:08,500 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:08] "GET /api/stocks/APCOTEXIND HTTP/1.1" 200 -
+2025-04-04 20:48:08,538 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:08] "GET /api/stocks/APCOTEXIND HTTP/1.1" 200 -
+2025-04-04 20:48:13,115 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:13] "GET /api/search?q=war HTTP/1.1" 200 -
+2025-04-04 20:48:16,414 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:16] "GET /api/search?q=waa HTTP/1.1" 200 -
+2025-04-04 20:48:19,958 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:19] "GET /api/search?q=waar HTTP/1.1" 200 -
+2025-04-04 20:48:43,535 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:43] "GET /api/search?q=waa HTTP/1.1" 200 -
+2025-04-04 20:48:44,408 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:44] "GET /api/search?q=waaree HTTP/1.1" 200 -
+2025-04-04 20:48:49,413 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:49] "GET /api/search?q=waree HTTP/1.1" 200 -
+2025-04-04 20:48:52,427 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:52] "GET /api/search?q=waa HTTP/1.1" 200 -
+2025-04-04 20:48:53,114 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:48:53] "GET /api/search?q=waaree HTTP/1.1" 200 -
+2025-04-04 20:49:15,206 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:15] "GET /api/search?q=waareee HTTP/1.1" 200 -
+2025-04-04 20:49:15,955 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:15] "GET /api/search?q=waareeener HTTP/1.1" 200 -
+2025-04-04 20:49:19,236 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:19] "GET /api/search?q=waareee HTTP/1.1" 200 -
+2025-04-04 20:49:19,935 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:19] "GET /api/search?q=waaree HTTP/1.1" 200 -
+2025-04-04 20:49:21,949 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:21] "GET /api/search?q=waare HTTP/1.1" 200 -
+2025-04-04 20:49:23,272 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:23] "GET /api/search?q=waar HTTP/1.1" 200 -
+2025-04-04 20:49:26,612 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:26] "GET /api/search?q=waaree%20en HTTP/1.1" 200 -
+2025-04-04 20:49:28,893 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:28] "GET /api/search?q=waaree%20ene HTTP/1.1" 200 -
+2025-04-04 20:49:39,153 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:39] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:49:45,627 - utils - INFO - No matching stock found for 'E2E'
+2025-04-04 20:49:45,627 - background_tasks - INFO - Starting background download task for E2E
+2025-04-04 20:49:45,627 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:45] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-04 20:49:46,033 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:46] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-04 20:49:46,128 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:49:46] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-04 20:49:47,476 - utils - INFO - No matching stock found for 'E2E'
+2025-04-04 20:49:47,476 - background_tasks - INFO - Stock 'E2E' not found in listings, attempting to scrape...
+2025-04-04 20:50:02,295 - utils - INFO - No matching stock found for 'E2E'
+2025-04-04 20:50:02,295 - background_tasks - ERROR - Failed to find or scrape stock information for 'E2E'
+2025-04-04 20:51:04,231 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:51:04] "GET /api/stocks/E2E/analysis HTTP/1.1" 200 -
+2025-04-04 20:52:24,172 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:52:24] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-04 20:52:24,209 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:52:24] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-04 20:53:21,210 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:21] "GET /api/search?q=waree HTTP/1.1" 200 -
+2025-04-04 20:53:22,142 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:22] "GET /api/search?q=waree%20 HTTP/1.1" 200 -
+2025-04-04 20:53:23,435 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:23] "GET /api/search?q=waree%20ene HTTP/1.1" 200 -
+2025-04-04 20:53:24,174 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:24] "GET /api/search?q=waree%20ener HTTP/1.1" 200 -
+2025-04-04 20:53:25,539 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:25] "GET /api/search?q=waree%20energ HTTP/1.1" 200 -
+2025-04-04 20:53:26,821 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:26] "GET /api/search?q=waree%20energies HTTP/1.1" 200 -
+2025-04-04 20:53:28,918 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:28] "GET /api/search?q=waree%20energie HTTP/1.1" 200 -
+2025-04-04 20:53:29,336 - werkzeug - INFO - 127.0.0.1 - - [04/Apr/2025 20:53:29] "GET /api/search?q=waree%20energi HTTP/1.1" 200 -
+2025-04-05 09:27:44,436 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-05 09:27:44,544 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-05 09:27:44,582 - werkzeug - INFO -  * Restarting with stat
+2025-04-05 09:28:17,619 - werkzeug - WARNING -  * Debugger is active!
+2025-04-05 09:28:17,722 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-05 09:28:40,790 - werkzeug - INFO - 127.0.0.1 - - [05/Apr/2025 09:28:40] "GET /api/search?q=siem HTTP/1.1" 200 -
+2025-04-05 09:28:42,579 - werkzeug - INFO - 127.0.0.1 - - [05/Apr/2025 09:28:42] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-05 09:28:49,056 - werkzeug - INFO - 127.0.0.1 - - [05/Apr/2025 09:28:49] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-05 09:29:07,397 - werkzeug - INFO - 127.0.0.1 - - [05/Apr/2025 09:29:07] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-05 09:29:07,467 - werkzeug - INFO - 127.0.0.1 - - [05/Apr/2025 09:29:07] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-05 09:30:12,984 - werkzeug - INFO - 127.0.0.1 - - [05/Apr/2025 09:30:12] "GET /api/stocks/SIEMENS/analysis HTTP/1.1" 200 -
+2025-04-07 11:12:03,591 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-07 11:12:03,602 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-07 11:12:03,617 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:12:07,939 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:12:07,955 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:13:08,689 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:13:08] "GET /api/search?q=tren HTTP/1.1" 200 -
+2025-04-07 11:13:10,052 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:13:10] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:13:15,888 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:13:15] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:13:27,481 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:13:27] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 11:13:27,517 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:13:27] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 11:19:21,076 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:19:21] "GET /api/stocks/TRENT/analysis HTTP/1.1" 200 -
+2025-04-07 11:25:13,583 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:25:14,446 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:25:37,483 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:25:37,498 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:25:56,806 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:25:56] "[33mGET /api/stocks/TRENT HTTP/1.1[0m" 404 -
+2025-04-07 11:25:56,838 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:25:56] "[33mGET /api/stocks/TRENT HTTP/1.1[0m" 404 -
+2025-04-07 11:26:02,952 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:26:02] "GET /api/search?q=tre HTTP/1.1" 200 -
+2025-04-07 11:26:03,499 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:26:03] "GET /api/search?q=trent HTTP/1.1" 200 -
+2025-04-07 11:26:06,005 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:26:06] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:26:12,900 - utils - INFO - Found 1 matching stocks for 'TRENT'
+2025-04-07 11:26:12,902 - background_tasks - INFO - Starting background download task for TRENT
+2025-04-07 11:26:12,904 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:26:12] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:26:12,909 - background_tasks - INFO - Downloading latest report for TRENT
+2025-04-07 11:26:12,914 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=c7330ad5-ba82-4673-baaa-b39af9c47c87.pdf
+2025-04-07 11:26:13,324 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:26:13] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 11:26:13,364 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:26:13] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 11:26:13,695 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\trent\report\LatestReport_TRENT.pdf
+2025-04-07 11:26:13,696 - background_tasks - INFO - Successfully downloaded latest report for TRENT
+2025-04-07 11:26:13,696 - background_tasks - INFO - Downloading latest presentation for TRENT
+2025-04-07 11:26:13,696 - background_tasks - INFO - Downloading file from https://docs.trent-tata.com/Investor_presentation_Q3_FY_2025.pdf
+2025-04-07 11:26:16,579 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\trent\ppt\LatestPresentation_TRENT.pdf
+2025-04-07 11:26:16,580 - background_tasks - INFO - Successfully downloaded latest presentation for TRENT
+2025-04-07 11:26:16,581 - background_tasks - INFO - Completed background download task for TRENT
+2025-04-07 11:27:15,095 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:27:15] "GET /api/stocks/TRENT/analysis HTTP/1.1" 200 -
+2025-04-07 11:28:23,024 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:28:25,589 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:28:34,090 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:28:34,109 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:28:35,499 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:28:35,975 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:28:42,221 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:28:42,241 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:28:55,177 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:28:55] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 11:28:55,195 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:28:55] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 11:33:37,628 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:33:37,922 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:33:44,572 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:33:44,583 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:35:06,439 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:35:06,851 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:35:13,696 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:35:13,704 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:35:14,204 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:35:14] "GET /api/search?q=siem HTTP/1.1" 200 -
+2025-04-07 11:35:15,203 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:35:15] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:35:21,060 - utils - INFO - Found 1 matching stocks for 'SIEMENS'
+2025-04-07 11:35:21,062 - background_tasks - INFO - Starting background download task for SIEMENS
+2025-04-07 11:35:21,064 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:35:21] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:35:21,066 - background_tasks - INFO - Downloading latest report for SIEMENS
+2025-04-07 11:35:21,068 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=ec799378-4eb3-4b2b-9237-8bb167a357a9.pdf
+2025-04-07 11:35:21,401 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:35:21] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:35:21,452 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:35:21] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:35:26,048 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\siemens\report\LatestReport_SIEMENS.pdf
+2025-04-07 11:35:26,049 - background_tasks - INFO - Successfully downloaded latest report for SIEMENS
+2025-04-07 11:35:26,050 - background_tasks - INFO - Downloading latest presentation for SIEMENS
+2025-04-07 11:35:26,051 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=838e2e8e-0f82-4968-a64e-477ccd8cd24a.pdf
+2025-04-07 11:35:27,541 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\siemens\ppt\LatestPresentation_SIEMENS.pdf
+2025-04-07 11:35:27,542 - background_tasks - INFO - Successfully downloaded latest presentation for SIEMENS
+2025-04-07 11:35:27,542 - background_tasks - INFO - Completed background download task for SIEMENS
+2025-04-07 11:36:43,095 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:36:43] "GET /api/stocks/SIEMENS/analysis HTTP/1.1" 200 -
+2025-04-07 11:39:09,662 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:39:12,089 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:39:16,970 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:39:16,981 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:39:19,741 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:39:20,069 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:39:27,999 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:39:28,016 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:40:05,052 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:40:05] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:40:05,114 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:40:05] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:40:10,694 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:40:10] "GET /api/search?q=fiem HTTP/1.1" 200 -
+2025-04-07 11:40:12,002 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:40:12] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:40:19,606 - utils - INFO - No matching stock found for 'FIEMIND'
+2025-04-07 11:40:19,607 - background_tasks - INFO - Starting background download task for FIEMIND
+2025-04-07 11:40:19,609 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:40:19] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:40:20,104 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:40:20] "GET /api/stocks/FIEMIND HTTP/1.1" 200 -
+2025-04-07 11:40:20,248 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:40:20] "GET /api/stocks/FIEMIND HTTP/1.1" 200 -
+2025-04-07 11:40:21,801 - utils - INFO - No matching stock found for 'FIEMIND'
+2025-04-07 11:40:21,802 - background_tasks - INFO - Stock 'FIEMIND' not found in listings, attempting to scrape...
+2025-04-07 11:40:38,005 - utils - INFO - No matching stock found for 'FIEMIND'
+2025-04-07 11:40:38,005 - background_tasks - ERROR - Failed to find or scrape stock information for 'FIEMIND'
+2025-04-07 11:45:21,663 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:45:21] "GET /api/stocks/FIEMIND/analysis HTTP/1.1" 200 -
+2025-04-07 11:45:51,029 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:45:53,462 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:46:00,372 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:46:00,389 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:46:45,828 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:46:45] "GET /api/stocks/FIEMIND HTTP/1.1" 200 -
+2025-04-07 11:46:45,864 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:46:45] "GET /api/stocks/FIEMIND HTTP/1.1" 200 -
+2025-04-07 11:46:49,932 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:46:49] "GET /api/search?q=siem HTTP/1.1" 200 -
+2025-04-07 11:46:50,652 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:46:50] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:46:54,752 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:46:57,345 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:47:05,180 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:47:05,189 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:47:44,766 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:47:44] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:47:50,429 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:47:50] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 11:47:50,864 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:47:50] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:47:50,892 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:47:50] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:49:46,383 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:49:46] "GET /api/stocks/SIEMENS/analysis HTTP/1.1" 200 -
+2025-04-07 11:50:06,870 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:50:06] "GET /api/stocks/SIEMENS/analysis HTTP/1.1" 200 -
+2025-04-07 11:51:24,447 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:51:24] "GET /api/stocks/SIEMENS/analysis HTTP/1.1" 200 -
+2025-04-07 11:54:19,215 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-07 11:54:21,568 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 11:54:27,195 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 11:54:27,203 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 11:54:27,325 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:54:27] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:54:27,348 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:54:27] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 11:54:29,115 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 11:54:29] "GET /api/search?q=trent HTTP/1.1" 200 -
+2025-04-07 12:03:37,653 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:03:37] "GET /api/search?q=siem HTTP/1.1" 200 -
+2025-04-07 12:03:38,619 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:03:38] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 12:03:43,807 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:03:43] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 12:04:07,541 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:04:07] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 12:04:12,156 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:04:12] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 12:04:20,616 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:04:20] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 12:04:21,752 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:04:21] "[35m[1mGET /api/stocks/SIEMENS HTTP/1.1[0m" 500 -
+2025-04-07 12:04:21,999 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:04:21] "[35m[1mGET /api/stocks/SIEMENS HTTP/1.1[0m" 500 -
+2025-04-07 12:04:26,599 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:04:26] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 12:04:49,156 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:04:49] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:09:40,861 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:09:40] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:11:52,759 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:11:52] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:13:52,066 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:13:52] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:39:44,622 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:39:44] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:40:47,102 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:40:47] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:41:15,550 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\main.py', reloading
+2025-04-07 12:41:36,507 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 12:42:33,764 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 12:42:33,911 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 12:42:34,300 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:42:34] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:42:34,302 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:42:34] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:42:47,086 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:42:47] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:46:58,917 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:46:58] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:46:58,974 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:46:58] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 12:47:45,388 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 12:47:45] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 14:26:18,048 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:26:18] "GET /api/stocks/SIEMENS HTTP/1.1" 200 -
+2025-04-07 14:26:31,492 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:26:31] "GET /api/search?q=tita HTTP/1.1" 200 -
+2025-04-07 14:26:34,322 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:26:34] "GET /api/search?q=titag HTTP/1.1" 200 -
+2025-04-07 14:26:37,822 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:26:37] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 14:26:54,521 - utils - INFO - No matching stock found for 'TWL'
+2025-04-07 14:26:54,521 - background_tasks - INFO - Starting background download task for TWL
+2025-04-07 14:26:54,521 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:26:54] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 14:26:55,346 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:26:55] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:26:55,557 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:26:55] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:26:56,351 - utils - INFO - No matching stock found for 'TWL'
+2025-04-07 14:26:56,351 - background_tasks - INFO - Stock 'TWL' not found in listings, attempting to scrape...
+2025-04-07 14:27:13,635 - utils - INFO - No matching stock found for 'TWL'
+2025-04-07 14:27:13,635 - background_tasks - ERROR - Failed to find or scrape stock information for 'TWL'
+2025-04-07 14:28:55,018 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:28:55] "GET /api/stocks/TWL/analysis HTTP/1.1" 200 -
+2025-04-07 14:30:30,637 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:30:30] "GET /api/stocks/TWL/analysis HTTP/1.1" 200 -
+2025-04-07 14:34:41,158 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:34:41] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:34:41,194 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:34:41] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:37:44,329 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:37:44] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:37:51,013 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:37:51] "GET /api/stocks/TWL/analysis HTTP/1.1" 200 -
+2025-04-07 14:38:29,670 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:38:29] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:38:29,818 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:38:29] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:39:55,035 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:39:55] "GET /api/stocks/TWL/analysis HTTP/1.1" 200 -
+2025-04-07 14:43:51,456 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:43:51] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:43:52,608 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:43:52] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 14:57:03,043 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 14:57:03] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 15:02:44,681 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 15:02:44] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 15:16:30,033 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\main.py', reloading
+2025-04-07 15:17:16,034 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 15:18:18,080 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 15:18:18,118 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 15:18:47,889 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 15:18:47] "GET /api/stocks/TWL HTTP/1.1" 200 -
+2025-04-07 17:13:14,119 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-07 17:13:14,146 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-07 17:13:14,161 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 17:13:24,145 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 17:13:24,200 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 17:13:36,574 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:36] "GET /api/search?q=venu HTTP/1.1" 200 -
+2025-04-07 17:13:39,990 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:39] "GET /api/search?q=venus%20 HTTP/1.1" 200 -
+2025-04-07 17:13:40,818 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:40] "GET /api/search?q=venus%20p HTTP/1.1" 200 -
+2025-04-07 17:13:42,044 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:42] "GET /api/search?q=venus%20pe HTTP/1.1" 200 -
+2025-04-07 17:13:42,331 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:42] "GET /api/search?q=venus%20p HTTP/1.1" 200 -
+2025-04-07 17:13:45,321 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:45] "GET /api/search?q=venus%20pip HTTP/1.1" 200 -
+2025-04-07 17:13:48,230 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:48] "GET /api/search?q=venus%20pipes HTTP/1.1" 200 -
+2025-04-07 17:13:59,816 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:13:59] "GET /api/search?q=venu HTTP/1.1" 200 -
+2025-04-07 17:14:00,681 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:00] "GET /api/search?q=ven HTTP/1.1" 200 -
+2025-04-07 17:14:02,646 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:02] "GET /api/search?q=venp HTTP/1.1" 200 -
+2025-04-07 17:14:04,906 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:04] "GET /api/search?q=venpip HTTP/1.1" 200 -
+2025-04-07 17:14:06,444 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:06] "GET /api/search?q=venpipe HTTP/1.1" 200 -
+2025-04-07 17:14:12,076 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:12] "GET /api/search?q=ven HTTP/1.1" 200 -
+2025-04-07 17:14:13,368 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:13] "GET /api/search?q=venus HTTP/1.1" 200 -
+2025-04-07 17:14:13,981 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:13] "GET /api/search?q=venus%20 HTTP/1.1" 200 -
+2025-04-07 17:14:15,001 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:15] "GET /api/search?q=venus%20p HTTP/1.1" 200 -
+2025-04-07 17:14:17,149 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:17] "GET /api/search?q=venus%20pipe HTTP/1.1" 200 -
+2025-04-07 17:14:21,120 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:21] "GET /api/search?q=bin HTTP/1.1" 200 -
+2025-04-07 17:14:24,519 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:24] "GET /api/search?q=vin HTTP/1.1" 200 -
+2025-04-07 17:14:26,419 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:26] "GET /api/search?q=vinus HTTP/1.1" 200 -
+2025-04-07 17:14:28,265 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:28] "GET /api/search?q=vinus%20p HTTP/1.1" 200 -
+2025-04-07 17:14:30,551 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:14:30] "GET /api/search?q=vinus%20pipe HTTP/1.1" 200 -
+2025-04-07 17:15:33,768 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:15:33] "GET /api/search?q=pipes HTTP/1.1" 200 -
+2025-04-07 17:15:49,262 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:15:49] "GET /api/search?q=tri HTTP/1.1" 200 -
+2025-04-07 17:15:56,306 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:15:56] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 17:16:07,360 - utils - INFO - Found 4 matching stocks for 'TRIDENT'
+2025-04-07 17:16:07,360 - background_tasks - INFO - Starting background download task for TRIDENT
+2025-04-07 17:16:07,360 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:16:07] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 17:16:07,360 - background_tasks - INFO - Downloading latest report for TRIDENT
+2025-04-07 17:16:07,366 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=6725a386-9be6-4fd2-952f-aede7a622b13.pdf
+2025-04-07 17:16:08,286 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\trident\report\LatestReport_TRIDENT.pdf
+2025-04-07 17:16:08,286 - background_tasks - INFO - Successfully downloaded latest report for TRIDENT
+2025-04-07 17:16:08,288 - background_tasks - INFO - Downloading latest presentation for TRIDENT
+2025-04-07 17:16:08,288 - background_tasks - INFO - Downloading file from https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=7a753a2e-a545-4872-9c79-fe7e983d7b2f.pdf
+2025-04-07 17:16:09,280 - background_tasks - INFO - File saved to D:\Stock_Fundamental\data\trident\ppt\LatestPresentation_TRIDENT.pdf
+2025-04-07 17:16:09,280 - background_tasks - INFO - Successfully downloaded latest presentation for TRIDENT
+2025-04-07 17:16:09,280 - background_tasks - INFO - Completed background download task for TRIDENT
+2025-04-07 17:16:14,190 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:16:14] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-07 17:16:14,220 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:16:14] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-07 17:20:06,980 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:20:06] "GET /api/stocks/TRIDENT/analysis HTTP/1.1" 200 -
+2025-04-07 17:20:25,130 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:20:25] "GET /api/stocks/TRIDENT/analysis HTTP/1.1" 200 -
+2025-04-07 17:21:11,432 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:21:11] "GET /api/stocks/TRIDENT/analysis HTTP/1.1" 200 -
+2025-04-07 17:24:32,224 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:24:32] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-07 17:24:32,266 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:24:32] "GET /api/stocks/TRIDENT HTTP/1.1" 200 -
+2025-04-07 17:24:40,137 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:24:40] "GET /api/search?q=jpp HTTP/1.1" 200 -
+2025-04-07 17:24:41,759 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:24:41] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 17:24:46,822 - utils - INFO - No matching stock found for 'JPPOWER'
+2025-04-07 17:24:46,823 - background_tasks - INFO - Starting background download task for JPPOWER
+2025-04-07 17:24:46,823 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:24:46] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 17:24:47,238 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:24:47] "GET /api/stocks/JPPOWER HTTP/1.1" 200 -
+2025-04-07 17:24:47,431 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:24:47] "GET /api/stocks/JPPOWER HTTP/1.1" 200 -
+2025-04-07 17:24:48,428 - utils - INFO - No matching stock found for 'JPPOWER'
+2025-04-07 17:24:48,429 - background_tasks - INFO - Stock 'JPPOWER' not found in listings, attempting to scrape...
+2025-04-07 17:25:04,516 - utils - INFO - No matching stock found for 'JPPOWER'
+2025-04-07 17:25:04,516 - background_tasks - ERROR - Failed to find or scrape stock information for 'JPPOWER'
+2025-04-07 17:26:22,039 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:26:22] "GET /api/stocks/JPPOWER/analysis HTTP/1.1" 200 -
+2025-04-07 17:27:58,471 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:27:58] "GET /api/stocks/JPPOWER/analysis HTTP/1.1" 200 -
+2025-04-07 17:49:32,434 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:49:32] "GET /api/stocks/JPPOWER HTTP/1.1" 200 -
+2025-04-07 17:49:32,491 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:49:32] "GET /api/stocks/JPPOWER HTTP/1.1" 200 -
+2025-04-07 17:59:22,432 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 17:59:22] "GET /api/stocks/JPPOWER HTTP/1.1" 200 -
+2025-04-07 20:02:43,551 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-07 20:02:43,599 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-07 20:02:43,622 - werkzeug - INFO -  * Restarting with stat
+2025-04-07 20:02:47,486 - werkzeug - WARNING -  * Debugger is active!
+2025-04-07 20:02:47,501 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-07 20:02:55,234 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:02:55] "GET /api/search?q=pok HTTP/1.1" 200 -
+2025-04-07 20:02:56,881 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:02:56] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 20:03:06,196 - utils - INFO - Found 1 matching stocks for 'POKARNA'
+2025-04-07 20:03:06,200 - background_tasks - INFO - Starting background download task for POKARNA
+2025-04-07 20:03:06,201 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:03:06] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 20:03:06,220 - background_tasks - INFO - No latest report URL available for POKARNA
+2025-04-07 20:03:06,222 - background_tasks - INFO - No latest presentation URL available for POKARNA
+2025-04-07 20:03:06,222 - background_tasks - INFO - Completed background download task for POKARNA
+2025-04-07 20:03:19,606 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:03:19] "GET /api/stocks/POKARNA HTTP/1.1" 200 -
+2025-04-07 20:03:20,015 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:03:20] "GET /api/stocks/POKARNA HTTP/1.1" 200 -
+2025-04-07 20:05:13,378 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:05:13] "GET /api/stocks/POKARNA/analysis HTTP/1.1" 200 -
+2025-04-07 20:05:41,904 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:05:41] "GET /api/stocks/POKARNA/analysis HTTP/1.1" 200 -
+2025-04-07 20:06:45,855 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:06:45] "GET /api/stocks/POKARNA/analysis HTTP/1.1" 200 -
+2025-04-07 20:30:46,175 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:30:46] "GET /api/stocks/POKARNA HTTP/1.1" 200 -
+2025-04-07 20:30:46,236 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:30:46] "GET /api/stocks/POKARNA HTTP/1.1" 200 -
+2025-04-07 20:31:51,307 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:31:51] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-07 20:31:51,422 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:31:51] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-07 20:31:54,920 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:31:54] "GET /api/search?q=parade HTTP/1.1" 200 -
+2025-04-07 20:31:56,551 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:31:56] "GET /api/search?q=paradi HTTP/1.1" 200 -
+2025-04-07 20:32:00,271 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:00] "GET /api/search?q=paradip%20p HTTP/1.1" 200 -
+2025-04-07 20:32:07,142 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:07] "GET /api/search?q=paradip%20pho HTTP/1.1" 200 -
+2025-04-07 20:32:08,553 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:08] "GET /api/search?q=paradip%20phosph HTTP/1.1" 200 -
+2025-04-07 20:32:10,973 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:10] "GET /api/search?q=paradip%20 HTTP/1.1" 200 -
+2025-04-07 20:32:14,149 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:14] "GET /api/search?q=par HTTP/1.1" 200 -
+2025-04-07 20:32:14,506 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:14] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-07 20:32:16,983 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:16] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-07 20:32:17,282 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:17] "GET /api/search?q=paradee HTTP/1.1" 200 -
+2025-04-07 20:32:19,630 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:19] "GET /api/search?q=paradeep HTTP/1.1" 200 -
+2025-04-07 20:32:21,347 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:21] "GET /api/search?q=paradeep%20 HTTP/1.1" 200 -
+2025-04-07 20:32:22,278 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:22] "GET /api/search?q=paradeep%20p HTTP/1.1" 200 -
+2025-04-07 20:32:24,509 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:24] "GET /api/search?q=paradeep%20ph HTTP/1.1" 200 -
+2025-04-07 20:32:26,391 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:26] "GET /api/search?q=paradeep%20pho HTTP/1.1" 200 -
+2025-04-07 20:32:26,674 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:26] "GET /api/search?q=paradeep%20phos HTTP/1.1" 200 -
+2025-04-07 20:32:28,572 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:28] "GET /api/search?q=paradeep%20phosp HTTP/1.1" 200 -
+2025-04-07 20:32:28,921 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:32:28] "GET /api/search?q=paradeep%20phosphate HTTP/1.1" 200 -
+2025-04-07 20:33:12,633 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:33:12] "GET /api/search?q=PARADEEP HTTP/1.1" 200 -
+2025-04-07 20:33:31,070 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:33:31] "GET /api/search?q=PARADE HTTP/1.1" 200 -
+2025-04-07 20:33:33,715 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:33:33] "GET /api/search?q=PARAD HTTP/1.1" 200 -
+2025-04-07 20:33:35,130 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:33:35] "GET /api/search?q=PARA HTTP/1.1" 200 -
+2025-04-07 20:36:37,398 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:36:37] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-07 20:36:38,415 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:36:38] "GET /api/search?q=paradeep HTTP/1.1" 200 -
+2025-04-07 20:36:48,256 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:36:48] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-07 20:36:52,502 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:36:52] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-07 20:36:55,225 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:36:55] "GET /api/search?q=paradeep HTTP/1.1" 200 -
+2025-04-07 20:37:08,290 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:37:08] "[33mGET /api/stocks/PARADEEP HTTP/1.1[0m" 404 -
+2025-04-07 20:37:33,458 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:37:33] "[33mGET /api/stocks/PARAD HTTP/1.1[0m" 404 -
+2025-04-07 20:37:40,414 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:37:40] "[33mGET /api/stocks/PARADEEP HTTP/1.1[0m" 404 -
+2025-04-07 20:37:46,604 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 20:37:46] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-07 21:05:13,311 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:05:13] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-07 21:06:40,164 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:06:40] "GET /api/search?q=paradeep HTTP/1.1" 200 -
+2025-04-07 21:07:41,258 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:07:41] "GET /api/search?q=e2e HTTP/1.1" 200 -
+2025-04-07 21:07:49,326 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:07:49] "GET /api/search?q=pre HTTP/1.1" 200 -
+2025-04-07 21:07:50,233 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:07:50] "GET /api/search?q=premi HTTP/1.1" 200 -
+2025-04-07 21:09:16,570 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:09:16] "GET /api/search?q=tre HTTP/1.1" 200 -
+2025-04-07 21:09:18,017 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:09:18] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-07 21:09:26,775 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:09:26] "GET /api/search?q=srf HTTP/1.1" 200 -
+2025-04-07 21:09:31,878 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:09:31] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-07 21:09:37,320 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:09:37] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 21:09:37,403 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:09:37] "GET /api/stocks/TRENT HTTP/1.1" 200 -
+2025-04-07 21:12:30,971 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:12:30] "GET /api/search?q=athena HTTP/1.1" 200 -
+2025-04-07 21:12:34,461 - werkzeug - INFO - 127.0.0.1 - - [07/Apr/2025 21:12:34] "GET /api/search?q=athena%20global HTTP/1.1" 200 -
+2025-04-08 12:56:20,861 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-08 12:56:20,871 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-08 12:56:20,906 - werkzeug - INFO -  * Restarting with stat
+2025-04-08 12:56:24,584 - werkzeug - WARNING -  * Debugger is active!
+2025-04-08 12:56:24,602 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-08 12:56:37,460 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 12:56:37] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-08 12:58:27,875 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\stock_search.py', reloading
+2025-04-08 12:58:28,489 - werkzeug - INFO -  * Restarting with stat
+2025-04-08 12:58:32,686 - werkzeug - WARNING -  * Debugger is active!
+2025-04-08 12:58:32,698 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-08 12:58:42,843 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 12:58:42] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-08 13:00:57,143 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\stock_search.py', reloading
+2025-04-08 13:00:57,640 - werkzeug - INFO -  * Restarting with stat
+2025-04-08 13:01:05,656 - werkzeug - WARNING -  * Debugger is active!
+2025-04-08 13:01:05,664 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-08 13:01:35,843 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\config.py', reloading
+2025-04-08 13:01:36,429 - werkzeug - INFO -  * Restarting with stat
+2025-04-08 13:01:45,857 - werkzeug - WARNING -  * Debugger is active!
+2025-04-08 13:01:45,873 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-08 13:01:59,690 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:01:59] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-08 13:02:31,996 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\config.py', reloading
+2025-04-08 13:02:32,385 - werkzeug - INFO -  * Restarting with stat
+2025-04-08 13:02:58,699 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-08 13:02:58,700 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-08 13:02:58,703 - werkzeug - INFO -  * Restarting with stat
+2025-04-08 13:03:04,051 - werkzeug - WARNING -  * Debugger is active!
+2025-04-08 13:03:04,051 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-08 13:03:04,544 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:03:04] "GET /api/search?q=par HTTP/1.1" 200 -
+2025-04-08 13:03:05,014 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:03:05] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-08 13:03:08,990 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:03:08] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-08 13:03:14,749 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:03:14] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-08 13:03:23,449 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-08 13:03:23,450 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-08 13:03:23,452 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:03:23] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-08 13:03:23,455 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-08 13:03:23,455 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-08 13:03:23,456 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-08 13:03:33,447 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:03:33] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-08 13:03:33,485 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:03:33] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-08 13:03:40,983 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\stock_search.py', reloading
+2025-04-08 13:03:41,336 - werkzeug - INFO -  * Restarting with stat
+2025-04-08 13:03:46,011 - werkzeug - WARNING -  * Debugger is active!
+2025-04-08 13:03:46,048 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-08 13:06:46,392 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:06:46] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-08 13:06:56,568 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:06:56] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-08 13:08:18,805 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:18] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-08 13:08:18,847 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:18] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-08 13:08:25,254 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:25] "GET /api/search?q=ltf HTTP/1.1" 200 -
+2025-04-08 13:08:27,381 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:27] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-08 13:08:34,216 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:34] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-08 13:08:35,387 - utils - INFO - No matching stock found for 'LTF'
+2025-04-08 13:08:35,389 - background_tasks - INFO - Starting background download task for LTF
+2025-04-08 13:08:35,389 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:35] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-08 13:08:35,801 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:35] "GET /api/stocks/LTF HTTP/1.1" 200 -
+2025-04-08 13:08:35,996 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:08:35] "GET /api/stocks/LTF HTTP/1.1" 200 -
+2025-04-08 13:08:37,387 - utils - INFO - No matching stock found for 'LTF'
+2025-04-08 13:08:37,388 - background_tasks - INFO - Stock 'LTF' not found in listings, attempting to scrape...
+2025-04-08 13:08:56,094 - utils - INFO - No matching stock found for 'LTF'
+2025-04-08 13:08:56,094 - background_tasks - ERROR - Failed to find or scrape stock information for 'LTF'
+2025-04-08 13:10:02,858 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:02] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-08 13:10:36,921 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:36] "GET /api/search?q=ltf HTTP/1.1" 200 -
+2025-04-08 13:10:37,969 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:37] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-08 13:10:38,376 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:38] "GET /api/stocks/LTF/analysis HTTP/1.1" 200 -
+2025-04-08 13:10:39,137 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:39] "GET /api/stocks/LTF/analysis HTTP/1.1" 200 -
+2025-04-08 13:10:45,051 - utils - INFO - No matching stock found for 'LTF'
+2025-04-08 13:10:45,051 - background_tasks - INFO - Starting background download task for LTF
+2025-04-08 13:10:45,051 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:45] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-08 13:10:45,853 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:45] "GET /api/stocks/LTF HTTP/1.1" 200 -
+2025-04-08 13:10:46,038 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:46] "GET /api/stocks/LTF HTTP/1.1" 200 -
+2025-04-08 13:10:47,478 - utils - INFO - No matching stock found for 'LTF'
+2025-04-08 13:10:47,478 - background_tasks - INFO - Stock 'LTF' not found in listings, attempting to scrape...
+2025-04-08 13:10:48,086 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:10:48] "GET /api/stocks/LTF/analysis HTTP/1.1" 200 -
+2025-04-08 13:11:02,288 - utils - INFO - No matching stock found for 'LTF'
+2025-04-08 13:11:02,288 - background_tasks - ERROR - Failed to find or scrape stock information for 'LTF'
+2025-04-08 13:12:50,114 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:12:50] "GET /api/stocks/LTF HTTP/1.1" 200 -
+2025-04-08 13:12:50,154 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:12:50] "GET /api/stocks/LTF HTTP/1.1" 200 -
+2025-04-08 13:13:00,306 - werkzeug - INFO - 127.0.0.1 - - [08/Apr/2025 13:13:00] "GET /api/search?q=venu HTTP/1.1" 200 -
+2025-04-09 15:30:38,761 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-09 15:30:38,770 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-09 15:30:38,782 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 15:30:42,938 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 15:30:42,952 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 15:33:24,439 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:33:24] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-09 15:33:27,320 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:33:27] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-09 15:33:28,823 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:33:28] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-09 15:33:35,906 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-09 15:33:35,906 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-09 15:33:35,906 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:33:35] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-09 15:33:35,913 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-09 15:33:35,914 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-09 15:33:35,914 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-09 15:33:42,878 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:33:42] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 15:33:42,899 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:33:42] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 15:44:55,530 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 15:44:56,283 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 15:45:15,288 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 15:45:15,302 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 15:51:22,072 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\main.py', reloading
+2025-04-09 15:51:22,638 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 15:51:47,067 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 15:51:47,076 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 15:52:22,340 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\financial_analysis.py', reloading
+2025-04-09 15:52:22,942 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 15:52:32,538 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 15:52:32,592 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 15:52:36,597 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:52:36] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 15:53:33,254 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:53:33] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 15:53:57,422 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:53:57] "[35m[1mGET /api/stocks/PARADEEP/dcf HTTP/1.1[0m" 500 -
+2025-04-09 15:54:07,629 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\main.py', reloading
+2025-04-09 15:54:08,002 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 15:54:12,591 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 15:54:12,599 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 15:54:21,546 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:54:21] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 15:55:44,288 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:55:44] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 15:56:08,490 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:56:08] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 15:56:41,165 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:56:41] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 15:57:03,082 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:57:03] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 15:57:03,114 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 15:57:03] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 15:59:21,486 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 15:59:24,030 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 15:59:28,685 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 15:59:28,698 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 16:00:29,736 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 16:00:30,204 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 16:00:42,191 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 16:00:42,198 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 16:00:48,830 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:00:48] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 16:00:50,217 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\financial_analysis.py', reloading
+2025-04-09 16:00:50,666 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 16:00:56,121 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 16:00:56,144 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 16:02:33,058 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:02:33] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 16:03:00,555 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:03:00] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 16:03:33,191 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:03:33] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 16:04:48,596 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 16:04:51,063 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 16:04:58,250 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 16:04:58,258 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 16:04:58,386 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:04:58] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 16:04:58,409 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:04:58] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 16:06:28,313 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 16:06:28,808 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 16:06:34,960 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 16:06:34,975 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 16:07:09,304 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:07:09] "GET /api/search?q=e2e HTTP/1.1" 200 -
+2025-04-09 16:10:16,736 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:10:16] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-09 16:10:24,579 - utils - INFO - No matching stock found for 'E2E'
+2025-04-09 16:10:24,580 - background_tasks - INFO - Starting background download task for E2E
+2025-04-09 16:10:24,582 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:10:24] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-09 16:10:25,776 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:10:25] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:10:26,007 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:10:26] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:10:26,634 - utils - INFO - No matching stock found for 'E2E'
+2025-04-09 16:10:26,635 - background_tasks - INFO - Stock 'E2E' not found in listings, attempting to scrape...
+2025-04-09 16:11:04,782 - utils - INFO - No matching stock found for 'E2E'
+2025-04-09 16:11:04,783 - background_tasks - ERROR - Failed to find or scrape stock information for 'E2E'
+2025-04-09 16:11:50,519 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:11:50] "GET /api/stocks/E2E/dcf HTTP/1.1" 200 -
+2025-04-09 16:12:20,067 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:12:20] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:12:20,182 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:12:20] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:13:57,424 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:13:57] "GET /api/stocks/E2E/dcf HTTP/1.1" 200 -
+2025-04-09 16:14:28,509 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:14:28] "GET /api/stocks/E2E/dcf HTTP/1.1" 200 -
+2025-04-09 16:15:02,290 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:15:02] "GET /api/stocks/E2E/dcf HTTP/1.1" 200 -
+2025-04-09 16:30:19,807 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:30:19] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:30:19,969 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:30:19] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:34:27,106 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 16:34:31,775 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 16:34:45,451 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 16:34:45,461 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 16:34:57,014 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:34:57] "GET /api/stocks/E2E/dcf HTTP/1.1" 200 -
+2025-04-09 16:35:08,706 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:35:08] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:35:08,764 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:35:08] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:36:19,952 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:36:19] "GET /api/stocks/E2E/dcf HTTP/1.1" 200 -
+2025-04-09 16:37:04,087 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:37:04] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:37:04,352 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:37:04] "GET /api/stocks/E2E HTTP/1.1" 200 -
+2025-04-09 16:37:10,079 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:37:10] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-09 16:37:11,434 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:37:11] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-09 16:37:20,587 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-09 16:37:20,605 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-09 16:37:20,607 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:37:20] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-09 16:37:20,609 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-09 16:37:20,610 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-09 16:37:20,611 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-09 16:37:22,095 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:37:22] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 16:37:22,202 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:37:22] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 16:38:18,958 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:38:18] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 16:55:54,164 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-09 16:55:54,164 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-09 16:55:54,175 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 16:56:02,329 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 16:56:02,340 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 16:58:09,631 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:58:09] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 16:59:46,553 - httpx - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-09 16:59:46,688 - root - ERROR - Failed to generate DCF analysis: 5 validation errors for DCFParameters
+growth_rate_y1_5
+  Field required [type=missing, input_value={'properties': {'growth_r...dard risk adjustment.'}}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+growth_rate_y6_10
+  Field required [type=missing, input_value={'properties': {'growth_r...dard risk adjustment.'}}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+discount_rate
+  Field required [type=missing, input_value={'properties': {'growth_r...dard risk adjustment.'}}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+margin_of_safety
+  Field required [type=missing, input_value={'properties': {'growth_r...dard risk adjustment.'}}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+justification
+  Field required [type=missing, input_value={'properties': {'growth_r...dard risk adjustment.'}}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.10/v/missing
+2025-04-09 16:59:46,692 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 16:59:46] "[35m[1mGET /api/stocks/PARADEEP/dcf HTTP/1.1[0m" 500 -
+2025-04-09 17:00:58,453 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:00:58] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 17:00:58,492 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:00:58] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 17:02:36,021 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\dcf_params.py', reloading
+2025-04-09 17:02:37,910 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:02:58,380 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:02:58,399 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:04:33,259 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 17:04:35,104 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:04:41,865 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:04:41,873 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:04:49,091 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\financial_analysis.py', reloading
+2025-04-09 17:04:49,616 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:04:55,116 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:04:55,132 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:05:24,214 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\dcf_params.py', reloading
+2025-04-09 17:05:24,936 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:05:34,991 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:05:35,010 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:06:45,407 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 17:06:45,817 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:06:51,355 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:06:51,363 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:07:06,741 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 17:07:07,107 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:07:14,986 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:07:14,997 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:09:11,160 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 17:09:13,288 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:09:19,929 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:09:19,940 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:09:55,740 - root - ERROR - Failed to generate DCF analysis: '\n        "growth_rate_y1_5"'
+2025-04-09 17:09:55,808 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:09:55] "[35m[1mGET /api/stocks/PARADEEP/dcf HTTP/1.1[0m" 500 -
+2025-04-09 17:10:54,672 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\dcf_params.py', reloading
+2025-04-09 17:10:55,374 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:11:02,992 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:11:03,002 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:11:48,898 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:11:48] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 17:11:56,713 - root - ERROR - Error in get_dcf_parameters: '\n        "growth_rate_y1_5"'
+2025-04-09 17:12:47,691 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\dcf_params.py', reloading
+2025-04-09 17:12:50,038 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:12:55,675 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:12:55,688 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:13:13,131 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:13:13] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 17:13:18,115 - root - ERROR - Error in get_dcf_parameters: '\n        "growth_rate_y1_5"'
+2025-04-09 17:13:42,820 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\dcf_params.py', reloading
+2025-04-09 17:13:47,337 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:13:57,354 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:13:57,361 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:14:32,582 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\financial_analysis.py', reloading
+2025-04-09 17:14:33,012 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:14:40,129 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:14:40,146 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:14:58,659 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 17:14:58,953 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:15:04,725 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:15:04,734 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:15:11,859 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 17:15:12,722 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:15:19,032 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:15:19,056 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 17:15:22,940 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:15:22] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 17:16:14,831 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:16:14] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 17:16:47,009 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:16:47] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 17:16:47,087 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 17:16:47] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 17:19:45,068 - werkzeug - INFO -  * Detected change in 'D:\\Stock_Fundamental\\server\\prompts.py', reloading
+2025-04-09 17:19:47,458 - werkzeug - INFO -  * Restarting with stat
+2025-04-09 17:19:54,178 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 17:19:54,208 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-09 18:01:07,371 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:01:07] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-09 18:01:07,389 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:01:07] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-09 18:01:09,620 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:01:09] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-09 18:01:26,027 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-09 18:01:26,027 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-09 18:01:26,027 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:01:26] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-09 18:01:26,037 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-09 18:01:26,038 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-09 18:01:26,039 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-09 18:01:31,122 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:01:31] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 18:01:31,151 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:01:31] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-09 18:02:18,809 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:02:18] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-09 18:02:34,433 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 18:02:34] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 15:50:21,764 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-10 15:50:21,776 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-10 15:50:21,805 - werkzeug - INFO -  * Restarting with stat
+2025-04-10 15:50:27,211 - werkzeug - WARNING -  * Debugger is active!
+2025-04-10 15:50:27,241 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-10 15:53:39,272 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:53:39] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 15:53:41,764 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:53:41] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-10 15:53:52,142 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-10 15:53:52,144 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-10 15:53:52,145 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:53:52] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-10 15:53:52,149 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-10 15:53:52,149 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-10 15:53:52,150 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-10 15:54:01,775 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:54:01] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:54:01,824 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:54:01] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:57:41,719 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:57:41] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:57:41,766 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:57:41] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:57:48,885 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:57:48] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:57:48,922 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:57:48] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:58:42,715 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:58:42] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 15:58:42,732 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:58:42] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 15:58:47,285 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:58:47] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:58:47,308 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:58:47] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:07,731 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:07] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:14,503 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:14] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:14,551 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:14] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:16,376 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:16] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:16,686 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:16] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:18,573 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:18] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:18,623 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:18] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:20,573 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:20] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:20,807 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:20] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:20,883 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:20] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:26,684 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:26] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:27,277 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:27] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:47,774 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:47] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:47,876 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:47] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:49,994 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:49] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:49,995 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:49] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:52,473 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:52] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:52,641 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:52] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 15:59:55,804 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:55] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 15:59:55,813 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 15:59:55] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:00:23,095 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:00:23] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:00:25,315 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:00:25] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:01:57,642 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:01:57] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:01:57,681 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:01:57] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:02:06,637 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:02:06] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:02:06,639 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:02:06] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:03:37,978 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:03:37] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:03:38,039 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:03:38] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:03:43,657 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:03:43] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:03:43,666 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:03:43] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:04:52,869 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:04:52] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:05:22,443 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:05:22] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 16:05:23,518 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:05:23] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-10 16:05:31,119 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-10 16:05:31,121 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-10 16:05:31,121 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:05:31] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-10 16:05:31,123 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-10 16:05:31,123 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-10 16:05:31,129 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-10 16:05:31,830 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:05:31] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:05:31,881 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:05:31] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:05:35,852 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:05:35] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:05:35,856 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:05:35] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:06:27,771 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:27] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:06:41,467 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:41] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 16:06:42,584 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:42] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-10 16:06:48,615 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-10 16:06:48,619 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-10 16:06:48,620 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:48] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-10 16:06:48,623 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-10 16:06:48,623 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-10 16:06:48,624 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-10 16:06:49,035 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:49] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:06:49,063 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:49] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:06:52,854 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:52] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:06:52,898 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:52] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:06:58,881 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:58] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:06:58,919 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:06:58] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:07:00,753 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:00] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:07:01,100 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:01] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:07:06,520 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:06] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:07:06,554 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:06] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:07:08,288 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:08] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:07:08,631 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:08] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 16:07:12,731 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:12] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:07:12,765 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:07:12] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:08:32,482 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:08:32] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 16:08:32,510 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:08:32] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 16:09:42,026 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:09:42] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 16:11:25,087 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:11:25] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 16:11:25,980 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:11:25] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-10 16:11:35,150 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-10 16:11:35,150 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-10 16:11:35,160 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:11:35] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-10 16:11:35,162 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-10 16:11:35,162 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-10 16:11:35,162 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-10 16:11:35,804 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:11:35] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:11:35,845 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:11:35] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:11:42,627 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:11:42] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 16:11:43,347 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:11:43] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 16:18:43,584 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:18:43] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 16:18:43,842 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 16:18:43] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:00:26,042 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:00:26] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 17:00:26,989 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:00:26] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 17:00:29,452 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:00:29] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-10 17:00:52,875 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-10 17:00:52,891 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-10 17:00:52,971 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:00:52] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-10 17:00:52,973 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-10 17:00:52,974 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-10 17:00:52,975 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-10 17:01:00,288 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:01:00] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:01:00,454 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:01:00] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:01:13,284 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:01:13] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:01:13,612 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:01:13] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:06:49,550 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:06:49] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:07:00,756 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:07:00] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 17:07:01,948 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:07:01] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-10 17:07:14,622 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-10 17:07:14,623 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-10 17:07:14,624 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:07:14] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-10 17:07:14,626 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-10 17:07:14,627 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-10 17:07:14,627 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-10 17:07:15,829 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:07:15] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:07:16,031 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:07:16] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:07:19,945 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:07:19] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:07:19,986 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:07:19] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:08:17,019 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:08:17] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:08:17,297 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:08:17] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:08:19,467 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:08:19] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 17:08:19,776 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:08:19] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 17:16:22,932 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:16:22] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 17:16:30,842 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:16:30] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-10 17:16:32,416 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:16:32] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-10 17:16:39,174 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-10 17:16:39,179 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-10 17:16:39,180 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:16:39] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-10 17:16:39,182 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-10 17:16:39,182 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-10 17:16:39,183 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-10 17:16:39,823 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:16:39] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:16:40,180 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:16:40] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:17:39,191 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:17:39] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 17:17:39,197 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:17:39] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-10 17:20:55,923 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:20:55] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:20:56,179 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:20:56] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:21:02,710 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:21:02] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:21:02,978 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:21:02] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:21:10,014 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:21:10] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:21:10,276 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:21:10] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:21:46,518 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:21:46] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:21:46,518 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:21:46] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-10 17:31:14,219 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:31:14] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:31:14,369 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:31:14] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:42:33,689 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:42:33] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:42:34,211 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:42:34] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:42:35,559 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:42:35] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:45:14,672 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:45:14] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:45:14,802 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:45:14] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:45:41,070 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:45:41] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:45:41,319 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:45:41] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:45:50,801 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:45:50] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:45:51,177 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:45:51] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:46:20,899 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:46:20] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:46:21,153 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:46:21] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:48:23,500 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:48:23] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:48:35,858 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:48:35] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:50:05,848 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:50:05] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:50:06,013 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:50:06] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:51:00,380 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:51:00] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:51:00,604 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:51:00] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:52:08,743 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:52:08] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-10 17:59:37,463 - werkzeug - INFO - 127.0.0.1 - - [10/Apr/2025 17:59:37] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-12 10:47:00,170 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-12 10:47:00,186 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-12 10:47:00,206 - werkzeug - INFO -  * Restarting with stat
+2025-04-12 10:47:13,149 - werkzeug - WARNING -  * Debugger is active!
+2025-04-12 10:47:13,179 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-12 10:49:09,533 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:09] "GET /api/search?q=parad HTTP/1.1" 200 -
+2025-04-12 10:49:09,543 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:09] "GET /api/search?q=para HTTP/1.1" 200 -
+2025-04-12 10:49:13,117 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:13] "GET /api/search?q=paradee HTTP/1.1" 200 -
+2025-04-12 10:49:13,351 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:13] "GET /api/search?q=paradeep HTTP/1.1" 200 -
+2025-04-12 10:49:14,741 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:14] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 10:49:27,795 - utils - INFO - Found 2 matching stocks for 'PARADEEP'
+2025-04-12 10:49:27,803 - background_tasks - INFO - Starting background download task for PARADEEP
+2025-04-12 10:49:27,806 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:27] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 10:49:27,808 - background_tasks - INFO - No latest report URL available for PARADEEP
+2025-04-12 10:49:27,810 - background_tasks - INFO - No latest presentation URL available for PARADEEP
+2025-04-12 10:49:27,812 - background_tasks - INFO - Completed background download task for PARADEEP
+2025-04-12 10:49:40,033 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:40] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-12 10:49:40,362 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:49:40] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-12 10:51:57,379 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:51:57] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-12 10:52:20,084 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:52:20] "GET /api/stocks/PARADEEP/analysis HTTP/1.1" 200 -
+2025-04-12 10:55:53,863 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:55:53] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-12 10:55:54,110 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:55:54] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-12 10:56:49,162 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:56:49] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-12 10:57:03,119 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 10:57:03] "GET /api/stocks/PARADEEP/dcf HTTP/1.1" 200 -
+2025-04-12 11:02:57,534 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:02:57] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-12 11:02:57,621 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:02:57] "GET /api/stocks/PARADEEP HTTP/1.1" 200 -
+2025-04-12 11:06:02,423 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:02] "GET /api/search?q=pard HTTP/1.1" 200 -
+2025-04-12 11:06:03,219 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:03] "GET /api/search?q=par HTTP/1.1" 200 -
+2025-04-12 11:06:05,058 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:05] "GET /api/search?q=parads HTTP/1.1" 200 -
+2025-04-12 11:06:23,452 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:23] "GET /api/search?q=skygol HTTP/1.1" 200 -
+2025-04-12 11:06:24,468 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:24] "GET /api/search?q=skygold HTTP/1.1" 200 -
+2025-04-12 11:06:25,772 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:25] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:06:34,832 - utils - INFO - No matching stock found for 'SKYGOLD'
+2025-04-12 11:06:34,832 - background_tasks - INFO - Starting background download task for SKYGOLD
+2025-04-12 11:06:34,842 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:34] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:06:35,327 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:35] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:06:35,745 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:06:35] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:06:36,467 - utils - INFO - No matching stock found for 'SKYGOLD'
+2025-04-12 11:06:36,468 - background_tasks - INFO - Stock 'SKYGOLD' not found in listings, attempting to scrape...
+2025-04-12 11:06:56,305 - utils - INFO - No matching stock found for 'SKYGOLD'
+2025-04-12 11:06:56,305 - background_tasks - ERROR - Failed to find or scrape stock information for 'SKYGOLD'
+2025-04-12 11:09:42,509 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:09:42] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:09:42,827 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:09:42] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:13:33,789 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:13:33] "GET /api/search?q=sku HTTP/1.1" 200 -
+2025-04-12 11:13:34,524 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:13:34] "GET /api/search?q=skugol HTTP/1.1" 200 -
+2025-04-12 11:13:37,530 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:13:37] "GET /api/search?q=skygold HTTP/1.1" 200 -
+2025-04-12 11:13:39,593 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:13:39] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:13:45,861 - utils - INFO - No matching stock found for 'SKYGOLD'
+2025-04-12 11:13:45,861 - background_tasks - INFO - Starting background download task for SKYGOLD
+2025-04-12 11:13:45,861 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:13:45] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:13:46,510 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:13:46] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:13:46,985 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:13:46] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:13:47,783 - utils - INFO - No matching stock found for 'SKYGOLD'
+2025-04-12 11:13:47,799 - background_tasks - INFO - Stock 'SKYGOLD' not found in listings, attempting to scrape...
+2025-04-12 11:13:58,067 - utils - INFO - No matching stock found for 'SKYGOLD'
+2025-04-12 11:13:58,067 - background_tasks - ERROR - Failed to find or scrape stock information for 'SKYGOLD'
+2025-04-12 11:15:23,925 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:15:23] "GET /api/stocks/SKYGOLD/analysis HTTP/1.1" 200 -
+2025-04-12 11:15:27,858 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:15:27] "GET /api/stocks/SKYGOLD/analysis HTTP/1.1" 200 -
+2025-04-12 11:15:31,149 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:15:31] "GET /api/stocks/SKYGOLD/analysis HTTP/1.1" 200 -
+2025-04-12 11:15:44,140 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:15:44] "GET /api/stocks/SKYGOLD/analysis HTTP/1.1" 200 -
+2025-04-12 11:17:18,541 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:17:18] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:17:18,811 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:17:18] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:18:06,282 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:18:06] "GET /api/stocks/SKYGOLD/dcf HTTP/1.1" 200 -
+2025-04-12 11:18:15,718 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:18:15] "GET /api/stocks/SKYGOLD/dcf HTTP/1.1" 200 -
+2025-04-12 11:19:16,647 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:19:16] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:19:16,916 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:19:16] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:19:20,212 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:19:20] "GET /api/stocks/SKYGOLD/analysis HTTP/1.1" 200 -
+2025-04-12 11:19:20,214 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:19:20] "GET /api/stocks/SKYGOLD/analysis HTTP/1.1" 200 -
+2025-04-12 11:23:35,701 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:23:35] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:23:35,944 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:23:35] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:23:37,725 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:23:37] "GET /api/stocks/SKYGOLD/dcf HTTP/1.1" 200 -
+2025-04-12 11:23:37,915 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:23:37] "GET /api/stocks/SKYGOLD/dcf HTTP/1.1" 200 -
+2025-04-12 11:24:30,532 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:24:30] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:24:30,788 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:24:30] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 11:24:35,972 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:24:35] "GET /api/search?q=techno HTTP/1.1" 200 -
+2025-04-12 11:24:38,702 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:24:38] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:24:46,760 - utils - INFO - No matching stock found for 'TECHNOE'
+2025-04-12 11:24:46,760 - background_tasks - INFO - Starting background download task for TECHNOE
+2025-04-12 11:24:46,760 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:24:46] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:24:47,252 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:24:47] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 11:24:47,705 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:24:47] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 11:24:48,662 - utils - INFO - No matching stock found for 'TECHNOE'
+2025-04-12 11:24:48,662 - background_tasks - INFO - Stock 'TECHNOE' not found in listings, attempting to scrape...
+2025-04-12 11:25:03,059 - utils - INFO - No matching stock found for 'TECHNOE'
+2025-04-12 11:25:03,059 - background_tasks - ERROR - Failed to find or scrape stock information for 'TECHNOE'
+2025-04-12 11:26:33,096 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:26:33] "GET /api/stocks/TECHNOE/analysis HTTP/1.1" 200 -
+2025-04-12 11:26:47,251 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:26:47] "GET /api/stocks/TECHNOE/analysis HTTP/1.1" 200 -
+2025-04-12 11:32:19,161 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:19] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 11:32:19,493 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:19] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 11:32:26,742 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:26] "GET /api/search?q=swan HTTP/1.1" 200 -
+2025-04-12 11:32:28,787 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:28] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:32:35,449 - utils - INFO - No matching stock found for 'SWANENERGY'
+2025-04-12 11:32:35,449 - background_tasks - INFO - Starting background download task for SWANENERGY
+2025-04-12 11:32:35,449 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:35] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:32:36,327 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:36] "GET /api/stocks/SWANENERGY HTTP/1.1" 200 -
+2025-04-12 11:32:36,875 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:36] "GET /api/stocks/SWANENERGY HTTP/1.1" 200 -
+2025-04-12 11:32:38,740 - utils - INFO - No matching stock found for 'SWANENERGY'
+2025-04-12 11:32:38,756 - background_tasks - INFO - Stock 'SWANENERGY' not found in listings, attempting to scrape...
+2025-04-12 11:32:39,304 - utils - INFO - No matching stock found for 'SWANENERGY'
+2025-04-12 11:32:39,341 - background_tasks - INFO - Starting background download task for SWANENERGY
+2025-04-12 11:32:39,341 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:32:39] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:32:41,004 - utils - INFO - No matching stock found for 'SWANENERGY'
+2025-04-12 11:32:41,004 - background_tasks - INFO - Stock 'SWANENERGY' not found in listings, attempting to scrape...
+2025-04-12 11:32:54,349 - utils - INFO - No matching stock found for 'SWANENERGY'
+2025-04-12 11:32:54,350 - background_tasks - ERROR - Failed to find or scrape stock information for 'SWANENERGY'
+2025-04-12 11:33:01,931 - utils - INFO - No matching stock found for 'SWANENERGY'
+2025-04-12 11:33:01,932 - background_tasks - ERROR - Failed to find or scrape stock information for 'SWANENERGY'
+2025-04-12 11:34:45,054 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:34:45] "GET /api/stocks/SWANENERGY/analysis HTTP/1.1" 200 -
+2025-04-12 11:34:54,760 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:34:54] "GET /api/stocks/SWANENERGY/analysis HTTP/1.1" 200 -
+2025-04-12 11:37:36,127 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:37:36] "GET /api/stocks/SWANENERGY HTTP/1.1" 200 -
+2025-04-12 11:37:36,142 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:37:36] "GET /api/stocks/SWANENERGY HTTP/1.1" 200 -
+2025-04-12 11:37:52,080 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:37:52] "GET /api/search?q=northern HTTP/1.1" 200 -
+2025-04-12 11:37:59,699 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:37:59] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:38:05,677 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:38:05] "GET /api/search?q=warr HTTP/1.1" 200 -
+2025-04-12 11:38:07,125 - utils - INFO - No matching stock found for 'NORTHARC'
+2025-04-12 11:38:07,125 - background_tasks - INFO - Starting background download task for NORTHARC
+2025-04-12 11:38:07,125 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:38:07] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:38:07,891 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:38:07] "GET /api/stocks/NORTHARC HTTP/1.1" 200 -
+2025-04-12 11:38:08,027 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:38:08] "GET /api/stocks/NORTHARC HTTP/1.1" 200 -
+2025-04-12 11:38:08,419 - utils - INFO - No matching stock found for 'NORTHARC'
+2025-04-12 11:38:08,419 - background_tasks - INFO - Stock 'NORTHARC' not found in listings, attempting to scrape...
+2025-04-12 11:38:22,127 - utils - INFO - No matching stock found for 'NORTHARC'
+2025-04-12 11:38:22,127 - background_tasks - ERROR - Failed to find or scrape stock information for 'NORTHARC'
+2025-04-12 11:39:45,301 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:39:45] "GET /api/stocks/NORTHARC/analysis HTTP/1.1" 200 -
+2025-04-12 11:39:49,749 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:39:49] "GET /api/stocks/NORTHARC/analysis HTTP/1.1" 200 -
+2025-04-12 11:40:45,121 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:40:45] "GET /api/stocks/NORTHARC HTTP/1.1" 200 -
+2025-04-12 11:40:45,358 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:40:45] "GET /api/stocks/NORTHARC HTTP/1.1" 200 -
+2025-04-12 11:40:49,710 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:40:49] "GET /api/search?q=waree HTTP/1.1" 200 -
+2025-04-12 11:40:55,281 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:40:55] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:41:03,104 - utils - INFO - No matching stock found for 'WAAREEENER'
+2025-04-12 11:41:03,107 - background_tasks - INFO - Starting background download task for WAAREEENER
+2025-04-12 11:41:03,108 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:41:03] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:41:03,769 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:41:03] "GET /api/stocks/WAAREEENER HTTP/1.1" 200 -
+2025-04-12 11:41:04,231 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:41:04] "GET /api/stocks/WAAREEENER HTTP/1.1" 200 -
+2025-04-12 11:41:05,690 - utils - INFO - No matching stock found for 'WAAREEENER'
+2025-04-12 11:41:05,691 - background_tasks - INFO - Stock 'WAAREEENER' not found in listings, attempting to scrape...
+2025-04-12 11:41:21,455 - utils - INFO - No matching stock found for 'WAAREEENER'
+2025-04-12 11:41:21,456 - background_tasks - ERROR - Failed to find or scrape stock information for 'WAAREEENER'
+2025-04-12 11:43:21,235 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:43:21] "GET /api/stocks/WAAREEENER/analysis HTTP/1.1" 200 -
+2025-04-12 11:43:34,262 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:43:34] "GET /api/stocks/WAAREEENER/analysis HTTP/1.1" 200 -
+2025-04-12 11:45:01,835 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:45:01] "GET /api/stocks/WAAREEENER HTTP/1.1" 200 -
+2025-04-12 11:45:02,090 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:45:02] "GET /api/stocks/WAAREEENER HTTP/1.1" 200 -
+2025-04-12 11:45:07,289 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:45:07] "GET /api/search?q=cps HTTP/1.1" 200 -
+2025-04-12 11:45:10,153 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:45:10] "GET /api/search?q=cpse HTTP/1.1" 200 -
+2025-04-12 11:45:23,838 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:45:23] "GET /api/search?q=cps HTTP/1.1" 200 -
+2025-04-12 11:46:40,533 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:46:40] "GET /api/search?q=veda HTTP/1.1" 200 -
+2025-04-12 11:46:40,999 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:46:40] "GET /api/search?q=vedan HTTP/1.1" 200 -
+2025-04-12 11:46:46,862 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:46:46] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:46:54,619 - utils - INFO - No matching stock found for 'MANYAVAR'
+2025-04-12 11:46:54,619 - background_tasks - INFO - Starting background download task for MANYAVAR
+2025-04-12 11:46:54,619 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:46:54] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:46:55,011 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:46:55] "GET /api/stocks/MANYAVAR HTTP/1.1" 200 -
+2025-04-12 11:46:55,484 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:46:55] "GET /api/stocks/MANYAVAR HTTP/1.1" 200 -
+2025-04-12 11:46:56,721 - utils - INFO - No matching stock found for 'MANYAVAR'
+2025-04-12 11:46:56,722 - background_tasks - INFO - Stock 'MANYAVAR' not found in listings, attempting to scrape...
+2025-04-12 11:47:08,306 - utils - INFO - No matching stock found for 'MANYAVAR'
+2025-04-12 11:47:08,306 - background_tasks - ERROR - Failed to find or scrape stock information for 'MANYAVAR'
+2025-04-12 11:48:47,911 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:48:47] "GET /api/stocks/MANYAVAR/analysis HTTP/1.1" 200 -
+2025-04-12 11:49:12,994 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:49:12] "GET /api/stocks/MANYAVAR/analysis HTTP/1.1" 200 -
+2025-04-12 11:49:51,015 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:49:51] "GET /api/stocks/MANYAVAR HTTP/1.1" 200 -
+2025-04-12 11:49:51,267 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:49:51] "GET /api/stocks/MANYAVAR HTTP/1.1" 200 -
+2025-04-12 11:49:55,229 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:49:55] "GET /api/search?q=igil HTTP/1.1" 200 -
+2025-04-12 11:49:56,948 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:49:56] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:50:03,620 - utils - INFO - Found 1 matching stocks for 'IGIL'
+2025-04-12 11:50:03,689 - background_tasks - INFO - Starting background download task for IGIL
+2025-04-12 11:50:03,689 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:50:03] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 11:50:03,693 - background_tasks - INFO - No latest report URL available for IGIL
+2025-04-12 11:50:03,693 - background_tasks - INFO - No latest presentation URL available for IGIL
+2025-04-12 11:50:03,695 - background_tasks - INFO - Completed background download task for IGIL
+2025-04-12 11:50:03,953 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:50:03] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 11:50:04,252 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:50:04] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 11:51:38,048 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:51:38] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 11:51:47,038 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:51:47] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 11:59:52,874 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:59:52] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 11:59:53,123 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 11:59:53] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:00:57,636 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:00:57] "GET /api/search?q=sudarsh HTTP/1.1" 200 -
+2025-04-12 12:00:59,093 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:00:59] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:01:01,406 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:01:01] "[35m[1mPOST /api/stock/save HTTP/1.1[0m" 500 -
+2025-04-12 12:01:55,618 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:01:55] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:01:58,085 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:01:58] "[35m[1mPOST /api/stock/save HTTP/1.1[0m" 500 -
+2025-04-12 12:01:58,219 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:01:58] "[35m[1mPOST /api/stock/save HTTP/1.1[0m" 500 -
+2025-04-12 12:02:01,523 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:02:01] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:02:03,752 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:02:03] "[35m[1mPOST /api/stock/save HTTP/1.1[0m" 500 -
+2025-04-12 12:02:16,584 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:02:16] "GET /api/search?q=vtl HTTP/1.1" 200 -
+2025-04-12 12:02:18,166 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:02:18] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:02:25,275 - utils - INFO - No matching stock found for 'VTL'
+2025-04-12 12:02:25,291 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:02:25] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:02:25,290 - background_tasks - INFO - Starting background download task for VTL
+2025-04-12 12:02:25,662 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:02:25] "GET /api/stocks/VTL HTTP/1.1" 200 -
+2025-04-12 12:02:26,126 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:02:26] "GET /api/stocks/VTL HTTP/1.1" 200 -
+2025-04-12 12:02:26,589 - utils - INFO - No matching stock found for 'VTL'
+2025-04-12 12:02:26,589 - background_tasks - INFO - Stock 'VTL' not found in listings, attempting to scrape...
+2025-04-12 12:02:39,537 - utils - INFO - No matching stock found for 'VTL'
+2025-04-12 12:02:39,537 - background_tasks - ERROR - Failed to find or scrape stock information for 'VTL'
+2025-04-12 12:04:13,220 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:04:13] "GET /api/stocks/VTL/analysis HTTP/1.1" 200 -
+2025-04-12 12:04:27,452 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:04:27] "GET /api/stocks/VTL/analysis HTTP/1.1" 200 -
+2025-04-12 12:06:48,672 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:06:48] "GET /api/stocks/VTL HTTP/1.1" 200 -
+2025-04-12 12:06:49,239 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:06:49] "GET /api/stocks/VTL HTTP/1.1" 200 -
+2025-04-12 12:07:45,169 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:07:45] "GET /api/search?q=sardae HTTP/1.1" 200 -
+2025-04-12 12:07:48,072 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:07:48] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:07:54,775 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:07:54,793 - background_tasks - INFO - Starting background download task for SARDAEN
+2025-04-12 12:07:54,794 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:07:54] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:07:55,475 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:07:55] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:07:56,079 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:07:56] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:07:57,458 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:07:57,458 - background_tasks - INFO - Stock 'SARDAEN' not found in listings, attempting to scrape...
+2025-04-12 12:07:59,385 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:07:59,386 - background_tasks - INFO - Starting background download task for SARDAEN
+2025-04-12 12:07:59,388 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:07:59] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:08:02,170 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:08:02,170 - background_tasks - INFO - Stock 'SARDAEN' not found in listings, attempting to scrape...
+2025-04-12 12:08:04,853 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 55
+}
+]
+2025-04-12 12:08:04,870 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:08:04] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:08:09,728 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:08:09,728 - background_tasks - ERROR - Failed to find or scrape stock information for 'SARDAEN'
+2025-04-12 12:08:17,133 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:08:17] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:08:17,449 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:08:17] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:08:19,778 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:08:19,778 - background_tasks - ERROR - Failed to find or scrape stock information for 'SARDAEN'
+2025-04-12 12:08:22,608 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 37
+}
+]
+2025-04-12 12:08:22,624 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:08:22] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:08:41,860 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:08:41] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:08:42,189 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:08:42] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:09:42,101 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 17
+}
+]
+2025-04-12 12:09:42,117 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 17
+}
+]
+2025-04-12 12:09:42,117 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:09:42] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:09:42,117 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:09:42] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:09:49,511 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:09:49] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:09:49,842 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:09:49] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:10:06,346 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:10:06] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:10:19,826 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:10:19] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:11:49,118 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:11:49] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:11:49,118 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:11:49] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:11:57,092 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:11:57] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:11:57,425 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:11:57] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:12:21,689 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 38
+}
+]
+2025-04-12 12:12:21,691 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:12:21] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:12:22,931 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 37
+}
+]
+2025-04-12 12:12:22,934 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:12:22] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:13:21,581 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:13:21] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:13:21,830 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:13:21] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:13:27,223 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 32
+}
+]
+2025-04-12 12:13:27,240 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:13:27] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:13:27,824 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 32
+}
+]
+2025-04-12 12:13:27,824 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:13:27] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:13:32,996 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:13:32] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:13:33,230 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:13:33] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:13:58,612 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:13:58] "GET /api/search?q=igi HTTP/1.1" 200 -
+2025-04-12 12:14:10,871 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:10] "GET /api/search?q=techno HTTP/1.1" 200 -
+2025-04-12 12:14:11,618 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:11] "GET /api/search?q=technoe HTTP/1.1" 200 -
+2025-04-12 12:14:12,798 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:12] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:14:18,670 - utils - INFO - No matching stock found for 'TECHNOE'
+2025-04-12 12:14:18,670 - background_tasks - INFO - Starting background download task for TECHNOE
+2025-04-12 12:14:18,686 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:18] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:14:19,023 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:19] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 12:14:19,566 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:19] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 12:14:20,809 - utils - INFO - No matching stock found for 'TECHNOE'
+2025-04-12 12:14:20,809 - background_tasks - INFO - Stock 'TECHNOE' not found in listings, attempting to scrape...
+2025-04-12 12:14:23,048 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:23] "GET /api/stocks/TECHNOE/analysis HTTP/1.1" 200 -
+2025-04-12 12:14:23,051 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:14:23] "GET /api/stocks/TECHNOE/analysis HTTP/1.1" 200 -
+2025-04-12 12:14:32,327 - utils - INFO - No matching stock found for 'TECHNOE'
+2025-04-12 12:14:32,343 - background_tasks - ERROR - Failed to find or scrape stock information for 'TECHNOE'
+2025-04-12 12:16:41,391 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:16:41] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 12:16:41,671 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:16:41] "GET /api/stocks/TECHNOE HTTP/1.1" 200 -
+2025-04-12 12:16:45,800 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:16:45] "GET /api/search?q=nacl HTTP/1.1" 200 -
+2025-04-12 12:16:47,398 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:16:47] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:16:57,328 - utils - INFO - No matching stock found for 'NACLIND'
+2025-04-12 12:16:57,330 - background_tasks - INFO - Starting background download task for NACLIND
+2025-04-12 12:16:57,332 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:16:57] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:16:59,629 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:16:59] "GET /api/stocks/NACLIND HTTP/1.1" 200 -
+2025-04-12 12:17:00,124 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:17:00] "GET /api/stocks/NACLIND HTTP/1.1" 200 -
+2025-04-12 12:17:02,533 - utils - INFO - No matching stock found for 'NACLIND'
+2025-04-12 12:17:02,533 - background_tasks - INFO - Stock 'NACLIND' not found in listings, attempting to scrape...
+2025-04-12 12:17:14,818 - utils - INFO - No matching stock found for 'NACLIND'
+2025-04-12 12:17:14,819 - background_tasks - ERROR - Failed to find or scrape stock information for 'NACLIND'
+2025-04-12 12:17:46,991 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:17:46] "GET /api/search?q=sarda HTTP/1.1" 200 -
+2025-04-12 12:17:48,724 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:17:48] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:17:57,136 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:17:57,138 - background_tasks - INFO - Starting background download task for SARDAEN
+2025-04-12 12:17:57,138 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:17:57] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:17:57,227 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:17:57] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:17:58,040 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:17:58] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:17:58,199 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:17:58] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:17:59,116 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:17:59,116 - background_tasks - INFO - Stock 'SARDAEN' not found in listings, attempting to scrape...
+2025-04-12 12:18:03,292 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 56
+}
+]
+2025-04-12 12:18:03,300 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:18:03] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:18:03,349 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 56
+}
+]
+2025-04-12 12:18:03,350 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:18:03] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:18:06,847 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:18:06,857 - background_tasks - INFO - Starting background download task for SARDAEN
+2025-04-12 12:18:06,857 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:18:06] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:18:07,631 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:18:07] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:18:07,984 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:18:07] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:18:12,002 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:18:12,002 - background_tasks - ERROR - Failed to find or scrape stock information for 'SARDAEN'
+2025-04-12 12:18:15,094 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 45
+}
+]
+2025-04-12 12:18:15,094 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:18:15] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:18:15,934 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:18:15,934 - background_tasks - INFO - Stock 'SARDAEN' not found in listings, attempting to scrape...
+2025-04-12 12:18:16,062 - root - ERROR - Failed to generate analysis: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. [violations {
+}
+, links {
+  description: "Learn more about Gemini API quotas"
+  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
+}
+, retry_delay {
+  seconds: 44
+}
+]
+2025-04-12 12:18:16,080 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:18:16] "[35m[1mGET /api/stocks/SARDAEN/analysis HTTP/1.1[0m" 500 -
+2025-04-12 12:18:26,111 - utils - INFO - No matching stock found for 'SARDAEN'
+2025-04-12 12:18:26,112 - background_tasks - ERROR - Failed to find or scrape stock information for 'SARDAEN'
+2025-04-12 12:20:54,206 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-12 12:20:54,206 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-12 12:20:54,244 - werkzeug - INFO -  * Restarting with stat
+2025-04-12 12:20:57,981 - werkzeug - WARNING -  * Debugger is active!
+2025-04-12 12:20:57,998 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-12 12:21:31,862 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:21:31] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:21:54,688 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:21:54] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:21:56,510 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:21:56] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:22:25,009 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:22:25] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:22:25,245 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:22:25] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:24:15,328 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:24:15] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:24:15,328 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:24:15] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:24:26,840 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:24:26] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:24:27,109 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:24:27] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:24:43,156 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:24:43] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:24:44,323 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:24:44] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:25:00,175 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:25:00] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:25:00,428 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:25:00] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:25:19,517 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:25:19] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:25:19,518 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:25:19] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:27:22,215 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:22] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:27:22,397 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:22] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:27:38,888 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:38] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:27:41,894 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:41] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:27:57,234 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:57] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:27:57,497 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:57] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:27:58,618 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:58] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:27:58,917 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:27:58] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:28:08,028 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:28:08] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:28:08,278 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:28:08] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:29:01,133 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:01] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:29:01,448 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:01] "GET /api/stocks/SARDAEN HTTP/1.1" 200 -
+2025-04-12 12:29:09,707 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:09] "GET /api/search?q=igil HTTP/1.1" 200 -
+2025-04-12 12:29:11,019 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:11] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:29:12,049 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:12] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:29:15,414 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:15] "GET /api/stocks/SARDAEN/analysis HTTP/1.1" 200 -
+2025-04-12 12:29:18,710 - utils - INFO - Found 1 matching stocks for 'IGIL'
+2025-04-12 12:29:18,727 - background_tasks - INFO - Starting background download task for IGIL
+2025-04-12 12:29:18,727 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:18] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-12 12:29:18,727 - background_tasks - INFO - No latest report URL available for IGIL
+2025-04-12 12:29:18,727 - background_tasks - INFO - No latest presentation URL available for IGIL
+2025-04-12 12:29:18,727 - background_tasks - INFO - Completed background download task for IGIL
+2025-04-12 12:29:19,290 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:19] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:29:19,461 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:19] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:29:25,071 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:25] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 12:29:25,274 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:29:25] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 12:30:22,089 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:30:22] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:30:22,334 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:30:22] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:32:20,686 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:32:20] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:32:21,014 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:32:21] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:36:12,909 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:36:12] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:36:13,141 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:36:13] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:37:27,010 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:37:27] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:37:27,253 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:37:27] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:38:06,852 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:38:06] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:53:59,272 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:53:59] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:53:59,779 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:53:59] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 12:54:04,949 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:54:04] "GET /api/stocks/MANYAVAR HTTP/1.1" 200 -
+2025-04-12 12:54:05,081 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:54:05] "GET /api/stocks/MANYAVAR HTTP/1.1" 200 -
+2025-04-12 12:54:12,241 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:54:12] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 12:54:12,381 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:54:12] "GET /api/stocks/SKYGOLD HTTP/1.1" 200 -
+2025-04-12 12:59:57,504 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:59:57] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 12:59:57,509 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:59:57] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 12:59:59,310 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:59:59] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 12:59:59,677 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 12:59:59] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:00:08,736 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:00:08] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:00:08,740 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:00:08] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:00:21,941 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:00:21] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 13:00:22,144 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:00:22] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-12 13:00:23,512 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:00:23] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:00:23,818 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:00:23] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:01:12,859 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:01:12] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:01:12,864 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:01:12] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:32:54,297 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:32:54] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-12 13:32:54,297 - werkzeug - INFO - 127.0.0.1 - - [12/Apr/2025 13:32:54] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-14 15:33:32,638 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.69.170:5000
+2025-04-14 15:33:32,676 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-14 15:33:32,722 - werkzeug - INFO -  * Restarting with stat
+2025-04-14 15:33:36,571 - werkzeug - WARNING -  * Debugger is active!
+2025-04-14 15:33:36,587 - werkzeug - INFO -  * Debugger PIN: 909-100-723
+2025-04-14 16:32:41,962 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 16:32:41] "GET /api/stocks/IGIL HTTP/1.1" 200 -
