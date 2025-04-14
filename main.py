@@ -11,7 +11,17 @@ from utils import find_stock_in_listings
 from financial_analysis import generate_financial_analysis, generate_dcf_analysis
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+# Update CORS configuration
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "http://localhost:3000",
+            "https://financial-first.vercel.app"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 def check_env_vars():
     """Check if all required environment variables are set."""
@@ -25,6 +35,15 @@ def check_env_vars():
 
 @app.route('/api/search', methods=['GET'])
 def search_stocks():
+    # Add CORS headers explicitly for this route
+    if request.method == 'OPTIONS':
+        headers = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        }
+        return ('', 204, headers)
+
     query = request.args.get('q', '')
     if not query or len(query) < 3:
         return jsonify([])
