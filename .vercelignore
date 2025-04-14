@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+env/
+background_tasks.log
+*.log
+.env
+.git
+.gitignore
+README.md
+tests/
