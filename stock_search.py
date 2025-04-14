@@ -24,17 +24,11 @@ class StockSearch:
             "pageNumber": 0
         }
         
-        headers = {
-            **self.headers,
-            'Origin': 'https://grownxt-server.onrender.com',
-            'Referer': 'https://grownxt-server.onrender.com/'
-        }
-        
         try:
             response = requests.get(
                 self.search_url, 
                 params=params, 
-                headers=headers,
+                headers=self.headers,  # Use the default headers from config
                 timeout=10
             )
             
