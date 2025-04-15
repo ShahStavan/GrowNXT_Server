@@ -58,7 +58,7 @@ def search_stocks():
         output_dir.mkdir(exist_ok=True)
         
         searcher = StockSearch(output_dir)
-        results = searcher.instant_search(query)
+        results = searcher.instant_search(query, dict(request.headers))
         
         logging.info(f"Search completed with {len(results)} results")
         return jsonify(results), 200

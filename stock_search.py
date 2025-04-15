@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import logging
 import sys
+from config import get_http_headers
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -19,10 +20,9 @@ class StockSearch:
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
         self.search_url = API_ENDPOINTS.SEARCH
-        self.headers = HTTP_HEADERS
         self.data_enricher = CompanyDataEnricher(output_dir)
 
-    def search_stock(self, query: str) -> List[Dict[str, Any]]:
+    def search_stock(self, query: str, client_headers=None) -> List[Dict[str, Any]]:
         if not query.strip():
             return []
             
@@ -32,14 +32,17 @@ class StockSearch:
             "pageNumber": 0
         }
         
+        # Get dynamic headers based on client request
+        headers = get_http_headers(client_headers)
+        
         try:
             logging.debug(f"Searching stocks with params: {params}")
-            logging.debug(f"Headers being sent: {self.headers}")
+            logging.debug(f"Headers being sent: {headers}")
             
             response = requests.get(
                 self.search_url, 
                 params=params,
-                headers=self.headers,
+                headers=headers,
                 timeout=10
             )
             
@@ -79,9 +82,9 @@ class StockSearch:
             logging.error(f"Unexpected error during stock search: {str(e)}")
             return []
 
-    def instant_search(self, query: str) -> None:
+    def instant_search(self, query: str, headers=None) -> None:
         """Perform instant search and show results"""
-        items = self.search_stock(query)
+        items = self.search_stock(query, headers)
         self.display_results(items)
         return items
 
