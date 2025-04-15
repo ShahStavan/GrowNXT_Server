@@ -11,16 +11,12 @@ from utils import find_stock_in_listings
 from financial_analysis import generate_financial_analysis, generate_dcf_analysis
 
 app = Flask(__name__)
-# Update CORS configuration
 CORS(app, resources={
     r"/api/*": {
-        "origins": [
-            "http://localhost:3000",
-            "https://financial-first.vercel.app",
-            "https://grownxt-server.onrender.com"
-        ],
+        "origins": ["http://localhost:3000", "https://financial-first.vercel.app"],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "Origin"]
+        "allow_headers": ["Content-Type", "Authorization", "Origin", "Accept"],
+        "expose_headers": ["Content-Type", "Authorization"]
     }
 })
 
@@ -36,18 +32,10 @@ def check_env_vars():
 
 @app.route('/api/search', methods=['GET'])
 def search_stocks():
-    if request.method == 'OPTIONS':
-        headers = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Origin'
-        }
-        return ('', 204, headers)
-
     try:
         query = request.args.get('q', '')
         if not query or len(query) < 3:
-            return jsonify([])
+            return jsonify([]), 200  # Return empty array instead of 404
         
         output_dir = DATA_DIR
         output_dir.mkdir(exist_ok=True)
@@ -55,10 +43,7 @@ def search_stocks():
         searcher = StockSearch(output_dir)
         results = searcher.instant_search(query)
         
-        if not results:
-            return jsonify({"error": "Search failed or no results found"}), 404
-            
-        return jsonify(results)
+        return jsonify(results), 200  # Always return 200 with results (even empty)
     except Exception as e:
         print(f"Search error: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
