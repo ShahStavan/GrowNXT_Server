@@ -1493,3 +1493,38 @@ justification
 2025-04-14 18:47:45,853 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 18:47:45] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
 2025-04-14 18:47:51,446 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
 2025-04-14 18:47:51,448 - background_tasks - ERROR - Failed to find or scrape stock information for 'MOREPENLAB'
+2025-04-14 19:03:47,521 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:03:47] "[33mGET /api/stocks/TECHNOE HTTP/1.1[0m" 404 -
+2025-04-14 19:03:47,571 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:03:47] "[33mGET /api/stocks/TECHNOE HTTP/1.1[0m" 404 -
+2025-04-14 19:04:35,859 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:04:35] "GET /api/search?q=morep HTTP/1.1" 200 -
+2025-04-14 19:04:37,265 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:04:37] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-14 19:04:42,604 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 19:04:42,606 - background_tasks - INFO - Starting background download task for MOREPENLAB
+2025-04-14 19:04:42,607 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:04:42] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-14 19:04:42,608 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 19:04:42,609 - background_tasks - INFO - Stock 'MOREPENLAB' not found in listings, attempting to scrape...
+2025-04-14 19:04:43,420 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:04:43] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 19:04:43,770 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:04:43] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 19:04:53,998 - utils - ERROR - File not found: D:\Stock_Fundamental\data\filtered_stock_listings.xlsx
+2025-04-14 19:04:53,999 - background_tasks - ERROR - Failed to find or scrape stock information for 'MOREPENLAB'
+2025-04-14 19:07:19,989 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:07:19] "GET /api/stocks/MOREPENLAB/analysis HTTP/1.1" 200 -
+2025-04-14 19:07:37,546 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:07:37] "GET /api/stocks/MOREPENLAB/analysis HTTP/1.1" 200 -
+2025-04-14 19:10:29,075 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:10:29] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 19:10:29,090 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:10:29] "GET /api/stocks/MOREPENLAB HTTP/1.1" 200 -
+2025-04-14 19:23:17,115 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:23:17] "GET /api/search?q=igi HTTP/1.1" 200 -
+2025-04-14 19:23:20,915 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:23:20] "OPTIONS /api/stock/save HTTP/1.1" 200 -
+2025-04-14 19:23:33,882 - utils - ERROR - Error finding stock in listings: Excel file format cannot be determined, you must specify an engine manually.
+2025-04-14 19:23:33,882 - background_tasks - INFO - Starting background download task for IGIL
+2025-04-14 19:23:33,885 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:23:33] "POST /api/stock/save HTTP/1.1" 200 -
+2025-04-14 19:23:33,885 - utils - ERROR - Error finding stock in listings: Excel file format cannot be determined, you must specify an engine manually.
+2025-04-14 19:23:33,885 - background_tasks - INFO - Stock 'IGIL' not found in listings, attempting to scrape...
+2025-04-14 19:23:33,893 - background_tasks - ERROR - Error in background download task for IGIL: Excel file format cannot be determined, you must specify an engine manually.
+2025-04-14 19:23:36,194 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:23:36] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-14 19:23:36,219 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:23:36] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-14 19:25:37,171 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:25:37] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-14 19:25:41,891 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:25:41] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-14 19:25:42,203 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:25:42] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-14 19:25:51,046 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:25:51] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-14 19:25:51,356 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:25:51] "GET /api/stocks/IGIL HTTP/1.1" 200 -
+2025-04-14 19:26:03,444 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:26:03] "GET /api/stocks/IGIL/analysis HTTP/1.1" 200 -
+2025-04-14 19:28:05,841 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:28:05] "GET /api/search?q=manya HTTP/1.1" 200 -
+2025-04-14 19:28:44,306 - werkzeug - INFO - 127.0.0.1 - - [14/Apr/2025 19:28:44] "GET /api/search?q=many HTTP/1.1" 200 -

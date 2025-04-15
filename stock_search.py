@@ -27,8 +27,8 @@ class StockSearch:
         try:
             response = requests.get(
                 self.search_url, 
-                params=params, 
-                headers=self.headers,  # Use the default headers from config
+                params=params,
+                headers=self.headers,
                 timeout=10
             )
             

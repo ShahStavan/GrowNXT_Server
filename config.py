@@ -33,14 +33,20 @@ class API_ENDPOINTS:
 
 # Common HTTP Headers
 HTTP_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
     'Accept-Version': '8.14.0',
-    'Referer': 'https://grownxt-server.onrender.com/',
-    'Origin': 'https://grownxt-server.onrender.com',
-    'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+    'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8,hi;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Origin': 'https://www.tickertape.in',
+    'Referer': 'https://www.tickertape.in/',
+    'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-site',
+    'Priority': 'u=1, i',
     'x-csrf-token': '7610d2a1'
 }
 
