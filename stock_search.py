@@ -3,6 +3,14 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import logging
+import sys
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+
 from data_handler import StockFundamentalData
 from config import API_ENDPOINTS, HTTP_HEADERS
 from company_agent import CompanyDataEnricher, JSONEncoder
@@ -25,6 +33,9 @@ class StockSearch:
         }
         
         try:
+            logging.debug(f"Searching stocks with params: {params}")
+            logging.debug(f"Headers being sent: {self.headers}")
+            
             response = requests.get(
                 self.search_url, 
                 params=params,
@@ -32,24 +43,40 @@ class StockSearch:
                 timeout=10
             )
             
+            logging.debug(f"Response status: {response.status_code}")
+            logging.debug(f"Response headers: {dict(response.headers)}")
+            
             if response.status_code == 403:
-                print("Access forbidden. Please check API permissions.")
+                logging.error("Access forbidden by Tickertape. Possible CORS or authentication issue.")
                 return []
                 
-            response.raise_for_status()
-            data = response.json()
+            try:
+                response_text = response.text
+                logging.debug(f"Response content: {response_text[:500]}...")  # Log first 500 chars
+                data = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse JSON response: {e}")
+                logging.debug(f"Raw response: {response_text}")
+                return []
             
             if not data.get('success'):
-                print(f"API Error: {data.get('message', 'Unknown error')}")
+                logging.error(f"API Error: {data.get('message', 'Unknown error')}")
                 return []
                 
-            return data.get('data', {}).get('items', [])
+            items = data.get('data', {}).get('items', [])
+            # Filter only stock type results
+            stocks = [item for item in items if item.get('type') == 'stock']
+            
+            logging.info(f"Found {len(stocks)} stock results")
+            return stocks
             
         except requests.RequestException as e:
-            print(f"Request failed: {str(e)}")
+            logging.error(f"Request failed: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logging.debug(f"Error response: {e.response.text}")
             return []
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse response: {str(e)}")
+        except Exception as e:
+            logging.error(f"Unexpected error during stock search: {str(e)}")
             return []
 
     def instant_search(self, query: str) -> None:

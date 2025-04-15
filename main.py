@@ -9,14 +9,29 @@ import json
 from background_tasks import download_stock_documents, check_existing_downloads
 from utils import find_stock_in_listings 
 from financial_analysis import generate_financial_analysis, generate_dcf_analysis
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000", "https://financial-first.vercel.app"],
+        "origins": [
+            "http://localhost:3000",
+            "https://financial-first.vercel.app",
+            "https://www.tickertape.in"
+        ],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "Origin", "Accept"],
-        "expose_headers": ["Content-Type", "Authorization"]
+        "allow_headers": [
+            "Content-Type", 
+            "Authorization",
+            "Accept",
+            "Accept-Version",
+            "x-csrf-token",
+            "Origin"
+        ],
+        "supports_credentials": True
     }
 })
 
@@ -33,9 +48,11 @@ def check_env_vars():
 @app.route('/api/search', methods=['GET'])
 def search_stocks():
     try:
+        logging.info(f"Search request received with headers: {dict(request.headers)}")
+        
         query = request.args.get('q', '')
         if not query or len(query) < 3:
-            return jsonify([]), 200  # Return empty array instead of 404
+            return jsonify([]), 200
         
         output_dir = DATA_DIR
         output_dir.mkdir(exist_ok=True)
@@ -43,10 +60,12 @@ def search_stocks():
         searcher = StockSearch(output_dir)
         results = searcher.instant_search(query)
         
-        return jsonify(results), 200  # Always return 200 with results (even empty)
+        logging.info(f"Search completed with {len(results)} results")
+        return jsonify(results), 200
+        
     except Exception as e:
-        print(f"Search error: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        logging.error(f"Search error: {str(e)}", exc_info=True)
+        return jsonify([]), 200  # Return empty array instead of error
 
 @app.route('/api/stock/save', methods=['POST'])
 def save_stock():
