@@ -3,37 +3,42 @@ from stock_search import StockSearch
 import os
 from dotenv import load_dotenv
 from config import REQUIRED_ENV_VARS, DATA_DIR
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 import json
 from background_tasks import download_stock_documents, check_existing_downloads
 from utils import find_stock_in_listings 
 from financial_analysis import generate_financial_analysis, generate_dcf_analysis
+import requests
+from urllib.parse import urlparse
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+
+BSE_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Connection': 'keep-alive',
+    'Referer': 'https://www.bseindia.com/',
+    'Upgrade-Insecure-Requests': '1',
+}
 
 app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
-        "origins": [
-            "http://localhost:3000",
-            "https://financial-first.vercel.app",
-            "https://www.tickertape.in"
-        ],
+        "origins": ["http://localhost:3000"],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": [
-            "Content-Type", 
-            "Authorization",
-            "Accept",
-            "Accept-Version",
-            "x-csrf-token",
-            "Origin"
-        ],
-        "supports_credentials": True
+        "allow_headers": ["Content-Type", "Authorization"]
     }
 })
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    return response
 
 def check_env_vars():
     """Check if all required environment variables are set."""
@@ -47,25 +52,17 @@ def check_env_vars():
 
 @app.route('/api/search', methods=['GET'])
 def search_stocks():
-    try:
-        logging.info(f"Search request received with headers: {dict(request.headers)}")
-        
-        query = request.args.get('q', '')
-        if not query or len(query) < 3:
-            return jsonify([]), 200
-        
-        output_dir = DATA_DIR
-        output_dir.mkdir(exist_ok=True)
-        
-        searcher = StockSearch(output_dir)
-        results = searcher.instant_search(query, dict(request.headers))
-        
-        logging.info(f"Search completed with {len(results)} results")
-        return jsonify(results), 200
-        
-    except Exception as e:
-        logging.error(f"Search error: {str(e)}", exc_info=True)
-        return jsonify([]), 200  # Return empty array instead of error
+    query = request.args.get('q', '')
+    if not query or len(query) < 3:
+        return jsonify([])
+    
+    output_dir = DATA_DIR
+    output_dir.mkdir(exist_ok=True)
+    
+    searcher = StockSearch(output_dir)
+    results = searcher.instant_search(query)
+    
+    return jsonify(results)
 
 @app.route('/api/stock/save', methods=['POST'])
 def save_stock():
@@ -228,6 +225,108 @@ def get_stock_dcf_analysis(symbol):
         print(f"Error generating DCF analysis for {symbol}: {str(e)}")
         return jsonify({"success": False, "error": f"Failed to generate DCF analysis for {symbol}"}), 500
 
+@app.route('/api/stocks/<symbol>/upload', methods=['POST'])
+def upload_stock_files(symbol):
+    try:
+        symbol_lower = symbol.lower()
+        stock_folder = DATA_DIR / symbol_lower
+        stock_folder.mkdir(exist_ok=True)
+        mapping_file = Path(__file__).parent / 'mapping.json'
+        uploaded_files = []
+
+        # Handle URL-based uploads
+        if 'annual_url' in request.form:
+            url = request.form['annual_url'].strip()
+            if url:
+                logging.info(f"Downloading annual report from URL: {url}")
+                try:
+                    # Use appropriate headers based on the URL
+                    headers = BSE_HEADERS if 'bseindia.com' in url else None
+                    response = requests.get(url, stream=True, timeout=30, headers=headers)
+                    
+                    if response.ok:
+                        annual_path = stock_folder / 'annual_report.pdf'
+                        total_size = 0
+                        with open(annual_path, 'wb') as f:
+                            for chunk in response.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+                                    total_size += len(chunk)
+                        
+                        if total_size > 0:
+                            logging.info(f"Successfully downloaded annual report to {annual_path} (Size: {total_size/1024:.1f}KB)")
+                            uploaded_files.append('annual_report.pdf (from URL)')
+                        else:
+                            logging.error("Downloaded file is empty")
+                            return jsonify({
+                                "success": False,
+                                "error": "Downloaded file is empty"
+                            }), 400
+                    else:
+                        error_msg = f"Failed to download PDF. Status code: {response.status_code}"
+                        if response.status_code == 403:
+                            error_msg += " (Access Forbidden - Website may require authentication)"
+                        logging.error(error_msg)
+                        return jsonify({
+                            "success": False,
+                            "error": error_msg
+                        }), 400
+                except Exception as download_error:
+                    logging.error(f"Error downloading PDF: {str(download_error)}")
+                    return jsonify({
+                        "success": False,
+                        "error": f"Error downloading PDF: {str(download_error)}"
+                    }), 500
+
+        # Handle direct file uploads
+        if 'annual' in request.files:
+            annual = request.files['annual']
+            annual_path = stock_folder / 'annual_report.pdf'
+            annual.save(str(annual_path))
+            uploaded_files.append('annual_report.pdf')
+            
+        if 'presentation' in request.files:
+            presentation = request.files['presentation']
+            presentation_path = stock_folder / 'presentation.pdf'
+            presentation.save(str(presentation_path))
+            uploaded_files.append('presentation.pdf')
+        
+        if 'presentation_url' in request.form and request.form['presentation_url'].strip():
+            url = request.form['presentation_url'].strip()
+            try:
+                headers = BSE_HEADERS if 'bseindia.com' in url else None
+                response = requests.get(url, stream=True, timeout=30, headers=headers)
+                if response.ok:
+                    presentation_path = stock_folder / 'presentation.pdf'
+                    with open(presentation_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    uploaded_files.append('presentation.pdf (from URL)')
+            except Exception as e:
+                logging.error(f"Error downloading presentation from URL: {e}")
+
+        # Regenerate analysis only once if files were uploaded
+        if uploaded_files:
+            try:
+                logging.info("Regenerating financial analysis...")
+                generate_financial_analysis(stock_folder, mapping_file)
+                logging.info("Financial analysis regenerated successfully")
+            except Exception as e:
+                logging.error(f"Warning: Failed to regenerate analysis after upload: {e}")
+
+        return jsonify({
+            "success": True,
+            "message": f"Successfully uploaded: {', '.join(uploaded_files)}"
+        })
+        
+    except Exception as e:
+        logging.error(f"Error in upload endpoint: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Upload failed: {str(e)}"
+        }), 500
+
 def main():
     # Check environment variables
     if not check_env_vars():
@@ -235,10 +334,7 @@ def main():
         return
     
     # Start the Flask app
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == "__main__":
     main()
-
-# This is required for Vercel serverless deployment
-app.debug = False

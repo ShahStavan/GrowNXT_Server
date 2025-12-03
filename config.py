@@ -1,7 +1,7 @@
 from pathlib import Path
 
 # Base paths
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(r"D:/Stock_Fundamental")
 OUTPUT_FOLDER = BASE_DIR / "output"
 DATA_DIR = BASE_DIR / "data"
 
@@ -32,31 +32,16 @@ class API_ENDPOINTS:
     SUMMARY = f"{ANALYZE_BASE_URL}/v2/stocks/summary/{{sid}}"
 
 # Common HTTP Headers
-def get_http_headers(client_headers=None):
-    """Generate headers dynamically based on client request headers"""
-    base_headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
-        'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'cross-site',
-        'x-csrf-token': '7610d2a1'
-    }
-    
-    if client_headers:
-        # Copy relevant headers from client request
-        for header in ['Accept', 'Accept-Language', 'Origin', 'Referer']:
-            if header.lower() in client_headers:
-                base_headers[header] = client_headers[header.lower()]
-    
-    return base_headers
-
-# Replace static HTTP_HEADERS with the function
-HTTP_HEADERS = get_http_headers()
+HTTP_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Version': '8.14.0',
+    'Referer': 'https://www.tickertape.in/',
+    'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'x-csrf-token': '7610d2a1'
+}
 
 # AI Agent Requirements
 REQUIRED_ENV_VARS = ["GEMINI_API_KEY"]
