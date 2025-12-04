@@ -1,10 +1,10 @@
 import json
 import re
-from typing import Any, Dict, List, Union
+from typing import Any
 import pandas as pd
 import os
 import logging
-from config import FILE_PATHS
+from core.config import FILE_PATHS
 
 logger = logging.getLogger(__name__)
 
@@ -36,32 +36,6 @@ class JSONEncoder(json.JSONEncoder):
             return obj.encode('utf-8', errors='replace').decode('utf-8')
         return super().default(obj)
 
-def safe_json_loads(json_str: str) -> Dict[str, Any]:
-    """Safely parse JSON string with error handling."""
-    try:
-        return json.loads(json_str)
-    except json.JSONDecodeError as e:
-        # Try to clean the string and parse again
-        cleaned_str = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', json_str)
-        try:
-            return json.loads(cleaned_str)
-        except:
-            # If still fails, return empty dict
-            print(f"Failed to parse JSON: {e}")
-            return {}
-
-def safe_json_dumps(data: Any) -> str:
-    """Safely convert data to JSON string with error handling."""
-    try:
-        return json.dumps(data, cls=JSONEncoder, ensure_ascii=False, indent=2)
-    except Exception as e:
-        # Try to sanitize data first
-        sanitized_data = sanitize_data(data)
-        try:
-            return json.dumps(sanitized_data, ensure_ascii=False, indent=2)
-        except:
-            print(f"Failed to encode JSON: {e}")
-            return "{}"
 
 def find_stock_in_listings(ticker):
     """Find if a stock exists in filtered_stock_listings and return its data."""

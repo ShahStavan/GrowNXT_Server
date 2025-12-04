@@ -9,7 +9,7 @@ import time
 import datetime
 import requests
 from urllib.parse import quote
-from config import FILE_PATHS, WEBSITE_URLS
+from core.config import FILE_PATHS, WEBSITE_URLS
 from contextlib import contextmanager
 
 
