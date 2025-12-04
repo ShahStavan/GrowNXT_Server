@@ -38,3 +38,5 @@ htmlcov/
 .coverage.*
 coverage.xml
 *.cover
+
+background_tasks.log

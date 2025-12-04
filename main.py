@@ -3,14 +3,12 @@ from stock_search import StockSearch
 import os
 from dotenv import load_dotenv
 from config import REQUIRED_ENV_VARS, DATA_DIR
-from flask import Flask, request, jsonify, make_response
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
-from background_tasks import download_stock_documents, check_existing_downloads
-from utils import find_stock_in_listings 
+from background_tasks import check_existing_downloads
 from financial_analysis import generate_financial_analysis, generate_dcf_analysis
 import requests
-from urllib.parse import urlparse
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -94,21 +92,11 @@ def save_stock():
             "message": "Stock data saved. Documents already downloaded."
         })
     
-    # Start background task to download reports and presentations
-    try:
-        stock_info = find_stock_in_listings(ticker)
-        download_stock_documents(ticker, stock_info)
-        
-        return jsonify({
-            "success": True,
-            "message": "Stock data saved. Reports and presentations will be downloaded in the background."
-        })
-    except Exception as e:
-        print(f"Error starting background task: {str(e)}")
-        return jsonify({
-            "success": True,
-            "warning": "Stock data saved but background download failed to start."
-        })
+    # Return success response even if documents don't exist
+    return jsonify({
+        "success": True,
+        "message": "Stock data saved successfully."
+    })
 
 @app.route('/api/stocks/<symbol>', methods=['GET'])
 def get_stock_data(symbol):

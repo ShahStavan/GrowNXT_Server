@@ -1,5 +1,3 @@
-from pathlib import Path
-from data_handler import StockFundamentalData
 from stock_search import StockSearch
 from config import DATA_DIR
 import time
@@ -70,8 +68,8 @@ def fetch_all_nifty50_data():
                 failed.append(ticker)
                 print(f"✗ Failed to save complete data for {ticker}")
             
-            # Add delay to avoid rate limiting
-            time.sleep(1)
+            # Add delay to avoid rate limiting (longer delay for LLM calls)
+            time.sleep(2)
             
         except Exception as e:
             failed.append(ticker)

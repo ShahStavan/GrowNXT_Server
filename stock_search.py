@@ -2,7 +2,6 @@ import requests
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-import logging
 from data_handler import StockFundamentalData
 from config import API_ENDPOINTS, HTTP_HEADERS
 from company_agent import CompanyDataEnricher, JSONEncoder
@@ -50,7 +49,6 @@ class StockSearch:
             return []
 
     def instant_search(self, query: str) -> None:
-        """Perform instant search and show results"""
         items = self.search_stock(query)
         self.display_results(items)
         return items
@@ -69,8 +67,21 @@ class StockSearch:
         if not stock_item.get('ticker'):
             return False
             
+        ticker = stock_item.get('ticker')
+        stock_folder = self.output_dir / ticker.lower()
+        stock_folder.mkdir(exist_ok=True)
+        
+        sdata_file = stock_folder / 'sData.json'
+        
+        # Check if data already exists and is complete
+        data_exists = self._check_data_exists(stock_folder)
+        
+        if data_exists:
+            print(f"✓ Data already exists for {ticker}, skipping download and enrichment...")
+            return True
+        
         stock_data = {
-            'ticker': stock_item.get('ticker'),
+            'ticker': ticker,
             'sid': stock_item.get('sid'),
             'name': stock_item.get('name'),
             'sector': stock_item.get('sector'),
@@ -80,27 +91,59 @@ class StockSearch:
             'slug': stock_item.get('slug')
         }
         
-        stock_folder = self.output_dir / stock_data['ticker'].lower()
-        stock_folder.mkdir(exist_ok=True)
-        
-        # Save stock data with proper encoding
-        with open(stock_folder / 'sData.json', 'w', encoding='utf-8') as f:
+        # Save stock data 
+        with open(sdata_file, 'w', encoding='utf-8') as f:
             json.dump(stock_data, f, indent=2, cls=JSONEncoder, ensure_ascii=False)
 
         # Fetch and save financial data
         fundamental = StockFundamentalData(str(self.output_dir))
         financial_success = fundamental.save_financial_data(stock_folder, stock_data['sid'])
         
-        # Enrich stock data with company information
-        if financial_success:
-            try:
-                print("Enriching stock data with company information...")
-                self.data_enricher.enrich_stock_data(stock_data['ticker'])
-                print("Stock data enrichment completed.")
-            except Exception as e:
-                print(f"Failed to enrich stock data: {e}")
+        # Always attempt to enrich stock data, even if financial data fetch partially failed
+        try:
+            print(f"Enriching stock data with company information for {ticker}...")
+            enrichment_success = self.data_enricher.enrich_stock_data(ticker)
+            if enrichment_success:
+                print(f"✓ Stock data enrichment completed for {ticker}")
+            else:
+                print(f"⚠ Stock data enrichment failed for {ticker}")
+        except Exception as e:
+            print(f"✗ Failed to enrich stock data for {ticker}: {e}")
+            import traceback
+            traceback.print_exc()
         
         return financial_success
+    
+    def _check_data_exists(self, stock_folder: Path) -> bool:
+        """Check if all required data files exist and sData.json has enrichment data"""
+        required_files = [
+            'sData.json',
+            'quarterly.json',
+            'annual.json',
+            'balancesheet.json',
+            'cashflow.json'
+        ]
+        
+        # Check if all required files exist
+        for file_name in required_files:
+            if not (stock_folder / file_name).exists():
+                return False
+        
+        # Check if sData.json has enrichment data
+        try:
+            sdata_file = stock_folder / 'sData.json'
+            with open(sdata_file, 'r', encoding='utf-8') as f:
+                sdata = json.load(f)
+                # Check if enrichment data exists
+                has_enrichment = (
+                    'company_brief' in sdata and 
+                    'strengths' in sdata and 
+                    'weaknesses' in sdata and
+                    sdata.get('company_brief')  # Check it's not empty
+                )
+                return has_enrichment
+        except Exception:
+            return False
     
     def process_search(self, query: str) -> Optional[Dict[str, Any]]:
         items = self.search_stock(query)

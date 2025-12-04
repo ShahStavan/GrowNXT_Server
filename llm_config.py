@@ -7,7 +7,7 @@ import chardet
 
 load_dotenv()
 
-DEFAULT_MODEL = os.getenv("MODEL_2")
+DEFAULT_MODEL = os.getenv("MODEL_1")
 
 def create_client():
     """Configure and return Google GenerativeAI"""

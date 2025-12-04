@@ -1,7 +1,6 @@
 from pathlib import Path
 import logging
 import time
-import google.generativeai as genai
 from llm_config import create_client, create_content_part, read_file_content, DEFAULT_MODEL
 from prompts import ANALYSIS_PROMPT, DCF_PROMPT
 
