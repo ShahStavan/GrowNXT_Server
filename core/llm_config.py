@@ -71,25 +71,29 @@ def _generate_data_fallback_summary(prompt: str, context: str) -> str:
     """Extracts fundamental metric context directly when LLM provider is unreachable.
 
     Senior Engineer Design Rationale:
-        Instead of returning generic placeholder text when offline or when LLM is unavailable,
-        this function cleans and passes through structured ground-truth context (including live
-        Vercel JSON payloads or retrieved filing chunks) directly to the report output.
+        Instead of returning raw prompt instructions or empty placeholders when offline,
+        this function cleans and passes through structured ground-truth Markdown sections
+        directly to the report output.
 
     Args:
         prompt (str): Task prompt instructions.
         context (str): Ground-truth financial context data.
 
     Returns:
-        str: Ground-truth fallback response slice.
+        str: Cleaned section Markdown text block.
     """
-    if context and context.strip():
-        cleaned_lines = [
-            line for line in context.splitlines()
-            if not line.startswith("--- RRF") and not line.startswith("--- HNSW")
-        ]
-        cleaned_text = "\n".join(cleaned_lines).strip()
-        if cleaned_text:
-            return cleaned_text
+    combined_text = f"{context}\n{prompt}" if context else prompt
+
+    # Strip out task instructions prompt wrapper if present
+    if "=== TASK INSTRUCTIONS ===" in combined_text:
+        combined_text = combined_text.split("=== TASK INSTRUCTIONS ===")[0]
+
+    if "=== LIVE VERCEL REST API & TARGETED RAG CONTEXT ===" in combined_text:
+        combined_text = combined_text.replace("=== LIVE VERCEL REST API & TARGETED RAG CONTEXT ===", "")
+
+    cleaned_text = combined_text.strip()
+    if cleaned_text:
+        return cleaned_text
 
     logger.warning("LLM provider unavailable and context clean-pass empty. Returning default status slice.")
     return (
