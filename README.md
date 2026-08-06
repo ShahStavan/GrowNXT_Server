@@ -9,7 +9,7 @@
 [![Model Support](https://img.shields.io/badge/LLM-Ollama%20%7C%20Groq%20%7C%20Gemini-purple.svg)](https://ollama.ai/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-*Automated, zero-hallucination fundamental financial analyst reports built from raw company filings using LangGraph Self-RAG.*
+*Automated, zero-hallucination fundamental financial analyst reports built from raw company filings using Parent-Child Hybrid Self-RAG.*
 
 ---
 
@@ -34,7 +34,11 @@ Here is how GrowNXT processes fundamental filings into verified financial report
                                        │
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 2. VECTOR SEARCH: HNSW Dense Vector Index (Fast document search)             │
+│ 2. HYBRID SEARCH ENGINE (Metadata Filtered Vector + BM25 Search)             │
+│    ├── Parent-Child Chunker (Search ~300ch child -> Return ~1,024ch parent)   │
+│    ├── Dense HNSW Vector Search (Semantic similarity)                        │
+│    ├── Sparse BM25 Keyword Search (Exact term & code matching)               │
+│    └── Reciprocal Rank Fusion (RRF) Reranking                                │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
                                        ▼
@@ -47,7 +51,8 @@ Here is how GrowNXT processes fundamental filings into verified financial report
 │    ├── Step 5: Financial Performance & Growth Metrics                        │
 │    ├── Step 6: DuPont Return Decomposition (ROE & ROCE Analysis)             │
 │    ├── Step 7: Capital Structure & Solvency Analysis                         │
-│    └── Step 8: Investment Thesis & Strategic Risk Audit                      │
+│    ├── Step 8: Investment Thesis & Strategic Risk Audit                      │
+│    └── Corrective Self-RAG Loop (Query Rewriting on low confidence)           │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
                                        ▼
@@ -60,27 +65,33 @@ Here is how GrowNXT processes fundamental filings into verified financial report
 
 ## 🔥 Core Architectural Pillars & Features
 
-### 1. 🎯 No Context Overflow
-Instead of sending huge financial documents to the AI model all at once, GrowNXT retrieves **only the specific 1-2 pages** needed for each section. This keeps prompts small (~1,000 tokens) and super fast (< 1 second per section).
+### 1. 🔀 Hybrid Search & Reciprocal Rank Fusion (RRF)
+Combines **Dense HNSW Vector Search** (for semantic concepts) with **Sparse BM25 Keyword Search** (for exact financial codes & product terms). Results are fused using **Reciprocal Rank Fusion (RRF)**:
 
-### 2. 📐 Ground-Truth Math Engine (DuPont ROE & ROCE Analysis)
+$$\text{RRF Score}(d) = \frac{1}{60 + \text{Rank}_{\text{Vector}}(d)} + \frac{1}{60 + \text{Rank}_{\text{BM25}}(d)}$$
+
+### 2. 🧩 Parent-Child Hierarchical Document Chunking
+- **Child Chunks (~300 chars)**: Used for high-precision HNSW vector and BM25 search matching.
+- **Parent Chunks (~1,024 chars)**: Retained context blocks returned to the LLM for maximum output quality.
+
+### 3. 🏷 Metadata Section Filtering
+Filters vector and keyword search strictly by section tags (`company_overview`, `expansion_plans`, `balance_sheet`, `dupont_analysis`), eliminating cross-section noise contamination.
+
+### 4. 🔄 Corrective Self-RAG Reflection Loop (CRAG)
+Evaluates retrieval confidence scores. If confidence falls below threshold ($top\_sim < 0.30$), the system triggers an automatic **Query Rewriter** to expand the query with financial domain synonyms before regenerating.
+
+### 5. 📐 Ground-Truth Math Engine (DuPont ROE & ROCE Analysis)
 AI models often fail at basic math. GrowNXT calculates **DuPont Return on Equity (ROE)** and **Return on Capital Employed (ROCE)** directly using exact code formulas:
 
 $$\text{ROE} = \text{Net Profit Margin} \times \text{Asset Turnover} \times \text{Financial Leverage}$$
 
 $$\text{ROCE} = \frac{\text{Operating Profit (EBIT)}}{\text{Total Equity} + \text{Total Debt}}$$
 
-### 3. 💡 Plain-English Investor Summaries
+### 6. 💡 Plain-English Investor Summaries
 Translates technical financial terms into plain English for everyday investors:
 - **Operations**: *"Uses cash from Airports to fund new Green Hydrogen projects."*
 - **Capex**: *"Spending heavily on new projects; watch for project completion dates."*
 - **Moat**: *"30 to 50 year government contracts protect against local competition."*
-
-### 4. 🔌 Pluggable Multi-LLM Support
-Switch between local edge models and cloud providers using `.env`:
-- **Local (Ollama)**: `qwen2.5:1.5b` (~1.1 GB RAM footprint)
-- **Cloud (Groq)**: `llama-3.1-8b-instant`
-- **Cloud (Gemini)**: `gemini-1.5-flash`
 
 ---
 
@@ -94,8 +105,8 @@ GrowNXT_Server/
 │   ├── llm_config.py           # Local / Cloud LLM selector
 │   └── prompt_registry.py      # Prompts for each report section
 ├── services/                   # Business Logic & AI Engines
-│   ├── rag_engine.py           # Document chunker, vector search & DuPont math
-│   ├── graph_pipeline.py       # LangGraph Self-RAG state machine
+│   ├── rag_engine.py           # Parent-child chunker, hybrid vector+BM25 search & DuPont math
+│   ├── graph_pipeline.py       # LangGraph Self-RAG state machine with CRAG loop
 │   └── analysis_service.py     # Main report orchestrator
 ├── scripts/                    # Web scrapers & batch utilities
 ├── .env                        # Environment settings
