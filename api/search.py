@@ -1,127 +1,110 @@
-"""Stock Search and Ticker Resolution API.
+"""Stock Discovery and Ticker Resolution API Integration.
 
-Uses Financial Data Collector Vercel REST service to search tickers and save
-statement datasets locally.
+Connects to the Financial Data Collector Vercel REST Service to discover stock tickers,
+verify symbol listings, and retrieve live financial metadata.
+
+Google Python Style Guide Compliant.
 """
 
-import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import requests
 
 from core.config import FINANCIAL_DATA_COLLECTOR_BASE_URL
-from services.data_service import StockDataHandler
-from services.enrichment_service import CompanyEnricher, JSONEncoder
 
 logger = logging.getLogger(__name__)
 
 
 class StockSearch:
-    """Handles searching stock tickers and triggering local data ingestion."""
+    """Handles stock ticker discovery via the Financial Data Collector Vercel REST Service.
 
-    def __init__(self, output_dir: Path):
-        self.output_dir = output_dir
-        self.base_url = FINANCIAL_DATA_COLLECTOR_BASE_URL.rstrip('/')
-        self.search_url = f"{self.base_url}/api/v1/stocks/search"
-        self.enricher = CompanyEnricher(output_dir)
+    Args:
+        output_dir (Optional[Path]): Base directory path for stock data folders.
+    """
 
-    def search_stock(self, q: str) -> List[Dict[str, Any]]:
-        """Queries stock discovery endpoint."""
-        query_str = q.strip() if q else ""
-        if not query_str:
+    def __init__(self, output_dir: Optional[Path] = None) -> None:
+        self.output_dir: Path = Path(output_dir) if output_dir else Path("./data")
+        self.base_url: str = FINANCIAL_DATA_COLLECTOR_BASE_URL.rstrip("/")
+        self.search_url: str = f"{self.base_url}/api/v1/stocks/search"
+
+    def search_stock(self, query: str) -> List[Dict[str, Any]]:
+        """Queries the external Vercel stock search endpoint.
+
+        Args:
+            query (str): Company name or ticker query string.
+
+        Returns:
+            List[Dict[str, Any]]: List of matching stock search result dictionaries.
+        """
+        cleaned_query = query.strip() if query else ""
+        if not cleaned_query:
             return []
-        
+
         try:
-            res = requests.get(
+            response = requests.get(
                 self.search_url,
-                params={"q": query_str},
+                params={"q": cleaned_query},
                 timeout=15
             )
-            res.raise_for_status()
-            data = res.json()
-            
-            if not data.get('success'):
-                logger.warning("Stock search returned error for '%s': %s", query_str, data.get('message'))
+            response.raise_for_status()
+            payload = response.json()
+
+            if not payload.get("success"):
+                logger.warning("Stock search service returned error for '%s': %s", cleaned_query, payload.get("message"))
                 return []
-            
-            return data.get('data', [])
-            
+
+            return payload.get("data", [])
+
+        except requests.RequestException as exc:
+            logger.error("HTTP request error during stock search for '%s': %s", cleaned_query, exc)
+            return []
         except Exception as exc:
-            logger.error("Stock search request failed for '%s': %s", query_str, exc)
+            logger.error("Unexpected error during stock search for '%s': %s", cleaned_query, exc, exc_info=True)
             return []
 
-    def instant_search(self, q: str) -> List[Dict[str, Any]]:
-        """Performs search and logs matching results."""
-        items = self.search_stock(q)
-        self._display(items)
-        return items
+    def instant_search(self, query: str) -> List[Dict[str, Any]]:
+        """Performs search and logs search result summaries.
 
-    def _display(self, items: List[Dict[str, Any]]) -> None:
-        """Prints matched stocks."""
+        Args:
+            query (str): Search query.
+
+        Returns:
+            List[Dict[str, Any]]: Matched stock items.
+        """
+        results = self.search_stock(query)
+        self._log_search_results(results)
+        return results
+
+    def _log_search_results(self, items: List[Dict[str, Any]]) -> None:
+        """Logs matched stock results cleanly.
+
+        Args:
+            items (List[Dict[str, Any]]): List of stock metadata items.
+        """
         if not items:
-            print("No stocks found")
+            logger.info("Stock search query returned no matching results.")
             return
-        
-        print("\nResults:")
-        for i, item in enumerate(items, 1):
-            print(f"{i}. {item.get('name')} ({item.get('ticker')})")
-    
-    def save_stock_data(self, item: Dict[str, Any]) -> bool:
-        """Saves stock metadata and fetches financial statement bundle from Vercel API."""
-        ticker = item.get('ticker')
-        if not ticker:
-            return False
-        
-        folder = self.output_dir / ticker.lower()
-        folder.mkdir(parents=True, exist_ok=True)
-        
-        # Skip if complete and enriched
-        if self._check_exists(folder):
-            logger.info("Stock data for %s already exists and enriched, skipping fetch", ticker)
-            return True
-        
-        # Save basic metadata
-        data = {
-            'ticker': ticker,
-            'sid': item.get('sid', ticker[:4]),
-            'name': item.get('name'),
-            'sector': item.get('sector'),
-            'brands': item.get('brands', []),
-            'marketCap': item.get('marketCap'),
-            'quote': item.get('quote', {}),
-            'slug': item.get('slug')
-        }
-        
-        with open(folder / 'sData.json', 'w', encoding='utf-8') as file_handle:
-            json.dump(data, file_handle, indent=2, cls=JSONEncoder, ensure_ascii=False)
 
-        # Fetch financial statement bundle via Vercel REST service
-        handler = StockDataHandler(str(self.output_dir))
-        ok = handler.save_all(folder, data['sid'], symbol=ticker)
-        
-        # Enrich data
-        try:
-            if self.enricher.enrich(ticker):
-                logger.info("Successfully enriched company brief for %s", ticker)
-            else:
-                logger.warning("Company brief enrichment failed for %s", ticker)
-        except Exception as exc:
-            logger.error("Enrichment exception for %s: %s", ticker, exc)
-        
-        return ok
-    
-    def _check_exists(self, folder: Path) -> bool:
-        """Check if all files exist and sData has company brief enrichment."""
-        files = ['sData.json', 'quarterly.json', 'annual.json', 'balancesheet.json', 'cashflow.json']
-        
-        for file_basename in files:
-            if not (folder / file_basename).exists():
-                return False
-        
-        try:
-            with open(folder / 'sData.json', 'r', encoding='utf-8') as file_handle:
-                data = json.load(file_handle)
-                return 'company_brief' in data and bool(data.get('company_brief'))
-        except Exception:
+        logger.info("Stock search matched %d items:", len(items))
+        for index, item in enumerate(items, 1):
+            logger.info("  %d. %s (%s)", index, item.get("name"), item.get("ticker"))
+
+    def save_stock_data(self, item: Dict[str, Any]) -> bool:
+        """Verifies stock ticker validity and ensures target directory exists.
+
+        Args:
+            item (Dict[str, Any]): Stock metadata payload dictionary.
+
+        Returns:
+            bool: True if symbol validation passes.
+        """
+        ticker = item.get("ticker")
+        if not ticker:
+            logger.error("Cannot process stock: missing 'ticker' attribute in payload.")
             return False
+
+        ticker_folder = self.output_dir / ticker.lower()
+        ticker_folder.mkdir(parents=True, exist_ok=True)
+        logger.info("Validated stock symbol '%s' directory at %s", ticker, ticker_folder)
+        return True

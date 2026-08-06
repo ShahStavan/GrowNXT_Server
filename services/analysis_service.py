@@ -1,117 +1,97 @@
+"""Financial Analysis and DCF Report Generation Service Adapter.
+
+Orchestrates fundamental financial report generation via SelfRAGReportGraph
+and DCF valuation routines using live Vercel REST tools and targeted RAG vector chunks.
+
+Google Python Style Guide Compliant.
+"""
+
+import logging
 from pathlib import Path
-import time
-from core.llm_config import create_client, create_content_part, read_file_content, DEFAULT_MODEL
-from core.prompts import ANALYSIS_PROMPT, DCF_PROMPT
+from typing import Optional, Union
+
+from core.config import MAPPING_FILE_PATH
+from core.llm_config import DEFAULT_MODEL, create_client, create_content_part, read_file_content
+from core.prompts import DCF_PROMPT
+from services.financial_tools import FinancialDataAgent
+
+logger = logging.getLogger(__name__)
 
 
-def _read_json_files(folder: Path) -> list:
-    """Read all JSON files"""
-    files = [
-        'qtGrowth.json', 'balGrowth.json', 'balancesheet.json',
-        'annual.json', 'anGrowth.json', 'quarterly.json',
-        'sData.json', 'cashflow.json', 'summary.json'
-    ]
-    
-    parts = []
-    for f in files:
-        path = folder / f
-        if path.exists():
-            content = read_file_content(str(path))
-            parts.append(create_content_part(content))
-    return parts
+def generate_financial_analysis(folder: Union[str, Path], mapping: Optional[Path] = None) -> str:
+    """Generates financial report using Advanced Self-RAG Graph Pipeline with live REST tools.
 
+    Args:
+        folder (Union[str, Path]): Stock directory path.
+        mapping (Optional[Path]): Metric mapping dictionary file path.
 
-def _read_pdf_files(folder: Path) -> list:
-    """Read PDF files with retry"""
-    files = ['annual_report.pdf', 'presentation.pdf']
-    parts = []
-    
-    for f in files:
-        path = folder / f
-        if not path.exists():
-            continue
-        
-        # Retry logic
-        for i in range(3):
-            try:
-                content = read_file_content(str(path))
-                if content and content.strip():
-                    parts.append(create_content_part(f"Analysis from {f}:\n{content}"))
-                    break
-                time.sleep(1)
-            except Exception as e:
-                if i == 2:
-                    print(f"Failed {f}: {e}")
-    
-    return parts
+    Returns:
+        str: Generated Markdown analysis report text string.
+    """
+    folder_path = Path(folder)
+    symbol = folder_path.name.upper()
 
-
-def generate_financial_analysis(folder: Path, mapping: Path = None) -> str:
-    """Generate financial analysis report using Advanced Self-RAG Graph Pipeline."""
     try:
         from services.graph_pipeline import SelfRAGReportGraph
-        print(f"Executing Advanced Self-RAG Report Pipeline for folder: {folder}")
-        graph_pipeline = SelfRAGReportGraph(folder)
+        logger.info("Executing Advanced Self-RAG Report Pipeline for symbol '%s' at folder: %s", symbol, folder_path)
+        graph_pipeline = SelfRAGReportGraph(symbol=symbol, folder_path=folder_path)
         return graph_pipeline.execute_pipeline()
-    except Exception as e:
-        print(f"Self-RAG Pipeline failed, falling back to standard generator: {e}")
-        client = create_client()
-        model = client.GenerativeModel(DEFAULT_MODEL)
-        
-        # Collect content fallback
-        parts = []
-        parts.extend(_read_json_files(folder))
-        parts.extend(_read_pdf_files(folder))
-        
-        if mapping and mapping.exists():
-            parts.append(create_content_part(read_file_content(str(mapping))))
-        
-        parts.append(ANALYSIS_PROMPT)
-        res = model.generate_content("\n".join(parts))
-        
-        report = folder / 'report.md'
-        with open(report, 'w', encoding='utf-8', errors='ignore') as f:
-            f.write(res.text)
-        
-        return res.text
 
-def generate_dcf_analysis(folder: Path) -> str:
-    """Generate DCF analysis report"""
+    except Exception as exc:
+        logger.error("Self-RAG Pipeline execution failed for symbol %s: %s", symbol, exc, exc_info=True)
+        raise
+
+
+def generate_dcf_analysis(folder: Union[str, Path]) -> str:
+    """Generates Discounted Cash Flow (DCF) valuation report fetching live data from Vercel API.
+
+    Args:
+        folder (Union[str, Path]): Stock data directory path.
+
+    Returns:
+        str: Generated DCF valuation report text in Markdown format.
+    """
+    folder_path = Path(folder)
+    symbol = folder_path.name.upper()
+    agent = FinancialDataAgent()
+
     try:
+        logger.info("Generating DCF Valuation Report live for symbol '%s'...", symbol)
         client = create_client()
         model = client.GenerativeModel(DEFAULT_MODEL)
-        
-        required = ['annual.json', 'sData.json', 'cashflow.json', 'balancesheet.json']
         parts = []
-        missing = []
-        
-        # Add mapping
-        mapping = Path(__file__).parent / 'mapping.json'
-        if mapping.exists():
-            parts.append(create_content_part(read_file_content(str(mapping))))
-        
-        # Add required files
-        for f in required:
-            path = folder / f
-            if path.exists():
-                parts.append(create_content_part(read_file_content(str(path))))
-            else:
-                missing.append(f)
-        
-        if missing:
-            raise FileNotFoundError(f"Missing: {', '.join(missing)}")
-        
-        # Add prompt and generate
-        parts.append(DCF_PROMPT)
-        res = model.generate_content("\n".join(parts))
-        
-        # Save
-        report = folder / 'dcf_report.md'
-        with open(report, 'w', encoding='utf-8') as f:
-            f.write(res.text)
-        
-        return res.text
-        
-    except Exception as e:
-        print(f"DCF failed: {e}")
+
+        # 1. Add ground-truth metric dictionary mapping if present
+        mapping_file = MAPPING_FILE_PATH
+        if mapping_file.exists():
+            mapping_content = read_file_content(mapping_file)
+            if mapping_content:
+                parts.append(create_content_part(mapping_content))
+
+        # 2. Fetch ground-truth statement data live from Vercel REST endpoints
+        statement_bundle = agent.get_context_for_section("financial_performance", symbol)
+        solvency_bundle = agent.get_context_for_section("solvency_analysis", symbol)
+
+        if statement_bundle:
+            parts.append(create_content_part(statement_bundle))
+        if solvency_bundle:
+            parts.append(create_content_part(solvency_bundle))
+
+        parts.append(create_content_part(DCF_PROMPT))
+
+        prompt_text = "\n\n".join([p["text"] for p in parts if "text" in p])
+        response = model.generate_content(prompt_text)
+
+        report_text = response.text if response and response.text else "DCF valuation calculation failed."
+        dcf_report_file = folder_path / "dcf_report.md"
+
+        folder_path.mkdir(parents=True, exist_ok=True)
+        with open(dcf_report_file, "w", encoding="utf-8") as f_out:
+            f_out.write(report_text)
+
+        logger.info("Successfully generated and saved DCF valuation report for %s to %s", symbol, dcf_report_file)
+        return report_text
+
+    except Exception as exc:
+        logger.error("DCF analysis generation failed for symbol %s: %s", symbol, exc, exc_info=True)
         raise

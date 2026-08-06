@@ -1,7 +1,6 @@
-"""
-Dynamic Prompt Registry for Advanced Financial Analyst Report Generator.
+"""Dynamic Prompt Registry for Financial Analyst Report Generation.
 
-Defines modular prompts with professional institutional headers for:
+Provides structured section-by-section prompts with institutional headers for:
 - Executive Summary & Corporate Profile
 - Core Business Segments & Revenue Engine
 - Strategic Expansion & Capital Allocation Pipeline
@@ -11,11 +10,13 @@ Defines modular prompts with professional institutional headers for:
 - Capital Structure & Solvency Analysis
 - Investment Thesis & Strategic Risk Audit
 - Self-RAG Evaluation & Critiques
+
+Google Python Style Guide Compliant.
 """
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Final
 
-COMPANY_OVERVIEW_PROMPT = """
+COMPANY_OVERVIEW_PROMPT: Final[str] = """
 Target: Executive Summary & Corporate Profile
 
 Task:
@@ -36,7 +37,7 @@ Requirements:
 Format under an `### Executive Summary & Corporate Profile` header.
 """
 
-COMPANY_OPERATIONS_PROMPT = """
+COMPANY_OPERATIONS_PROMPT: Final[str] = """
 Target: Core Business Segments & Revenue Engine
 
 Task:
@@ -50,7 +51,7 @@ Requirements:
 Format under an `### Core Business Segments & Revenue Engine` header.
 """
 
-EXPANSION_PLANS_PROMPT = """
+EXPANSION_PLANS_PROMPT: Final[str] = """
 Target: Strategic Expansion & Capital Allocation Pipeline
 
 Task:
@@ -63,7 +64,7 @@ Requirements:
 Format under an `### Strategic Expansion & Capital Allocation Pipeline` header.
 """
 
-CLIENTS_MARKET_FOOTPRINT_PROMPT = """
+CLIENTS_MARKET_FOOTPRINT_PROMPT: Final[str] = """
 Target: Competitive Moat, Concessions & Market Footprint
 
 Task:
@@ -76,7 +77,7 @@ Requirements:
 Format under an `### Competitive Moat, Concessions & Market Footprint` header.
 """
 
-FINANCIAL_RESULTS_PROMPT = """
+FINANCIAL_RESULTS_PROMPT: Final[str] = """
 Target: Financial Performance & Growth Metrics
 
 Task:
@@ -93,7 +94,7 @@ Requirements:
 Format under an `### Financial Performance & Growth Metrics` header.
 """
 
-DUPONT_ANALYSIS_PROMPT = """
+DUPONT_ANALYSIS_PROMPT: Final[str] = """
 Target: DuPont Return Decomposition (ROE & ROCE Analysis)
 
 Task:
@@ -120,7 +121,7 @@ Requirements:
 Format under a `### DuPont Return Decomposition (ROE & ROCE Analysis)` header.
 """
 
-BALANCE_SHEET_PROMPT = """
+BALANCE_SHEET_PROMPT: Final[str] = """
 Target: Capital Structure & Solvency Analysis
 
 Task:
@@ -135,7 +136,7 @@ Requirements:
 Format under an `### Capital Structure & Solvency Analysis` header.
 """
 
-STRENGTHS_WEAKNESSES_PROMPT = """
+STRENGTHS_WEAKNESSES_PROMPT: Final[str] = """
 Target: Investment Thesis & Strategic Risk Audit
 
 Task:
@@ -148,7 +149,7 @@ Requirements:
 Format under an `### Investment Thesis & Strategic Risk Audit` header.
 """
 
-SELF_RAG_CRITIQUE_PROMPT = """
+SELF_RAG_CRITIQUE_PROMPT: Final[str] = """
 Target: Self-RAG Factuality & Quality Verification
 
 Task:
@@ -173,24 +174,39 @@ Respond ONLY in valid JSON format:
 class DynamicPromptRegistry:
     """Registry to select and format dynamic prompts for report generation steps."""
 
-    @staticmethod
-    def get_prompt(prompt_type: str, **kwargs) -> str:
-        registry = {
-            "company_overview": COMPANY_OVERVIEW_PROMPT,
-            "company_operations": COMPANY_OPERATIONS_PROMPT,
-            "expansion_plans": EXPANSION_PLANS_PROMPT,
-            "clients_market": CLIENTS_MARKET_FOOTPRINT_PROMPT,
-            "financial_results": FINANCIAL_RESULTS_PROMPT,
-            "dupont_analysis": DUPONT_ANALYSIS_PROMPT,
-            "balance_sheet": BALANCE_SHEET_PROMPT,
-            "strengths_weaknesses": STRENGTHS_WEAKNESSES_PROMPT,
-            "self_rag_critique": SELF_RAG_CRITIQUE_PROMPT,
-        }
-        
-        prompt_template = registry.get(prompt_type)
+    _REGISTRY: Final[Dict[str, str]] = {
+        "company_overview": COMPANY_OVERVIEW_PROMPT,
+        "company_operations": COMPANY_OPERATIONS_PROMPT,
+        "expansion_plans": EXPANSION_PLANS_PROMPT,
+        "clients_market": CLIENTS_MARKET_FOOTPRINT_PROMPT,
+        "financial_results": FINANCIAL_RESULTS_PROMPT,
+        "dupont_analysis": DUPONT_ANALYSIS_PROMPT,
+        "balance_sheet": BALANCE_SHEET_PROMPT,
+        "strengths_weaknesses": STRENGTHS_WEAKNESSES_PROMPT,
+        "self_rag_critique": SELF_RAG_CRITIQUE_PROMPT,
+    }
+
+    @classmethod
+    def get_prompt(cls, prompt_type: str, **kwargs: Any) -> str:
+        """Retrieves and formats prompt template for given report key.
+
+        Args:
+            prompt_type (str): Key identifying the target prompt template.
+            **kwargs (Any): Keyword parameters to format into template.
+
+        Returns:
+            str: Formatted prompt string.
+
+        Raises:
+            ValueError: If prompt_type is not registered.
+        """
+        prompt_template = cls._REGISTRY.get(prompt_type)
         if not prompt_template:
-            raise ValueError(f"Unknown prompt_type: '{prompt_type}'. Valid options: {list(registry.keys())}")
-        
+            valid_keys = ", ".join(list(cls._REGISTRY.keys()))
+            raise ValueError(
+                f"Unknown prompt_type: '{prompt_type}'. Valid options: [{valid_keys}]"
+            )
+
         if kwargs:
             return prompt_template.format(**kwargs)
         return prompt_template
