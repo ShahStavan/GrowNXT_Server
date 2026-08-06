@@ -2,15 +2,16 @@
 RAG & Indexing Engine for Financial Documents & Reports.
 
 Features:
+- Hybrid Search Engine (Dense HNSW Vector Search + Sparse BM25 Keyword Search)
+- Reciprocal Rank Fusion (RRF) Reranker
 - Advanced Financial Chunking Strategy (Recursive Section/Header Aware Splitter with Overlap)
 - Embedding Generation via Google GenAI (`models/text-embedding-004`)
-- Dense Vector HNSW Indexing & Targeted Cosine Similarity Search
 - Professional Institutional Section Headers & Ground-Truth Calculators
 """
 
 from pathlib import Path
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import os
 import math
 
@@ -75,6 +76,69 @@ class FinancialDocumentChunker:
         return documents
 
 
+class FinancialBM25SearchEngine:
+    """
+    Sparse BM25 Keyword Search Engine for Exact Financial Term Matching.
+    Calculates TF-IDF BM25 relevance scores over tokenized document chunks.
+    """
+
+    def __init__(self, k1: float = 1.5, b: float = 0.75):
+        self.k1 = k1
+        self.b = b
+        self.documents: List[Document] = []
+        self.corpus_tokens: List[List[str]] = []
+        self.doc_lens: List[int] = []
+        self.avgdl: float = 0.0
+        self.idf: Dict[str, float] = {}
+
+    def build_bm25_index(self, documents: List[Document]):
+        """Build BM25 Index over document corpus."""
+        self.documents = documents
+        if not documents:
+            return
+
+        self.corpus_tokens = [doc.page_content.lower().split() for doc in documents]
+        self.doc_lens = [len(tokens) for tokens in self.corpus_tokens]
+        self.avgdl = sum(self.doc_lens) / max(1, len(self.doc_lens))
+
+        total_docs = len(documents)
+        df = {}
+        for tokens in self.corpus_tokens:
+            for word in set(tokens):
+                df[word] = df.get(word, 0) + 1
+
+        for word, freq in df.items():
+            self.idf[word] = math.log((total_docs - freq + 0.5) / (freq + 0.5) + 1.0)
+
+    def search(self, query: str, top_k: int = 10) -> List[Document]:
+        """Search BM25 Index for keyword relevance matches."""
+        if not self.documents:
+            return []
+
+        query_tokens = query.lower().split()
+        scores = []
+
+        for i, tokens in enumerate(self.corpus_tokens):
+            doc_len = self.doc_lens[i]
+            score = 0.0
+            term_counts = {}
+            for t in tokens:
+                term_counts[t] = term_counts.get(t, 0) + 1
+
+            for q in query_tokens:
+                if q in term_counts:
+                    tf = term_counts[q]
+                    idf_val = self.idf.get(q, 0.0)
+                    numerator = tf * (self.k1 + 1)
+                    denominator = tf + self.k1 * (1 - self.b + self.b * (doc_len / max(1.0, self.avgdl)))
+                    score += idf_val * (numerator / denominator)
+
+            scores.append((score, self.documents[i]))
+
+        scores.sort(key=lambda x: x[0], reverse=True)
+        return [doc for score, doc in scores[:top_k]]
+
+
 class FinancialHNSWVectorStore:
     """
     Dense Vector HNSW Indexing Engine.
@@ -137,7 +201,7 @@ class FinancialHNSWVectorStore:
         print(f"[OK] Successfully built HNSW Dense Vector Index over {len(documents)} chunks.")
         return True
 
-    def retrieve(self, query: str, top_k: int = 2) -> List[Document]:
+    def retrieve(self, query: str, top_k: int = 10) -> List[Document]:
         """Fast HNSW vector similarity search over financial chunks."""
         if not self.documents or not self.embeddings:
             return []
@@ -154,26 +218,53 @@ class FinancialHNSWVectorStore:
         return [doc for score, doc in scores[:top_k]]
 
 
+def reciprocal_rank_fusion(vector_results: List[Document], bm25_results: List[Document], top_k: int = 2, rrf_k: int = 60) -> List[Document]:
+    """
+    Reciprocal Rank Fusion (RRF) Algorithm.
+    Combines ranks from Dense HNSW Vector Search and Sparse BM25 Keyword Search.
+    RRF Score = 1 / (60 + Rank_Vector) + 1 / (60 + Rank_BM25)
+    """
+    rrf_scores: Dict[str, float] = {}
+    doc_map: Dict[str, Document] = {}
+
+    # 1. Score Vector Search Ranks
+    for rank, doc in enumerate(vector_results):
+        key = doc.page_content
+        doc_map[key] = doc
+        rrf_scores[key] = rrf_scores.get(key, 0.0) + (1.0 / (rrf_k + rank + 1))
+
+    # 2. Score BM25 Keyword Ranks
+    for rank, doc in enumerate(bm25_results):
+        key = doc.page_content
+        doc_map[key] = doc
+        rrf_scores[key] = rrf_scores.get(key, 0.0) + (1.0 / (rrf_k + rank + 1))
+
+    # 3. Sort by combined RRF Score descending
+    sorted_docs = sorted(rrf_scores.items(), key=lambda item: item[1], reverse=True)
+    return [doc_map[key] for key, score in sorted_docs[:top_k]]
+
+
 class FinancialRAGEngine:
     """
-    Section-Aware Financial RAG Pipeline combining:
-    1. Ground-Truth Financial Table Extractors from JSON Filings (Latest Data First)
-    2. Unstructured Document Chunker with Section Overlap
-    3. HNSW Dense Vector Index & Cosine Similarity Search
-    4. Professional Institutional Section Headers
+    Section-Aware Financial Hybrid RAG Pipeline combining:
+    1. Dense HNSW Vector Search + Sparse BM25 Keyword Search
+    2. Reciprocal Rank Fusion (RRF) Reranker for Maximum Retrieval Precision
+    3. Ground-Truth Financial Table Extractors from JSON Filings
+    4. Mathematical DuPont Analysis Engine (ROE / ROCE)
     """
 
     def __init__(self, folder_path: Path):
         self.folder_path = Path(folder_path)
         self.chunker = FinancialDocumentChunker(chunk_size=1024, chunk_overlap=200)
         self.vector_store = FinancialHNSWVectorStore()
+        self.bm25_store = FinancialBM25SearchEngine()
         self.structured_context: Dict[str, Any] = {}
         self.all_chunks: List[Document] = []
         
         self._initialize_pipeline()
 
     def _initialize_pipeline(self):
-        """Load JSON datasets, chunk annual PDFs, and build vector embedding index."""
+        """Load JSON datasets, chunk annual PDFs, and build Hybrid Vector + BM25 indexes."""
         json_files = {
             'sData': 'sData.json',
             'summary': 'summary.json',
@@ -208,8 +299,9 @@ class FinancialRAGEngine:
                     chunks = self.chunker.chunk_document(text, source_name=pdf_name)
                     self.all_chunks.extend(chunks)
 
-        # 3. Build HNSW Dense Vector Index
+        # 3. Build Hybrid HNSW Vector & BM25 Keyword Indexes
         self.vector_store.build_hnsw_index(self.all_chunks)
+        self.bm25_store.build_bm25_index(self.all_chunks)
 
     def extract_company_overview(self) -> str:
         """Extract company name, sector, industry, market cap from sData / summary."""
@@ -508,32 +600,40 @@ class FinancialRAGEngine:
 
     def retrieve_section_context(self, section_name: str, top_k: int = 2) -> str:
         """
-        Targeted Section Context Extractor.
-        Pulls ONLY relevant table slices & HNSW vector chunks for the requested section.
-        Prevents LLM context overflow.
+        HYBRID SEARCH RETRIEVAL ENGINE.
+        Combines:
+        1. Dense HNSW Vector Search
+        2. Sparse BM25 Keyword Search
+        3. Reciprocal Rank Fusion (RRF) Reranking
         """
         context_parts = []
         
-        # 1. Targeted HNSW Vector Search
+        # 1. Targeted Sub-Queries
         query_map = {
-            "company_overview": "company background, profile, market cap, industry",
-            "company_operations": "business verticals, products, services, segments, operations",
-            "expansion_plans": "expansion plans, capex, new projects, capacity addition, vision",
-            "clients_market": "key clients, customer segments, concessions, market reach, footprint",
-            "financial_results": "quarterly revenue, net profit, PAT, QoQ, YoY growth",
-            "dupont_analysis": "dupont analysis, ROE, ROCE, net profit margin, asset turnover, leverage",
-            "balance_sheet": "total debt, equity, working capital, cash flow, liquidity",
-            "strengths_weaknesses": "financial strengths, competitive advantage, debt risks"
+            "company_overview": "company background profile market cap industry overview",
+            "company_operations": "business verticals products ANIL green hydrogen airports mining data centers",
+            "expansion_plans": "expansion capex Navi Mumbai airport hydrogen electrolyser Kutch copper data center 1 GW",
+            "clients_market": "key clients AAI NHAI DISCOMs government concessions global airlines market footprint",
+            "financial_results": "quarterly revenue net profit PAT QoQ YoY growth EBITDA sales trend",
+            "dupont_analysis": "dupont analysis ROE ROCE net profit margin asset turnover financial leverage EBIT PAT",
+            "balance_sheet": "total debt equity net worth cash balance solvency debt to equity ratio working capital",
+            "strengths_weaknesses": "financial strengths bull case bear case monopoly assets debt risk interest rate"
         }
         query = query_map.get(section_name, section_name)
-        hnsw_chunks = self.vector_store.retrieve(query, top_k=top_k)
-        
-        if hnsw_chunks:
-            context_parts.append("--- HNSW Retrieved PDF Context ---")
-            for chunk in hnsw_chunks:
+
+        # 2. Retrieve Candidate Chunks from Both Engines
+        vector_candidates = self.vector_store.retrieve(query, top_k=8)
+        bm25_candidates = self.bm25_store.search(query, top_k=8)
+
+        # 3. Reciprocal Rank Fusion (RRF) Reranking
+        rrf_fused_chunks = reciprocal_rank_fusion(vector_candidates, bm25_candidates, top_k=top_k, rrf_k=60)
+
+        if rrf_fused_chunks:
+            context_parts.append("--- RRF Hybrid Search Retrieved PDF Chunks ---")
+            for chunk in rrf_fused_chunks:
                 context_parts.append(chunk.page_content[:500])
 
-        # 2. Targeted Ground-Truth Table Slices
+        # 4. Targeted Ground-Truth Table Slices
         if section_name == "company_overview":
             context_parts.append(self.extract_company_overview())
 
