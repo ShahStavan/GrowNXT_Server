@@ -1,48 +1,64 @@
-import requests
+"""Stock Search and Ticker Resolution API.
+
+Uses Financial Data Collector Vercel REST service to search tickers and save
+statement datasets locally.
+"""
+
 import json
+import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+import requests
+
+from core.config import FINANCIAL_DATA_COLLECTOR_BASE_URL
 from services.data_service import StockDataHandler
-from core.config import API_ENDPOINTS, HTTP_HEADERS
 from services.enrichment_service import CompanyEnricher, JSONEncoder
 
+logger = logging.getLogger(__name__)
+
+
 class StockSearch:
+    """Handles searching stock tickers and triggering local data ingestion."""
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
-        self.search_url = API_ENDPOINTS.SEARCH
-        self.headers = HTTP_HEADERS
+        self.base_url = FINANCIAL_DATA_COLLECTOR_BASE_URL.rstrip('/')
+        self.search_url = f"{self.base_url}/api/v1/stocks/search"
         self.enricher = CompanyEnricher(output_dir)
 
     def search_stock(self, q: str) -> List[Dict[str, Any]]:
-        if not q.strip():
+        """Queries stock discovery endpoint."""
+        query_str = q.strip() if q else ""
+        if not query_str:
             return []
         
         try:
             res = requests.get(
                 self.search_url,
-                params={"text": q.strip(), "types": "stock", "pageNumber": 0},
-                headers=self.headers,
-                timeout=10
+                params={"q": query_str},
+                timeout=15
             )
             res.raise_for_status()
             data = res.json()
             
             if not data.get('success'):
-                print(f"API error: {data.get('message')}")
+                logger.warning("Stock search returned error for '%s': %s", query_str, data.get('message'))
                 return []
             
-            return data.get('data', {}).get('items', [])
+            return data.get('data', [])
             
-        except Exception as e:
-            print(f"Search failed: {e}")
+        except Exception as exc:
+            logger.error("Stock search request failed for '%s': %s", query_str, exc)
             return []
 
     def instant_search(self, q: str) -> List[Dict[str, Any]]:
+        """Performs search and logs matching results."""
         items = self.search_stock(q)
         self._display(items)
         return items
 
     def _display(self, items: List[Dict[str, Any]]) -> None:
+        """Prints matched stocks."""
         if not items:
             print("No stocks found")
             return
@@ -52,22 +68,23 @@ class StockSearch:
             print(f"{i}. {item.get('name')} ({item.get('ticker')})")
     
     def save_stock_data(self, item: Dict[str, Any]) -> bool:
+        """Saves stock metadata and fetches financial statement bundle from Vercel API."""
         ticker = item.get('ticker')
         if not ticker:
             return False
         
         folder = self.output_dir / ticker.lower()
-        folder.mkdir(exist_ok=True)
+        folder.mkdir(parents=True, exist_ok=True)
         
-        # Skip if complete
+        # Skip if complete and enriched
         if self._check_exists(folder):
-            print(f"✓ {ticker} exists, skipping")
+            logger.info("Stock data for %s already exists and enriched, skipping fetch", ticker)
             return True
         
-        # Save basic data
+        # Save basic metadata
         data = {
             'ticker': ticker,
-            'sid': item.get('sid'),
+            'sid': item.get('sid', ticker[:4]),
             'name': item.get('name'),
             'sector': item.get('sector'),
             'brands': item.get('brands', []),
@@ -76,53 +93,35 @@ class StockSearch:
             'slug': item.get('slug')
         }
         
-        with open(folder / 'sData.json', 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, cls=JSONEncoder, ensure_ascii=False)
+        with open(folder / 'sData.json', 'w', encoding='utf-8') as file_handle:
+            json.dump(data, file_handle, indent=2, cls=JSONEncoder, ensure_ascii=False)
 
-        # Fetch financial data
+        # Fetch financial statement bundle via Vercel REST service
         handler = StockDataHandler(str(self.output_dir))
-        ok = handler.save_all(folder, data['sid'])
+        ok = handler.save_all(folder, data['sid'], symbol=ticker)
         
         # Enrich data
         try:
             if self.enricher.enrich(ticker):
-                print(f"✓ {ticker} enriched")
+                logger.info("Successfully enriched company brief for %s", ticker)
             else:
-                print(f"⚠ {ticker} enrich failed")
-        except Exception as e:
-            print(f"✗ {ticker} enrich error: {e}")
+                logger.warning("Company brief enrichment failed for %s", ticker)
+        except Exception as exc:
+            logger.error("Enrichment exception for %s: %s", ticker, exc)
         
         return ok
     
     def _check_exists(self, folder: Path) -> bool:
-        """Check if all files exist and sData has enrichment"""
+        """Check if all files exist and sData has company brief enrichment."""
         files = ['sData.json', 'quarterly.json', 'annual.json', 'balancesheet.json', 'cashflow.json']
         
-        for f in files:
-            if not (folder / f).exists():
+        for file_basename in files:
+            if not (folder / file_basename).exists():
                 return False
         
         try:
-            with open(folder / 'sData.json', 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return 'company_brief' in data and data.get('company_brief')
+            with open(folder / 'sData.json', 'r', encoding='utf-8') as file_handle:
+                data = json.load(file_handle)
+                return 'company_brief' in data and bool(data.get('company_brief'))
         except Exception:
             return False
-    
-    def process_search(self, q: str) -> Optional[Dict[str, Any]]:
-        items = self.search_stock(q)
-        self._display(items)
-        
-        if not items:
-            return None
-        
-        try:
-            sel = int(input("\nSelect (0 to cancel): "))
-            if 1 <= sel <= len(items):
-                item = items[sel - 1]
-                if self.save_stock_data(item):
-                    return item
-        except ValueError:
-            print("Invalid")
-        
-        return None

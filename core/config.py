@@ -1,9 +1,13 @@
+"""Centralized Configuration for GrowNXT Server."""
+
+import os
 from pathlib import Path
 
-# Base paths
+# Base System Paths
 BASE_DIR = Path(r"D:/Stock_Fundamental")
 OUTPUT_FOLDER = BASE_DIR / "output"
 DATA_DIR = BASE_DIR / "data"
+
 
 # File paths
 class FILE_PATHS:
@@ -11,41 +15,51 @@ class FILE_PATHS:
     STOCK_DATA = DATA_DIR / "stockData.xlsx"
     FILTERED_STOCK_LISTINGS = DATA_DIR / "filtered_stock_listings.xlsx"
 
-# Website URLs
+
+# Live Financial Data Collector Vercel REST Service URL
+FINANCIAL_DATA_COLLECTOR_BASE_URL = os.getenv(
+    "FINANCIAL_DATA_SERVICE_URL",
+    "https://financial-data-collector-qrxj.vercel.app"
+).rstrip("/")
+
+
+# Website and Screener URLs
 class WEBSITE_URLS:
-    TICKERTAPE_STOCKS = "https://www.tickertape.in/stocks?filter="
-    SCREENER_API_SEARCH = "https://www.screener.in/api/company/search/"
+    SCREENER_API_SEARCH = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/search"
     SCREENER_BASE = "https://www.screener.in"
 
-# API URLs
-class API_ENDPOINTS:
-    BASE_URL = "https://api.tickertape.in"
-    ANALYZE_BASE_URL = "https://analyze.api.tickertape.in"
-    SEARCH = f"{BASE_URL}/search"
-    QUARTERLY = f"{BASE_URL}/stocks/financials/income/{{sid}}/interim/normal"
-    ANNUAL = f"{BASE_URL}/stocks/financials/income/{{sid}}/annual/normal"
-    QT_GROWTH = f"{BASE_URL}/stocks/financials/income/{{sid}}/interim/growth"
-    AN_GROWTH = f"{BASE_URL}/stocks/financials/income/{{sid}}/annual/growth"
-    BALANCE_SHEET = f"{BASE_URL}/stocks/financials/balancesheet/{{sid}}/annual/normal"
-    BAL_GROWTH = f"{BASE_URL}/stocks/financials/balancesheet/{{sid}}/annual/growth"
-    CASH_FLOW = f"{BASE_URL}/stocks/financials/cashflow/{{sid}}/annual/normal"
-    SUMMARY = f"{ANALYZE_BASE_URL}/v2/stocks/summary/{{sid}}"
 
-# Common HTTP Headers
+# REST API Endpoint Templates
+class API_ENDPOINTS:
+    BASE_URL = FINANCIAL_DATA_COLLECTOR_BASE_URL
+    SEARCH = f"{BASE_URL}/api/v1/stocks/search"
+    QUARTERLY = f"{BASE_URL}/api/v1/stocks/{{sid}}/income/quarterly"
+    ANNUAL = f"{BASE_URL}/api/v1/stocks/{{sid}}/income/annual"
+    QT_GROWTH = f"{BASE_URL}/api/v1/stocks/{{sid}}/income/quarterly/growth"
+    AN_GROWTH = f"{BASE_URL}/api/v1/stocks/{{sid}}/income/annual/growth"
+    BALANCE_SHEET = f"{BASE_URL}/api/v1/stocks/{{sid}}/balancesheet"
+    BAL_GROWTH = f"{BASE_URL}/api/v1/stocks/{{sid}}/balancesheet/growth"
+    CASH_FLOW = f"{BASE_URL}/api/v1/stocks/{{sid}}/cashflow"
+    SUMMARY = f"{BASE_URL}/api/v1/stocks/{{sid}}/summary"
+    DUPONT = f"{BASE_URL}/api/v1/stocks/{{sid}}/dupont"
+    SOLVENCY = f"{BASE_URL}/api/v1/stocks/{{sid}}/solvency"
+    LIQUIDITY = f"{BASE_URL}/api/v1/stocks/{{sid}}/liquidity"
+    CAPITAL_EFFICIENCY = f"{BASE_URL}/api/v1/stocks/{{sid}}/capital-efficiency"
+    CAGR = f"{BASE_URL}/api/v1/stocks/{{sid}}/cagr"
+
+
+# Standard HTTP Headers
 HTTP_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Version': '8.14.0',
-    'Referer': 'https://www.tickertape.in/',
-    'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'x-csrf-token': '7610d2a1'
+    'User-Agent': (
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/134.0.0.0 Safari/537.36'
+    ),
+    'Accept': 'application/json, text/plain, */*'
 }
 
-import os
 
-# AI Agent Requirements (Optional based on LLM_PROVIDER)
+# AI Agent Configuration
 provider = os.getenv("LLM_PROVIDER", "gemini").lower()
 if provider == "groq":
     REQUIRED_ENV_VARS = ["GROQ_API_KEY"]

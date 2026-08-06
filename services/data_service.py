@@ -1,120 +1,82 @@
-from pathlib import Path
+"""Data Service Handler for Stock Financial Statements.
+
+Ingests fundamental financial statement datasets from the Financial Data Collector
+Vercel REST API service (https://financial-data-collector-qrxj.vercel.app).
+"""
+
 import json
-from typing import Dict, Optional
+import logging
+from pathlib import Path
+from typing import Any, Dict, Optional
 import requests
-from core.config import API_ENDPOINTS, HTTP_HEADERS
+from core.config import FINANCIAL_DATA_COLLECTOR_BASE_URL
+
+logger = logging.getLogger(__name__)
 
 
 class StockDataHandler:
-    """Handle fetching and saving stock financial data"""
+    """Handle fetching and saving stock financial data from Vercel REST service."""
     
-    def __init__(self, dir: str):
-        self.dir = Path(dir)
-        self.dir.mkdir(exist_ok=True)
-        self.headers = HTTP_HEADERS
+    def __init__(self, output_dir: str):
+        self.dir = Path(output_dir)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.base_url = FINANCIAL_DATA_COLLECTOR_BASE_URL.rstrip('/')
 
-    def _save(self, data: Dict, path: Path) -> None:
-        """Save data as JSON"""
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+    def _save(self, data: Dict[str, Any], path: Path) -> None:
+        """Save data as pretty-printed JSON."""
+        with open(path, 'w', encoding='utf-8') as file_handle:
+            json.dump(data, file_handle, ensure_ascii=False, indent=2)
 
-    def _load(self, path: Path) -> Dict:
-        """Load JSON data"""
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+    def _load(self, path: Path) -> Dict[str, Any]:
+        """Load JSON data from disk."""
+        with open(path, 'r', encoding='utf-8') as file_handle:
+            return json.load(file_handle)
 
-    def _fetch(self, sid: str, type: str, count: int = 15) -> Optional[Dict]:
-        """Fetch data from API"""
-        api_urls = {
-            'quarterly': API_ENDPOINTS.QUARTERLY,
-            'annual': API_ENDPOINTS.ANNUAL,
-            'qt_growth': API_ENDPOINTS.QT_GROWTH,
-            'an_growth': API_ENDPOINTS.AN_GROWTH,
-            'balance_sheet': API_ENDPOINTS.BALANCE_SHEET,
-            'bal_growth': API_ENDPOINTS.BAL_GROWTH,
-            'cash_flow': API_ENDPOINTS.CASH_FLOW
-        }
-        
-        url = api_urls.get(type, '').format(sid=sid)
-        if not url:
-            print(f"Invalid type: {type}")
-            return None
-        
+    def fetch_stock_financials(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Fetch aggregated financial statement dataset for symbol from Vercel API."""
+        url = f"{self.base_url}/api/v1/stocks/{symbol.lower()}/financials"
         try:
-            res = requests.get(url, headers=self.headers, params={"count": count}, timeout=10)
-            res.raise_for_status()
-            data = res.json()
-            
-            if not data.get('success'):
-                print(f"API error: {data.get('message', 'Unknown')}")
-                return None
-            
-            return data.get('data', [])
-        except Exception as e:
-            print(f"Fetch failed for {type}: {e}")
+            response = requests.get(url, timeout=25)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("success"):
+                return data.get("data", {})
+            logger.warning("Vercel API returned error for %s: %s", symbol, data.get("message"))
+            return None
+        except Exception as exc:
+            logger.error("Failed fetching financials for %s from Vercel API: %s", symbol, exc)
             return None
 
-    def _fetch_summary(self, sid: str) -> Optional[Dict]:
-        """Fetch summary data"""
+    def save_all(self, folder: Path, sid: str, symbol: Optional[str] = None) -> bool:
+        """Fetch complete financial statement bundle from Vercel API and save to local disk."""
+        ticker_symbol = symbol or folder.name
+        financials = self.fetch_stock_financials(ticker_symbol)
+
+        if not financials:
+            logger.error("Unable to save data for %s: Vercel API response empty", ticker_symbol)
+            return False
+
         try:
-            res = requests.get(API_ENDPOINTS.SUMMARY.format(sid=sid), headers=self.headers, timeout=10)
-            res.raise_for_status()
-            data = res.json()
-            
-            if not data.get('success'):
-                print(f"API error: {data.get('message', 'Unknown')}")
-                return None
-            
-            return data.get('data')
-        except Exception as e:
-            print(f"Summary fetch failed: {e}")
-            return None
+            folder.mkdir(parents=True, exist_ok=True)
 
-    def save_all(self, folder: Path, sid: str) -> bool:
-        """Fetch and save all financial data"""
-        types = {
-            'quarterly': 'quarterly.json',
-            'annual': 'annual.json',
-            'qt_growth': 'qtGrowth.json',
-            'an_growth': 'anGrowth.json',
-            'balance_sheet': 'balancesheet.json',
-            'bal_growth': 'balGrowth.json',
-            'cash_flow': 'cashflow.json'
-        }
-        
-        ok = True
-        for type, file in types.items():
-            data = self._fetch(sid, type)
-            if data:
-                self._save({f"{type}Data": data}, folder / file)
-            else:
-                ok = False
-                print(f"Failed: {type} for {sid}")
-        
-        # Save summary
-        summary = self._fetch_summary(sid)
-        if summary:
-            self._save(summary, folder / 'summary.json')
-        
-        # Update peers in sData.json
-        if summary and summary.get('aboutAndPeers'):
-            sdata_path = folder / 'sData.json'
-            if sdata_path.exists():
-                try:
-                    sdata = self._load(sdata_path)
-                    sdata['peers'] = [
-                        {
-                            'name': p.get('name'),
-                            'sid': p.get('sid'),
-                            'ticker': p.get('ticker'),
-                            'slug': p.get('slug')
-                        }
-                        for p in summary['aboutAndPeers']
-                    ]
-                    self._save(sdata, sdata_path)
-                except Exception as e:
-                    print(f"Peers update failed: {e}")
-                    ok = False
-        
-        return ok
+            if "quarterly" in financials:
+                self._save({"quarterlyData": financials["quarterly"]}, folder / "quarterly.json")
 
+            if "annual" in financials:
+                self._save({"annualData": financials["annual"]}, folder / "annual.json")
+
+            if "balancesheet" in financials:
+                self._save({"balancesheetData": financials["balancesheet"]}, folder / "balancesheet.json")
+
+            if "cashflow" in financials:
+                self._save({"cashflowData": financials["cashflow"]}, folder / "cashflow.json")
+
+            if "summary" in financials:
+                self._save(financials["summary"], folder / "summary.json")
+
+            logger.info("Successfully saved financial statement bundle for %s -> %s", ticker_symbol.upper(), folder)
+            return True
+
+        except Exception as exc:
+            logger.error("Failed writing stock statement files for %s: %s", ticker_symbol, exc)
+            return False

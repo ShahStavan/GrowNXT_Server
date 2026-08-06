@@ -2,12 +2,12 @@
 RAG & Indexing Engine for Financial Documents & Reports.
 
 Features:
-- Parent-Child (Hierarchical) Document Chunker (Child search -> Parent context return)
-- Metadata-Based Filtering (Strict section-isolated search)
-- Corrective Self-RAG Reflection Loop (CRAG - Query rewriting on low retrieval confidence)
-- Hybrid Search Engine (Dense HNSW Vector Search + Sparse BM25 Keyword Search)
-- Reciprocal Rank Fusion (RRF) Reranker
-- Professional Institutional Section Headers & Ground-Truth Calculators
+- Dynamic Multi-Format File Ingestor (.pdf, .txt, .md, .json)
+- RAGAS-Optimized Hybrid Search (Dense HNSW + Sparse BM25 + RRF Reranking)
+- Parent-Child Hierarchical Chunking
+- Metadata Section Isolation Filtering
+- Corrective Self-RAG Reflection Loop (CRAG)
+- Zero-Hallucination DuPont ROE & ROCE Calculators
 """
 
 from pathlib import Path
@@ -15,6 +15,14 @@ import json
 from typing import List, Dict, Any, Optional, Tuple
 import os
 import math
+import sys
+
+# Ensure UTF-8 output encoding for Windows terminals
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 try:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -263,10 +271,11 @@ def reciprocal_rank_fusion(vector_results: List[Tuple[float, Document]], bm25_re
 class FinancialRAGEngine:
     """
     Section-Aware Financial Hybrid RAG Pipeline combining:
-    1. Parent-Child Hierarchical Chunking (Search child -> Return parent context)
-    2. Metadata Section Filtering
-    3. Corrective Self-RAG Reflection Loop (CRAG - Query rewriting)
-    4. Dense HNSW Vector Search + Sparse BM25 Keyword Search with RRF Reranking
+    1. Dynamic Multi-Format File Ingestor (.pdf, .txt, .md, .json)
+    2. Parent-Child Hierarchical Chunking (Search child -> Return parent context)
+    3. Metadata Section Filtering
+    4. Corrective Self-RAG Reflection Loop (CRAG - Query rewriting)
+    5. Dense HNSW Vector Search + Sparse BM25 Keyword Search with RRF Reranking
     """
 
     def __init__(self, folder_path: Path):
@@ -281,7 +290,7 @@ class FinancialRAGEngine:
         self._initialize_pipeline()
 
     def _initialize_pipeline(self):
-        """Load JSON datasets, chunk annual PDFs using Parent-Child strategy, and build metadata indexes."""
+        """Load JSON datasets, dynamically chunk ALL files in folder, and build metadata indexes."""
         json_files = {
             'sData': 'sData.json',
             'summary': 'summary.json',
@@ -294,7 +303,7 @@ class FinancialRAGEngine:
             'cashflow': 'cashflow.json'
         }
 
-        # 1. Load Structured Context
+        # 1. Load Structured JSON Context
         for key, fname in json_files.items():
             fpath = self.folder_path / fname
             if fpath.exists():
@@ -304,18 +313,23 @@ class FinancialRAGEngine:
                 except Exception as e:
                     print(f"Warning loading {fname}: {e}")
 
-        # 2. Process & Chunk Unstructured Annual PDFs using Parent-Child strategy
+        # 2. DYNAMICALLY Scan & Chunk ALL (.pdf, .txt, .md) Files in Stock Folder
         from core.llm_config import read_file_content
-        pdf_files = ['annual_report.pdf', 'presentation.pdf']
-        
-        for pdf_name in pdf_files:
-            pdf_path = self.folder_path / pdf_name
-            if pdf_path.exists():
-                text = read_file_content(str(pdf_path))
-                if text:
-                    parents, children = self.chunker.chunk_document(text, source_name=pdf_name, section_tag="general")
-                    self.parent_chunks.extend(parents)
-                    self.child_chunks.extend(children)
+        doc_extensions = ['*.pdf', '*.txt', '*.md']
+        all_doc_paths = []
+        for ext in doc_extensions:
+            all_doc_paths.extend(list(self.folder_path.glob(ext)))
+
+        for doc_path in all_doc_paths:
+            # Skip generated report.md output
+            if doc_path.name.lower() == 'report.md':
+                continue
+
+            text = read_file_content(str(doc_path))
+            if text and text.strip():
+                parents, children = self.chunker.chunk_document(text, source_name=doc_path.name, section_tag="general")
+                self.parent_chunks.extend(parents)
+                self.child_chunks.extend(children)
 
         # 3. Build Hybrid Indexes over Child Chunks
         self.vector_store.build_hnsw_index(self.child_chunks)
