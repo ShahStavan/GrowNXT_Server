@@ -5,7 +5,7 @@ Features:
 - Advanced Financial Chunking Strategy (Recursive Section/Header Aware Splitter with Overlap)
 - Embedding Generation via Google GenAI (`models/text-embedding-004`)
 - Dense Vector HNSW Indexing & Targeted Cosine Similarity Search
-- Detailed Concise Bulletpoints for Operations, Capex, and Concessions
+- Professional Institutional Section Headers & Ground-Truth Calculators
 """
 
 from pathlib import Path
@@ -160,7 +160,7 @@ class FinancialRAGEngine:
     1. Ground-Truth Financial Table Extractors from JSON Filings (Latest Data First)
     2. Unstructured Document Chunker with Section Overlap
     3. HNSW Dense Vector Index & Cosine Similarity Search
-    4. Detailed Concise Bulletpoints for Core Operations, Capex, and Concessions
+    4. Professional Institutional Section Headers
     """
 
     def __init__(self, folder_path: Path):
@@ -223,7 +223,7 @@ class FinancialRAGEngine:
         mcap = info.get("mcap") or summary.get("mcap") or "N/A"
         
         return (
-            f"### Company Overview & Profile\n"
+            f"### Executive Summary & Corporate Profile\n"
             f"- **Company Name**: {name}\n"
             f"- **Ticker Symbol**: {self.folder_path.name.upper()}\n"
             f"- **Sector**: {sector}\n"
@@ -236,7 +236,7 @@ class FinancialRAGEngine:
         symbol = self.folder_path.name.upper()
         if "ADANI" in symbol:
             return (
-                "### Core Business Operations & Verticals\n\n"
+                "### Core Business Segments & Revenue Engine\n\n"
                 "- **Adani New Industries Ltd (ANIL) - Energy Transition**:\n"
                 "  - **Green Hydrogen Ecosystem**: Developing an integrated green hydrogen platform targeting 1 MMTPA production.\n"
                 "  - **Solar PV Manufacturing**: Operates vertically integrated 4 GW Solar cell & module manufacturing capacity.\n"
@@ -253,7 +253,7 @@ class FinancialRAGEngine:
                 "The company functions like an incubator. It uses steady cash generated from established operations (like Airports and Solar Energy) to fund emerging high-growth ventures like Green Hydrogen and Data Centers."
             )
         return (
-            "### Core Business Operations & Verticals\n"
+            "### Core Business Segments & Revenue Engine\n"
             "- **Primary Operations**: Core manufacturing, distribution, and commercial product lines.\n"
             "- **Business Divisions**: Multi-segment business portfolio serving industrial and retail channels.\n\n"
             "💡 **Simple Summary for Investors**:\n"
@@ -265,7 +265,7 @@ class FinancialRAGEngine:
         symbol = self.folder_path.name.upper()
         if "ADANI" in symbol:
             return (
-                "### Strategic Expansion Plans & Capex Pipeline\n\n"
+                "### Strategic Expansion & Capital Allocation Pipeline\n\n"
                 "- **Navi Mumbai International Airport (NMIAL)**:\n"
                 "  - **Project Scope**: Developing a greenfield international airport to handle initial capacity of 20 Million Passengers Per Annum (MPPA) and 0.8 MMT cargo.\n"
                 "  - **Target Milestone**: Commercial operations setup to capture spillover traffic from Mumbai CSMIA.\n\n"
@@ -282,7 +282,7 @@ class FinancialRAGEngine:
                 "The company is spending heavily on massive new projects. For investors, the main thing to watch is whether these projects open on time and start generating good profits."
             )
         return (
-            "### Strategic Expansion Plans & Capex Pipeline\n"
+            "### Strategic Expansion & Capital Allocation Pipeline\n"
             "- **Capacity Expansion**: Expanding factories and entering new markets.\n"
             "- **Capex Deployment**: Investing profits into future business growth.\n\n"
             "💡 **Simple Summary for Investors**:\n"
@@ -294,7 +294,7 @@ class FinancialRAGEngine:
         symbol = self.folder_path.name.upper()
         if "ADANI" in symbol:
             return (
-                "### Key Clients, Concessions & Market Footprint\n\n"
+                "### Competitive Moat, Concessions & Market Footprint\n\n"
                 "- **Government Concessions & Monopoly Contracts**:\n"
                 "  - **Airports Authority of India (AAI)**: Long-term 50-year concession agreements for operating, managing, and developing 6 privatized airports.\n"
                 "  - **National Highways Authority of India (NHAI)**: Multi-decade Hybrid Annuity Model (HAM) contracts with annuity payments guaranteed by NHAI.\n\n"
@@ -309,7 +309,7 @@ class FinancialRAGEngine:
                 "Long-term government contracts (30 to 50 years) give the company a major advantage with almost no local competition for its airports and highways."
             )
         return (
-            "### Key Clients, Concessions & Market Footprint\n"
+            "### Competitive Moat, Concessions & Market Footprint\n"
             "- **Customer Portfolio**: Enterprise B2B clients, institutional partners, and retail distributors.\n"
             "- **Market Coverage**: Strong domestic market presence supported by international trade."
         )
@@ -329,7 +329,7 @@ class FinancialRAGEngine:
 
         # 1. Quarterly Financial Table (Latest First)
         if q_list and isinstance(q_list, list):
-            tables_md.append("### Financial Results & Growth Performance\n")
+            tables_md.append("### Financial Performance & Growth Metrics\n")
             tables_md.append("#### Latest Quarterly Financial Results Table (in ₹ Cr)")
             tables_md.append("| Quarter Period | Total Sales / Revenue | Operating Profit | Net Profit (PAT) | EPS (₹) | Quarterly Sales Trend |")
             tables_md.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
@@ -436,7 +436,7 @@ class FinancialRAGEngine:
         roce = (ebit / total_capital) * 100 if total_capital > 0 else 0.0
 
         table_md = [
-            f"### DuPont Analysis & Return Ratios (ROE / ROCE - {period})\n",
+            f"### DuPont Return Decomposition (ROE & ROCE Analysis - {period})\n",
             "**DuPont ROE Formula Decomposition**:",
             "$$\\text{ROE} = \\text{Net Profit Margin} \\times \\text{Asset Turnover} \\times \\text{Financial Leverage}$$\n",
             "| DuPont Component | Calculation Formula | Ground Truth Value | Analyst Interpretation |",
@@ -464,7 +464,7 @@ class FinancialRAGEngine:
 
         tables_md = []
         if b_list and isinstance(b_list, list):
-            tables_md.append("### Balance Sheet & Solvency Analysis\n")
+            tables_md.append("### Capital Structure & Solvency Analysis\n")
             tables_md.append("#### Balance Sheet Capital Structure (in ₹ Cr)")
             tables_md.append("| Fiscal Period | Company Net Worth (Equity) | Total Loans (Debt) | Bank Cash | Debt-to-Equity | Financial Health |")
             tables_md.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
@@ -497,7 +497,7 @@ class FinancialRAGEngine:
     def extract_strengths_weaknesses(self) -> str:
         """Extract metric-backed Bull case strengths and Bear case vulnerabilities."""
         return (
-            "### Financial Strengths & Risk Factors\n\n"
+            "### Investment Thesis & Strategic Risk Audit\n\n"
             "#### Bull Case Strengths 📈\n"
             "1. **Monopoly-Like Assets**: Long-term airport and highway contracts provide predictable, inflation-protected cash flow.\n"
             "2. **Proven Track Record**: Successfully builds new businesses (like Airports and Solar Energy) into major profit centers.\n\n"

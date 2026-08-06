@@ -1,22 +1,22 @@
 """
 Dynamic Prompt Registry for Advanced Financial Analyst Report Generator.
 
-Defines modular prompts in plain English for:
-- Company Overview & Profile
-- Core Business Operations & Verticals
-- Strategic Expansion Plans & Capex Projects
-- Key Clients, Suppliers & Market Footprint
-- Financial Results & Growth Metrics
-- DuPont Analysis & Return Ratios (ROE / ROCE)
-- Balance Sheet & Solvency Analysis
-- Financial Strengths & Weaknesses
+Defines modular prompts with professional institutional headers for:
+- Executive Summary & Corporate Profile
+- Core Business Segments & Revenue Engine
+- Strategic Expansion & Capital Allocation Pipeline
+- Competitive Moat, Concessions & Market Footprint
+- Financial Performance & Growth Metrics
+- DuPont Return Decomposition (ROE & ROCE Analysis)
+- Capital Structure & Solvency Analysis
+- Investment Thesis & Strategic Risk Audit
 - Self-RAG Evaluation & Critiques
 """
 
 from typing import Dict, Any, Optional
 
 COMPANY_OVERVIEW_PROMPT = """
-Target: Comprehensive Company Profile & Background Analysis
+Target: Executive Summary & Corporate Profile
 
 Task:
 Analyze the provided financial context and annual filings to construct a clear, easy-to-understand corporate profile.
@@ -33,11 +33,11 @@ Requirements:
    | Industry | [Industry Name] |
    | Market Cap | [Market Cap in Cr] |
 
-Format under an `### Executive & Company Overview` header.
+Format under an `### Executive Summary & Corporate Profile` header.
 """
 
 COMPANY_OPERATIONS_PROMPT = """
-Target: Core Business Operations & Primary Verticals
+Target: Core Business Segments & Revenue Engine
 
 Task:
 Detail the company's business model and operating divisions in simple, plain English terms that any everyday investor can understand.
@@ -47,11 +47,11 @@ Requirements:
 2. Operating Verticals: List primary business segments (e.g., Airports, Energy, Mining, Data Centers).
 3. Investor Takeaway: Provide a bulleted "💡 Simple Summary for Investors" box explaining the business model.
 
-Format under an `### Core Business Operations & Operating Verticals` header.
+Format under an `### Core Business Segments & Revenue Engine` header.
 """
 
 EXPANSION_PLANS_PROMPT = """
-Target: Strategic Expansion Plans & Ongoing Capex Projects
+Target: Strategic Expansion & Capital Allocation Pipeline
 
 Task:
 Examine ongoing expansion plans, strategic projects, and capital deployment in simple terms.
@@ -60,11 +60,11 @@ Requirements:
 1. Ongoing Projects: List new factories, airports, or facilities being built.
 2. Investor Takeaway: Provide a "💡 Simple Summary for Investors" explaining what investors should watch for as these new projects open.
 
-Format under an `### Strategic Expansion Plans & Capex Pipeline` header.
+Format under an `### Strategic Expansion & Capital Allocation Pipeline` header.
 """
 
 CLIENTS_MARKET_FOOTPRINT_PROMPT = """
-Target: Key Clients, Customer Segments & Market Footprint
+Target: Competitive Moat, Concessions & Market Footprint
 
 Task:
 Explain the company's client base, government contracts, and competitive advantages in simple terms.
@@ -73,11 +73,11 @@ Requirements:
 1. Concessions & Contracts: Highlight long-term government contracts and major enterprise partners.
 2. Investor Takeaway: Provide a "💡 Simple Summary for Investors" explaining the company's competitive advantage (economic moat).
 
-Format under an `### Key Clients, Concessions & Market Footprint` header.
+Format under an `### Competitive Moat, Concessions & Market Footprint` header.
 """
 
 FINANCIAL_RESULTS_PROMPT = """
-Target: Financial Results & Growth Metrics Analysis
+Target: Financial Performance & Growth Metrics
 
 Task:
 Examine the quarterly and annual financial tables (latest data first) and provide a plain-English explanation of performance.
@@ -90,11 +90,11 @@ Requirements:
    - **Operating Profit**: Plain-English explanation of operating efficiency.
    - **Net Profit**: Plain-English explanation of take-home earnings.
 
-Format under an `### Financial Results & Growth Performance` header.
+Format under an `### Financial Performance & Growth Metrics` header.
 """
 
 DUPONT_ANALYSIS_PROMPT = """
-Target: DuPont Analysis & Return Ratios (ROE / ROCE Decomposition)
+Target: DuPont Return Decomposition (ROE & ROCE Analysis)
 
 Task:
 Examine the ground-truth balance sheet and profit loss data to calculate DuPont ROE components and ROCE with strict mathematical precision.
@@ -112,16 +112,16 @@ Requirements:
 2. Return on Capital Employed (ROCE) Summary Table:
    | Metric | Calculation Formula | Value (%) | Interpretation |
    | :--- | :--- | :--- | :--- |
-   | **ROCE** | **EBIT / (Equity + Debt)** | **[Val%]** | **Return generated across all long-term capital** |
+   | **ROCE** | EBIT / (Equity + Debt) | **[Val%]** | **Return generated across all long-term capital** |
 
 3. Simple Investor Takeaway:
    Provide a "💡 Simple Summary for Investors" box explaining whether profits are coming from high profit margins, fast product sales, or borrowed money (leverage).
 
-Format under a `### DuPont Analysis & Return Ratios (ROE / ROCE)` header.
+Format under a `### DuPont Return Decomposition (ROE & ROCE Analysis)` header.
 """
 
 BALANCE_SHEET_PROMPT = """
-Target: Balance Sheet Data & Solvency Analysis
+Target: Capital Structure & Solvency Analysis
 
 Task:
 Analyze balance sheet health, debt levels, equity, and cash reserves in simple investor terms.
@@ -132,11 +132,11 @@ Requirements:
    - **Debt Level**: Plain-English explanation of borrowing and debt safety.
    - **Cash Buffer**: Plain-English explanation of cash reserves and loan repayment ability.
 
-Format under an `### Balance Sheet & Solvency Analysis` header.
+Format under an `### Capital Structure & Solvency Analysis` header.
 """
 
 STRENGTHS_WEAKNESSES_PROMPT = """
-Target: Financial Performance Strengths & Risk Factors
+Target: Investment Thesis & Strategic Risk Audit
 
 Task:
 Summarize the key Bull case strengths and Bear case vulnerabilities in clear, simple bullet points.
@@ -145,7 +145,7 @@ Requirements:
 1. Bull Case Strengths 📈: 2 key strengths explained simply.
 2. Bear Case Vulnerabilities 📉: 2 key risks explained simply.
 
-Format under an `### Financial Strengths & Risk Factors` header.
+Format under an `### Investment Thesis & Strategic Risk Audit` header.
 """
 
 SELF_RAG_CRITIQUE_PROMPT = """

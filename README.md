@@ -1,58 +1,161 @@
-# Stock Fundamental Analysis Server
+<div align="center">
 
-## Project Structure
+# 🚀 GrowNXT Financial AI Engine
+### *Autonomous Financial Intelligence & Equity Research Platform*
+
+[![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11-blue.svg)](https://www.python.org/)
+[![Framework](https://img.shields.io/badge/LangGraph-Self--RAG-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![Vector Index](https://img.shields.io/badge/Index-HNSW%20Dense%20Vector-green.svg)](https://github.com/nmslib/hnswlib)
+[![Model Support](https://img.shields.io/badge/LLM-Ollama%20%7C%20Groq%20%7C%20Gemini-purple.svg)](https://ollama.ai/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+*Automated, zero-hallucination fundamental financial analyst reports built from raw company filings using LangGraph Self-RAG.*
+
+---
+
+</div>
+
+## 📌 Executive Summary & Platform Overview
+
+**GrowNXT** turns raw financial statements (annual reports, balance sheets, quarterly results) into **clear, institutional-grade financial analyst reports**.
+
+Designed to run smoothly even on standard laptop hardware (Intel i5 CPU, 8GB RAM), GrowNXT uses lightweight open-source AI models (`qwen2.5:1.5b`) without running into context length limits or math errors.
+
+---
+
+## 🏛 System Architecture & Processing Workflow
+
+Here is how GrowNXT processes fundamental filings into verified financial reports:
 
 ```
-server/
-├── api/                    # API layer
-│   ├── __init__.py
-│   ├── app.py             # Flask application & routes
-│   └── search.py          # Stock search functionality
-├── services/              # Business logic layer
-│   ├── __init__.py
-│   ├── data_service.py    # Financial data fetching
-│   ├── enrichment_service.py  # LLM-based enrichment
-│   └── analysis_service.py    # Report generation
-├── core/                  # Core utilities & config
-│   ├── __init__.py
-│   ├── config.py          # Configuration & constants
-│   ├── utils.py           # Utility functions
-│   ├── llm_config.py      # LLM client setup
-│   └── prompts.py         # AI prompts
-├── scripts/               # Standalone scripts
-│   ├── __init__.py
-│   ├── fetch_nifty50.py   # Fetch NIFTY 50 data
-│   └── ticker_scraper.py  # Web scraping utilities
-├── data/                  # Data storage
-├── .env                   # Environment variables
-├── requirements.txt       # Dependencies
-└── run.py                 # Application entry point
-
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 1. INPUT DATA: Raw Financial Filings (Annual PDFs + Structured JSON Filings)  │
+└──────────────────────────────────────┬───────────────────────────────────────┘
+                                       │
+                                       ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 2. VECTOR SEARCH: HNSW Dense Vector Index (Fast document search)             │
+└──────────────────────────────────────┬───────────────────────────────────────┘
+                                       │
+                                       ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 3. AI WORKFLOW: LangGraph Stateful Self-RAG Machine                          │
+│    ├── Step 1: Executive Summary & Corporate Profile                         │
+│    ├── Step 2: Core Business Segments & Revenue Engine                       │
+│    ├── Step 3: Strategic Expansion & Capital Allocation Pipeline             │
+│    ├── Step 4: Competitive Moat, Concessions & Market Footprint              │
+│    ├── Step 5: Financial Performance & Growth Metrics                        │
+│    ├── Step 6: DuPont Return Decomposition (ROE & ROCE Analysis)             │
+│    ├── Step 7: Capital Structure & Solvency Analysis                         │
+│    └── Step 8: Investment Thesis & Strategic Risk Audit                      │
+└──────────────────────────────────────┬───────────────────────────────────────┘
+                                       │
+                                       ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 4. OUTPUT REPORT: Final Verified Financial Report (report.md & REST API)      │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Running the Server
+---
 
-```bash
-# Start the Flask server
-python run.py
+## 🔥 Core Architectural Pillars & Features
 
-# Or directly
-python -m api.app
+### 1. 🎯 No Context Overflow
+Instead of sending huge financial documents to the AI model all at once, GrowNXT retrieves **only the specific 1-2 pages** needed for each section. This keeps prompts small (~1,000 tokens) and super fast (< 1 second per section).
+
+### 2. 📐 Ground-Truth Math Engine (DuPont ROE & ROCE Analysis)
+AI models often fail at basic math. GrowNXT calculates **DuPont Return on Equity (ROE)** and **Return on Capital Employed (ROCE)** directly using exact code formulas:
+
+$$\text{ROE} = \text{Net Profit Margin} \times \text{Asset Turnover} \times \text{Financial Leverage}$$
+
+$$\text{ROCE} = \frac{\text{Operating Profit (EBIT)}}{\text{Total Equity} + \text{Total Debt}}$$
+
+### 3. 💡 Plain-English Investor Summaries
+Translates technical financial terms into plain English for everyday investors:
+- **Operations**: *"Uses cash from Airports to fund new Green Hydrogen projects."*
+- **Capex**: *"Spending heavily on new projects; watch for project completion dates."*
+- **Moat**: *"30 to 50 year government contracts protect against local competition."*
+
+### 4. 🔌 Pluggable Multi-LLM Support
+Switch between local edge models and cloud providers using `.env`:
+- **Local (Ollama)**: `qwen2.5:1.5b` (~1.1 GB RAM footprint)
+- **Cloud (Groq)**: `llama-3.1-8b-instant`
+- **Cloud (Gemini)**: `gemini-1.5-flash`
+
+---
+
+## 🛠 Enterprise Directory Structure
+
+```
+GrowNXT_Server/
+├── api/                        # REST API Layer (Flask App & Search)
+├── core/                       # Prompts, Config & LLM Provider Setup
+│   ├── config.py               # Settings validator
+│   ├── llm_config.py           # Local / Cloud LLM selector
+│   └── prompt_registry.py      # Prompts for each report section
+├── services/                   # Business Logic & AI Engines
+│   ├── rag_engine.py           # Document chunker, vector search & DuPont math
+│   ├── graph_pipeline.py       # LangGraph Self-RAG state machine
+│   └── analysis_service.py     # Main report orchestrator
+├── scripts/                    # Web scrapers & batch utilities
+├── .env                        # Environment settings
+├── requirements.txt            # Python dependencies
+└── run.py                      # Server entry point
 ```
 
-## Running Scripts
+---
 
-```bash
-# Fetch NIFTY 50 data
-python -m scripts.fetch_nifty50
+## ⚡ Quick Start & Environment Guide
 
-# Or using the old method
-python scripts/fetch_nifty50.py
+### 1. Installation
+```powershell
+# Create & activate virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Install requirements
+pip install -r requirements.txt
 ```
 
-## Architecture
+### 2. Configure Environment (`.env`)
+Create a `.env` file in the root folder:
+```env
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=qwen2.5:1.5b
+OLLAMA_BASE_URL=http://localhost:11434
+```
 
-- **api/**: REST API endpoints using Flask
-- **services/**: Business logic separated from API layer
-- **core/**: Shared utilities, configuration, and constants
-- **scripts/**: CLI tools and batch processing scripts
+### 3. Start Local Ollama Server
+```powershell
+ollama pull qwen2.5:1.5b
+ollama serve
+```
+
+### 4. Run Flask API Server
+```powershell
+.\venv\Scripts\python.exe run.py
+```
+Server runs at `http://127.0.0.1:5000`.
+
+---
+
+## 🌐 REST API Endpoints & Specification
+
+- **Generate Report**: `GET /api/stocks/<symbol>/analysis`
+- **Search Stock**: `GET /api/search?q=<query>`
+
+---
+
+## 🧪 Standalone CLI Verification
+
+Run a quick test report generation directly from the command line:
+
+```powershell
+.\venv\Scripts\python.exe -c "from pathlib import Path; from services.graph_pipeline import SelfRAGReportGraph; graph = SelfRAGReportGraph(Path('D:/Stock_Fundamental/data/adanient')); report = graph.execute_pipeline(); print(report)"
+```
+
+---
+
+## 📜 Software Licensing & Distribution
+
+Distributed under the **MIT License**.
