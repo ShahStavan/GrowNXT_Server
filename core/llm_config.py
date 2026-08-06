@@ -71,9 +71,9 @@ def _generate_data_fallback_summary(prompt: str, context: str) -> str:
     """Extracts fundamental metric context directly when LLM provider is unreachable.
 
     Senior Engineer Design Rationale:
-        Instead of returning hardcoded data for a specific company (like Adani),
-        this function cleans and passes through structured ground-truth markdown context
-        tables retrieved from local financial statement files.
+        Instead of returning generic placeholder text when offline or when LLM is unavailable,
+        this function cleans and passes through structured ground-truth context (including live
+        Vercel JSON payloads or retrieved filing chunks) directly to the report output.
 
     Args:
         prompt (str): Task prompt instructions.
@@ -82,7 +82,7 @@ def _generate_data_fallback_summary(prompt: str, context: str) -> str:
     Returns:
         str: Ground-truth fallback response slice.
     """
-    if context and ("###" in context or "|" in context or "- **" in context):
+    if context and context.strip():
         cleaned_lines = [
             line for line in context.splitlines()
             if not line.startswith("--- RRF") and not line.startswith("--- HNSW")
