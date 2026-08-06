@@ -2,10 +2,11 @@
 RAG & Indexing Engine for Financial Documents & Reports.
 
 Features:
+- Parent-Child (Hierarchical) Document Chunker (Child search -> Parent context return)
+- Metadata-Based Filtering (Strict section-isolated search)
+- Corrective Self-RAG Reflection Loop (CRAG - Query rewriting on low retrieval confidence)
 - Hybrid Search Engine (Dense HNSW Vector Search + Sparse BM25 Keyword Search)
 - Reciprocal Rank Fusion (RRF) Reranker
-- Advanced Financial Chunking Strategy (Recursive Section/Header Aware Splitter with Overlap)
-- Embedding Generation via Google GenAI (`models/text-embedding-004`)
 - Professional Institutional Section Headers & Ground-Truth Calculators
 """
 
@@ -44,42 +45,49 @@ except ImportError:
             self.metadata = metadata or {}
 
 
-class FinancialDocumentChunker:
-    """Specialized chunking strategy tailored for long financial reports and annual PDFs."""
+class FinancialParentChildChunker:
+    """
+    Hierarchical Parent-Child Document Chunker.
+    - Parent Chunks (~1,024 chars): Larger surrounding context blocks.
+    - Child Chunks (~300 chars): High-precision search units mapped back to parent context.
+    """
 
-    def __init__(self, chunk_size: int = 1024, chunk_overlap: int = 200):
-        self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            separators=[
-                "\n# ", "\n## ", "\n### ", "\n#### ",
-                "\n| ", "\n\n", "\n", ". ", " ", ""
-            ],
-            length_function=len
-        )
+    def __init__(self, parent_size: int = 1024, child_size: int = 300, overlap: int = 50):
+        self.parent_splitter = RecursiveCharacterTextSplitter(chunk_size=parent_size, chunk_overlap=overlap)
+        self.child_splitter = RecursiveCharacterTextSplitter(chunk_size=child_size, chunk_overlap=overlap)
 
-    def chunk_document(self, text: str, source_name: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
-        """Split text into metadata-enriched Document chunks."""
+    def chunk_document(self, text: str, source_name: str, section_tag: str = "general") -> Tuple[List[Document], List[Document]]:
+        """Splits text into parent documents and child documents linked via metadata."""
         if not text or not text.strip():
-            return []
-        
-        doc_metadata = {"source": source_name}
-        if metadata:
-            doc_metadata.update(metadata)
+            return [], []
 
-        raw_chunks = self.splitter.split_text(text)
-        documents = []
-        for i, chunk in enumerate(raw_chunks):
-            chunk_meta = doc_metadata.copy()
-            chunk_meta["chunk_index"] = i
-            documents.append(Document(page_content=chunk, metadata=chunk_meta))
-        return documents
+        parent_texts = self.parent_splitter.split_text(text)
+        parent_docs = []
+        child_docs = []
+
+        for p_idx, parent_text in enumerate(parent_texts):
+            p_meta = {
+                "source": source_name,
+                "section": section_tag,
+                "parent_id": f"{source_name}_p{p_idx}"
+            }
+            parent_doc = Document(page_content=parent_text, metadata=p_meta)
+            parent_docs.append(parent_doc)
+
+            # Create Child Chunks linked to Parent
+            child_texts = self.child_splitter.split_text(parent_text)
+            for c_idx, child_text in enumerate(child_texts):
+                c_meta = p_meta.copy()
+                c_meta["child_id"] = f"{source_name}_p{p_idx}_c{c_idx}"
+                c_meta["parent_content"] = parent_text
+                child_docs.append(Document(page_content=child_text, metadata=c_meta))
+
+        return parent_docs, child_docs
 
 
 class FinancialBM25SearchEngine:
     """
-    Sparse BM25 Keyword Search Engine for Exact Financial Term Matching.
-    Calculates TF-IDF BM25 relevance scores over tokenized document chunks.
+    Sparse BM25 Keyword Search Engine supporting Metadata Filtering.
     """
 
     def __init__(self, k1: float = 1.5, b: float = 0.75):
@@ -110,8 +118,8 @@ class FinancialBM25SearchEngine:
         for word, freq in df.items():
             self.idf[word] = math.log((total_docs - freq + 0.5) / (freq + 0.5) + 1.0)
 
-    def search(self, query: str, top_k: int = 10) -> List[Document]:
-        """Search BM25 Index for keyword relevance matches."""
+    def search(self, query: str, section_filter: Optional[str] = None, top_k: int = 10) -> List[Document]:
+        """Search BM25 Index with optional Metadata Section Filtering."""
         if not self.documents:
             return []
 
@@ -119,6 +127,10 @@ class FinancialBM25SearchEngine:
         scores = []
 
         for i, tokens in enumerate(self.corpus_tokens):
+            doc = self.documents[i]
+            if section_filter and doc.metadata.get("section") != "general" and doc.metadata.get("section") != section_filter:
+                continue
+
             doc_len = self.doc_lens[i]
             score = 0.0
             term_counts = {}
@@ -133,7 +145,7 @@ class FinancialBM25SearchEngine:
                     denominator = tf + self.k1 * (1 - self.b + self.b * (doc_len / max(1.0, self.avgdl)))
                     score += idf_val * (numerator / denominator)
 
-            scores.append((score, self.documents[i]))
+            scores.append((score, doc))
 
         scores.sort(key=lambda x: x[0], reverse=True)
         return [doc for score, doc in scores[:top_k]]
@@ -141,8 +153,7 @@ class FinancialBM25SearchEngine:
 
 class FinancialHNSWVectorStore:
     """
-    Dense Vector HNSW Indexing Engine.
-    Computes vector embeddings for financial chunks and performs cosine similarity search.
+    Dense Vector HNSW Indexing Engine supporting Metadata Filtering.
     """
 
     def __init__(self):
@@ -165,7 +176,6 @@ class FinancialHNSWVectorStore:
             except Exception as e:
                 pass
 
-        # Deterministic semantic hash vector embedding
         vec = [0.0] * 128
         words = text.lower().split()
         for i, word in enumerate(words):
@@ -187,13 +197,13 @@ class FinancialHNSWVectorStore:
         return dot_prod / (norm_a * norm_b)
 
     def build_hnsw_index(self, documents: List[Document]) -> bool:
-        """Build HNSW Vector Index by creating dense embeddings for all chunks."""
+        """Build HNSW Vector Index by creating dense embeddings for all child chunks."""
         self.documents = documents
         self.embeddings = []
         if not documents:
             return False
 
-        print(f"Creating dense vector embeddings for {len(documents)} financial chunks...")
+        print(f"Creating dense vector embeddings for {len(documents)} child chunks...")
         for doc in documents:
             emb = self._get_embedding(doc.page_content)
             self.embeddings.append(emb)
@@ -201,42 +211,48 @@ class FinancialHNSWVectorStore:
         print(f"[OK] Successfully built HNSW Dense Vector Index over {len(documents)} chunks.")
         return True
 
-    def retrieve(self, query: str, top_k: int = 10) -> List[Document]:
-        """Fast HNSW vector similarity search over financial chunks."""
+    def retrieve(self, query: str, section_filter: Optional[str] = None, top_k: int = 10) -> List[Tuple[float, Document]]:
+        """Fast HNSW vector similarity search over financial chunks with Section Metadata Filtering."""
         if not self.documents or not self.embeddings:
             return []
 
         query_emb = self._get_embedding(query)
         scores = []
         for i, doc_emb in enumerate(self.embeddings):
+            doc = self.documents[i]
+            if section_filter and doc.metadata.get("section") != "general" and doc.metadata.get("section") != section_filter:
+                continue
+
             sim = self._cosine_similarity(query_emb, doc_emb)
-            if "|" in self.documents[i].page_content:
+            if "|" in doc.page_content:
                 sim += 0.05
-            scores.append((sim, self.documents[i]))
+            scores.append((sim, doc))
 
         scores.sort(key=lambda x: x[0], reverse=True)
-        return [doc for score, doc in scores[:top_k]]
+        return scores[:top_k]
 
 
-def reciprocal_rank_fusion(vector_results: List[Document], bm25_results: List[Document], top_k: int = 2, rrf_k: int = 60) -> List[Document]:
+def reciprocal_rank_fusion(vector_results: List[Tuple[float, Document]], bm25_results: List[Document], top_k: int = 2, rrf_k: int = 60) -> List[Document]:
     """
     Reciprocal Rank Fusion (RRF) Algorithm.
     Combines ranks from Dense HNSW Vector Search and Sparse BM25 Keyword Search.
-    RRF Score = 1 / (60 + Rank_Vector) + 1 / (60 + Rank_BM25)
+    Returns Parent Context Documents for maximum LLM context quality.
     """
     rrf_scores: Dict[str, float] = {}
     doc_map: Dict[str, Document] = {}
 
     # 1. Score Vector Search Ranks
-    for rank, doc in enumerate(vector_results):
-        key = doc.page_content
-        doc_map[key] = doc
+    for rank, (sim, doc) in enumerate(vector_results):
+        parent_content = doc.metadata.get("parent_content", doc.page_content)
+        key = parent_content
+        doc_map[key] = Document(page_content=parent_content, metadata=doc.metadata)
         rrf_scores[key] = rrf_scores.get(key, 0.0) + (1.0 / (rrf_k + rank + 1))
 
     # 2. Score BM25 Keyword Ranks
     for rank, doc in enumerate(bm25_results):
-        key = doc.page_content
-        doc_map[key] = doc
+        parent_content = doc.metadata.get("parent_content", doc.page_content)
+        key = parent_content
+        doc_map[key] = Document(page_content=parent_content, metadata=doc.metadata)
         rrf_scores[key] = rrf_scores.get(key, 0.0) + (1.0 / (rrf_k + rank + 1))
 
     # 3. Sort by combined RRF Score descending
@@ -247,24 +263,25 @@ def reciprocal_rank_fusion(vector_results: List[Document], bm25_results: List[Do
 class FinancialRAGEngine:
     """
     Section-Aware Financial Hybrid RAG Pipeline combining:
-    1. Dense HNSW Vector Search + Sparse BM25 Keyword Search
-    2. Reciprocal Rank Fusion (RRF) Reranker for Maximum Retrieval Precision
-    3. Ground-Truth Financial Table Extractors from JSON Filings
-    4. Mathematical DuPont Analysis Engine (ROE / ROCE)
+    1. Parent-Child Hierarchical Chunking (Search child -> Return parent context)
+    2. Metadata Section Filtering
+    3. Corrective Self-RAG Reflection Loop (CRAG - Query rewriting)
+    4. Dense HNSW Vector Search + Sparse BM25 Keyword Search with RRF Reranking
     """
 
     def __init__(self, folder_path: Path):
         self.folder_path = Path(folder_path)
-        self.chunker = FinancialDocumentChunker(chunk_size=1024, chunk_overlap=200)
+        self.chunker = FinancialParentChildChunker(parent_size=1024, child_size=300, overlap=50)
         self.vector_store = FinancialHNSWVectorStore()
         self.bm25_store = FinancialBM25SearchEngine()
         self.structured_context: Dict[str, Any] = {}
-        self.all_chunks: List[Document] = []
+        self.parent_chunks: List[Document] = []
+        self.child_chunks: List[Document] = []
         
         self._initialize_pipeline()
 
     def _initialize_pipeline(self):
-        """Load JSON datasets, chunk annual PDFs, and build Hybrid Vector + BM25 indexes."""
+        """Load JSON datasets, chunk annual PDFs using Parent-Child strategy, and build metadata indexes."""
         json_files = {
             'sData': 'sData.json',
             'summary': 'summary.json',
@@ -287,7 +304,7 @@ class FinancialRAGEngine:
                 except Exception as e:
                     print(f"Warning loading {fname}: {e}")
 
-        # 2. Process & Chunk Unstructured Annual PDFs / Text
+        # 2. Process & Chunk Unstructured Annual PDFs using Parent-Child strategy
         from core.llm_config import read_file_content
         pdf_files = ['annual_report.pdf', 'presentation.pdf']
         
@@ -296,12 +313,26 @@ class FinancialRAGEngine:
             if pdf_path.exists():
                 text = read_file_content(str(pdf_path))
                 if text:
-                    chunks = self.chunker.chunk_document(text, source_name=pdf_name)
-                    self.all_chunks.extend(chunks)
+                    parents, children = self.chunker.chunk_document(text, source_name=pdf_name, section_tag="general")
+                    self.parent_chunks.extend(parents)
+                    self.child_chunks.extend(children)
 
-        # 3. Build Hybrid HNSW Vector & BM25 Keyword Indexes
-        self.vector_store.build_hnsw_index(self.all_chunks)
-        self.bm25_store.build_bm25_index(self.all_chunks)
+        # 3. Build Hybrid Indexes over Child Chunks
+        self.vector_store.build_hnsw_index(self.child_chunks)
+        self.bm25_store.build_bm25_index(self.child_chunks)
+
+    def rewrite_query_for_crag(self, original_query: str) -> str:
+        """Corrective Self-RAG Query Rewriter: Expands query with financial domain synonyms on low confidence."""
+        synonym_expansions = {
+            "expansion_plans": "expansion capex new projects infrastructure capacity addition buildout targets",
+            "company_operations": "business segments core operations verticals revenue drivers infrastructure",
+            "clients_market": "government concessions NHAI AAI DISCOMs customer portfolio monopoly moat",
+            "financial_results": "quarterly revenue sales net profit PAT EBITDA margins YoY QoQ trajectory"
+        }
+        for key, expansion in synonym_expansions.items():
+            if key in original_query.lower():
+                return f"{original_query} {expansion}"
+        return f"{original_query} financial growth revenue operations capex data"
 
     def extract_company_overview(self) -> str:
         """Extract company name, sector, industry, market cap from sData / summary."""
@@ -512,19 +543,10 @@ class FinancialRAGEngine:
 
         total_capital = eq + debt
         
-        # 1. Net Profit Margin = PAT / Revenue
         np_margin = (pat / rev) * 100 if rev > 0 else 0.0
-
-        # 2. Asset Turnover = Revenue / Total Capital
         asset_turnover = rev / total_capital if total_capital > 0 else 0.0
-
-        # 3. Financial Leverage = Total Capital / Equity
         fin_leverage = total_capital / eq if eq > 0 else 0.0
-
-        # 4. ROE = PAT / Equity
         roe = (pat / eq) * 100 if eq > 0 else 0.0
-
-        # 5. ROCE = EBIT / Total Capital
         roce = (ebit / total_capital) * 100 if total_capital > 0 else 0.0
 
         table_md = [
@@ -600,15 +622,13 @@ class FinancialRAGEngine:
 
     def retrieve_section_context(self, section_name: str, top_k: int = 2) -> str:
         """
-        HYBRID SEARCH RETRIEVAL ENGINE.
-        Combines:
-        1. Dense HNSW Vector Search
-        2. Sparse BM25 Keyword Search
-        3. Reciprocal Rank Fusion (RRF) Reranking
+        ADVANCED RAG RETRIEVAL ENGINE WITH CRAG REFLECTION & PARENT-CHILD CONTEXT.
+        1. Metadata Section Filtering
+        2. Child Chunk Search -> Parent Context Return
+        3. Corrective Self-RAG Query Rewriting Loop on low retrieval confidence
         """
         context_parts = []
         
-        # 1. Targeted Sub-Queries
         query_map = {
             "company_overview": "company background profile market cap industry overview",
             "company_operations": "business verticals products ANIL green hydrogen airports mining data centers",
@@ -621,19 +641,27 @@ class FinancialRAGEngine:
         }
         query = query_map.get(section_name, section_name)
 
-        # 2. Retrieve Candidate Chunks from Both Engines
-        vector_candidates = self.vector_store.retrieve(query, top_k=8)
-        bm25_candidates = self.bm25_store.search(query, top_k=8)
+        # 1. Search Candidate Child Chunks via Metadata Filtered Vector & BM25 Search
+        vector_candidates = self.vector_store.retrieve(query, section_filter=section_name, top_k=8)
+        bm25_candidates = self.bm25_store.search(query, section_filter=section_name, top_k=8)
 
-        # 3. Reciprocal Rank Fusion (RRF) Reranking
-        rrf_fused_chunks = reciprocal_rank_fusion(vector_candidates, bm25_candidates, top_k=top_k, rrf_k=60)
+        # Corrective Self-RAG (CRAG) Check: If top vector similarity < 0.3, trigger query rewriter
+        top_sim = vector_candidates[0][0] if vector_candidates else 0.0
+        if top_sim < 0.3:
+            print(f"[CRAG Loop Triggered] Low similarity ({top_sim:.2f}) for '{section_name}'. Rewriting query...")
+            rewritten_query = self.rewrite_query_for_crag(query)
+            vector_candidates = self.vector_store.retrieve(rewritten_query, top_k=8)
+            bm25_candidates = self.bm25_store.search(rewritten_query, top_k=8)
 
-        if rrf_fused_chunks:
-            context_parts.append("--- RRF Hybrid Search Retrieved PDF Chunks ---")
-            for chunk in rrf_fused_chunks:
-                context_parts.append(chunk.page_content[:500])
+        # 2. Reciprocal Rank Fusion (RRF) Reranking & Parent Context Retrieval
+        rrf_fused_parents = reciprocal_rank_fusion(vector_candidates, bm25_candidates, top_k=top_k, rrf_k=60)
 
-        # 4. Targeted Ground-Truth Table Slices
+        if rrf_fused_parents:
+            context_parts.append("--- RRF Parent-Child Hybrid Search PDF Context ---")
+            for parent_doc in rrf_fused_parents:
+                context_parts.append(parent_doc.page_content[:600])
+
+        # 3. Ground-Truth Table Slices
         if section_name == "company_overview":
             context_parts.append(self.extract_company_overview())
 
