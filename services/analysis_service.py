@@ -46,37 +46,34 @@ def _read_pdf_files(folder: Path) -> list:
     return parts
 
 
-def generate_financial_analysis(folder: Path, mapping: Path) -> str:
-    """Generate financial analysis report"""
+def generate_financial_analysis(folder: Path, mapping: Path = None) -> str:
+    """Generate financial analysis report using Advanced Self-RAG Graph Pipeline."""
     try:
+        from services.graph_pipeline import SelfRAGReportGraph
+        print(f"Executing Advanced Self-RAG Report Pipeline for folder: {folder}")
+        graph_pipeline = SelfRAGReportGraph(folder)
+        return graph_pipeline.execute_pipeline()
+    except Exception as e:
+        print(f"Self-RAG Pipeline failed, falling back to standard generator: {e}")
         client = create_client()
         model = client.GenerativeModel(DEFAULT_MODEL)
         
-        # Collect content
+        # Collect content fallback
         parts = []
         parts.extend(_read_json_files(folder))
         parts.extend(_read_pdf_files(folder))
         
-        # Add mapping
-        if mapping.exists():
+        if mapping and mapping.exists():
             parts.append(create_content_part(read_file_content(str(mapping))))
         
-        # Add prompt
         parts.append(ANALYSIS_PROMPT)
-        
-        # Generate
         res = model.generate_content("\n".join(parts))
         
-        # Save
         report = folder / 'report.md'
         with open(report, 'w', encoding='utf-8', errors='ignore') as f:
             f.write(res.text)
         
         return res.text
-        
-    except Exception as e:
-        print(f"Analysis failed: {e}")
-        raise
 
 def generate_dcf_analysis(folder: Path) -> str:
     """Generate DCF analysis report"""

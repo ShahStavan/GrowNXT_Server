@@ -43,5 +43,13 @@ HTTP_HEADERS = {
     'x-csrf-token': '7610d2a1'
 }
 
-# AI Agent Requirements
-REQUIRED_ENV_VARS = ["GEMINI_API_KEY"]
+import os
+
+# AI Agent Requirements (Optional based on LLM_PROVIDER)
+provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+if provider == "groq":
+    REQUIRED_ENV_VARS = ["GROQ_API_KEY"]
+elif provider == "ollama":
+    REQUIRED_ENV_VARS = []
+else:
+    REQUIRED_ENV_VARS = []
