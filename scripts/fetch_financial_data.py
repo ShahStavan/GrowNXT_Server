@@ -1,7 +1,6 @@
 """Financial Data Service Connector Script.
 
-Replaces legacy Selenium scrapers by connecting directly to the live Financial
-Data Collector Vercel REST service:
+Connects to the live Financial Data Collector Vercel REST service:
 https://financial-data-collector-qrxj.vercel.app
 """
 
