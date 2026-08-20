@@ -40,3 +40,7 @@ coverage.xml
 *.cover
 
 background_tasks.log
+
+# Runtime artifacts
+data/
+reports/

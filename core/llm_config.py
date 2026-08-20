@@ -3,8 +3,9 @@
 Provides unified invocation abstractions across LLM providers:
 1. Google Generative AI (Gemini 1.5 Flash / Gemini Pro)
 2. Local Open-Source Models via Ollama (Qwen 2.5, Llama 3.2)
-3. Open-Source Cloud Inference via Groq
-4. Data-Driven Dynamic Fallback Extraction Engine for offline/init states.
+3. GrowNXT Hosted Model API (OpenAI-compatible deployed inference endpoint)
+4. Open-Source Cloud Inference via Groq
+5. Data-Driven Dynamic Fallback Extraction Engine for offline/init states.
 
 Google Python Style Guide Compliant.
 """
@@ -35,6 +36,8 @@ DEFAULT_MODEL: str = os.getenv("MODEL_1", "gemini-1.5-flash")
 OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROWNXT_LLM_API_URL: str = os.getenv("GROWNXT_LLM_API_URL", "https://grownxt-llm.vercel.app")
+GROWNXT_LLM_API_KEY: str = os.getenv("GROWNXT_LLM_API_KEY", "")
 
 
 def create_client() -> Any:
@@ -105,7 +108,7 @@ def _generate_data_fallback_summary(prompt: str, context: str) -> str:
 def generate_llm_response(prompt: str, context: str = "", provider: Optional[str] = None) -> str:
     """Invokes configured LLM provider with context ground-truth injection.
 
-    Supports Gemini, Ollama, and Groq with fallback chaining to local ground-truth context.
+    Supports Gemini, Ollama, GrowNXT Hosted Model API, and Groq with fallback chaining to local ground-truth context.
 
     Args:
         prompt (str): Target query or generation instructions.
@@ -135,7 +138,31 @@ def generate_llm_response(prompt: str, context: str = "", provider: Optional[str
         except Exception as exc:
             logger.warning("Ollama execution exception: %s. Continuing fallback...", exc)
 
-    # 2. Open-Source Cloud Groq API
+    # 2. GrowNXT Hosted Model API (OpenAI-compatible deployed inference endpoint).
+    # Model selection is managed server-side by the deployment.
+    elif target_provider == "grownxt":
+        try:
+            import requests
+            url = f"{GROWNXT_LLM_API_URL.rstrip('/')}/v1/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            api_key = os.getenv("GROWNXT_LLM_API_KEY", GROWNXT_LLM_API_KEY)
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+            payload = {
+                "messages": [{"role": "user", "content": full_prompt}],
+                "stream": False,
+            }
+            res = requests.post(url, json=payload, headers=headers, timeout=120)
+            if res.ok:
+                choices = res.json().get("choices") or []
+                content = (choices[0].get("message") or {}).get("content") if choices else None
+                if content:
+                    return str(content).strip()
+            logger.warning("GrowNXT LLM API call failed with status: %s", res.status_code)
+        except Exception as exc:
+            logger.warning("GrowNXT LLM API execution exception: %s. Continuing fallback...", exc)
+
+    # 3. Open-Source Cloud Groq API
     elif target_provider == "groq":
         try:
             groq_key = os.getenv("GROQ_API_KEY")
@@ -150,7 +177,7 @@ def generate_llm_response(prompt: str, context: str = "", provider: Optional[str
         except Exception as exc:
             logger.warning("Groq execution exception: %s. Continuing fallback...", exc)
 
-    # 3. Google Gemini Model API
+    # 4. Google Gemini Model API
     elif target_provider == "gemini":
         try:
             api_key = os.getenv("GEMINI_API_KEY")

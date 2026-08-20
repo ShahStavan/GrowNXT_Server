@@ -145,6 +145,78 @@ def _extract_json_array_by_header(text: str, header_keyword: str) -> List[Dict[s
     return []
 
 
+def _extract_json_object_by_header(text: str, header_keyword: str) -> Dict[str, Any]:
+    """Extracts the first balanced JSON object following a header keyword.
+
+    Args:
+        text (str): Input text blob containing headers and JSON payloads.
+        header_keyword (str): Header marker string.
+
+    Returns:
+        Dict[str, Any]: Parsed dictionary, or empty dict when absent/invalid.
+    """
+    if not text or header_keyword not in text:
+        return {}
+
+    part = text.split(header_keyword, 1)[1]
+    start_idx = part.find("{")
+    if start_idx == -1:
+        return {}
+
+    brace_count = 0
+    end_idx = -1
+    for i in range(start_idx, len(part)):
+        if part[i] == "{":
+            brace_count += 1
+        elif part[i] == "}":
+            brace_count -= 1
+            if brace_count == 0:
+                end_idx = i + 1
+                break
+
+    if end_idx != -1:
+        try:
+            res = json.loads(part[start_idx:end_idx])
+            if isinstance(res, dict):
+                return res
+        except Exception as exc:
+            logger.debug("Failed parsing JSON object for header %s: %s", header_keyword, exc)
+    return {}
+
+
+def _collect_comment_lines(api_data: str, max_lines: int = 12) -> List[str]:
+    """Collects human-readable metric annotations from all '_comments' payloads.
+
+    Args:
+        api_data (str): Raw API context string containing JSON payloads.
+        max_lines (int): Maximum annotation lines to return.
+
+    Returns:
+        List[str]: Deduplicated annotation strings (e.g. 'Debt to Equity: ... 0.23x').
+    """
+    lines: List[str] = []
+    seen = set()
+    for match in re.finditer(r'"_comments"\s*:\s*\{', api_data):
+        start_idx = match.end() - 1
+        brace_count = 0
+        for i in range(start_idx, len(api_data)):
+            if api_data[i] == "{":
+                brace_count += 1
+            elif api_data[i] == "}":
+                brace_count -= 1
+                if brace_count == 0:
+                    try:
+                        obj = json.loads(api_data[start_idx:i + 1])
+                        for value in obj.values():
+                            if isinstance(value, str) and value not in seen:
+                                seen.add(value)
+                                lines.append(value)
+                    except Exception:
+                        pass
+                    break
+    return lines[:max_lines]
+
+
 class FinancialParentChildChunker:
     """Hierarchical Parent-Child Document Chunker.
 
@@ -498,7 +570,7 @@ class FinancialRAGEngine:
         synonyms = {
             "expansion_plans": "expansion capex new projects infrastructure capacity addition buildout targets",
             "company_operations": "business segments core operations verticals revenue drivers",
-            "clients_market": "government concessions NHAI AAI DISCOMs customer portfolio monopoly moat",
+            "clients_market": "key customers client concentration market share competitive positioning moat",
             "financial_results": "quarterly revenue sales net profit PAT EBITDA margins YoY QoQ trajectory",
         }
         for key, expansion in synonyms.items():
@@ -510,12 +582,12 @@ class FinancialRAGEngine:
     # Section Markdown Formatters with WebSearch Integration
     # -------------------------------------------------------------------------
 
-    def _format_company_overview(self, api_data: str) -> str:
-        """Formats Executive Summary & Corporate Profile Markdown block with live WebSearch Market Cap."""
+    def _format_company_overview(self, api_data: str, web_context: str = "") -> str:
+        """Formats Executive Summary & Corporate Profile Markdown block from live data only."""
         name = self.symbol
-        description = "Global IT services provider and enterprise technology solutions conglomerate."
-        sector = "Information Technology"
-        industry = "IT Services & Consulting"
+        description = ""
+        sector = "N/A"
+        industry = "N/A"
         mcap = "N/A"
 
         # 1. Parse live Vercel API response if available
@@ -533,22 +605,26 @@ class FinancialRAGEngine:
                         description = obj.get("description") or obj.get("company_brief") or description
                         sector = obj.get("sector", sector)
                         industry = obj.get("industry", industry)
-                        mcap = str(obj.get("marketCap", mcap))
+                        if obj.get("marketCap") is not None:
+                            mcap = str(obj.get("marketCap"))
         except Exception:
             pass
 
-        # 2. WebSearch Agent Fallback for Market Cap if N/A
-        if mcap == "N/A" or mcap == "None":
-            web_snippets = perform_web_search(f"{self.symbol} market capitalization in crores USD market cap", max_results=3)
-            if web_snippets:
-                # Extract Trillion / Crore / Billion figures from live web search
-                mcap_match = re.search(r"(?:₹|\$)\s*[\d\.,]+\s*(?:Trillion|Billion|Lakh\s*Crore|Crore|Cr)", web_snippets, re.IGNORECASE)
-                if mcap_match:
-                    mcap = mcap_match.group(0)
-                else:
-                    mcap = "₹2,62,450 Cr (~$31.5 Billion USD)"
-            else:
-                mcap = "₹2,62,450 Cr (~$31.5 Billion USD)"
+        # 2. Extract Market Cap figure from WebSearch context if API lacked it.
+        # No fabricated fallback: if neither source yields a figure, report N/A.
+        if mcap in ("N/A", "None") and web_context:
+            mcap_match = re.search(
+                r"(?:₹|\$)\s*[\d\.,]+\s*(?:Trillion|Billion|Lakh\s*Crore|Crore|Cr)",
+                web_context, re.IGNORECASE,
+            )
+            if mcap_match:
+                mcap = mcap_match.group(0)
+
+        if not description:
+            description = (
+                f"Corporate profile description unavailable from live data sources for {self.symbol}. "
+                "Refer to retrieved filing context below."
+            )
 
         return (
             f"### Executive Summary & Corporate Profile\n\n"
@@ -568,65 +644,80 @@ class FinancialRAGEngine:
             f"| Market Cap | {mcap} |\n"
         )
 
-    def _format_company_operations(self, api_data: str) -> str:
-        """Formats Core Business Segments & Revenue Engine Markdown block using live WebSearch data."""
-        web_info = perform_web_search(f"{self.symbol} business segments operating divisions revenue drivers", max_results=3)
-        segment_text = web_info if web_info else (
-            "Operates global IT services across Americas 1, Americas 2, Europe, and APMEA strategic business units, "
-            "delivering enterprise cloud migration, digital engineering, and cybersecurity services."
+    def _format_company_operations(self, api_data: str, web_context: str = "") -> str:
+        """Formats Core Business Segments & Revenue Engine Markdown block from live data only."""
+        description = ""
+        try:
+            summary_obj = _extract_json_object_by_header(api_data, "--- STOCK SUMMARY PROFILE & BUSINESS OVERVIEW ---")
+            about = summary_obj.get("aboutAndPeers")
+            if isinstance(about, list) and about and isinstance(about[0], dict):
+                description = about[0].get("description", "") or ""
+        except Exception:
+            pass
+
+        segment_parts = [part for part in (description, web_context) if part]
+        segment_text = "\n\n".join(segment_parts) if segment_parts else (
+            f"No live business-segment data available for {self.symbol}. "
+            "Segment detail should be drawn from the retrieved filing context below."
         )
 
         return (
             f"### Core Business Segments & Revenue Engine\n\n"
             f"#### Revenue Drivers & Operating Divisions\n"
-            f"{segment_text}\n\n"
-            f"- **Primary Operating Strategic Business Units (SBUs)**:\n"
-            f"  - **Americas 1 & Americas 2**: Enterprise Healthcare, Medical Devices, Financial Services, Consumer Goods, and Retail.\n"
-            f"  - **Europe & APMEA**: Banking & Capital Markets, Telecom, Energy & Utilities, and Manufacturing Verticals.\n"
-            f"  - **Wipro Enterprise Futuring & ai360**: Generative AI platforms, Cloud Infrastructure, Cyber Transformation, and Data Analytics.\n\n"
-            f"💡 **Simple Summary for Investors**:\n"
-            f"{self.symbol} operates a highly diversified global IT service footprint, generating predictable cash flows through multi-year enterprise transformation contracts."
+            f"{segment_text}"
         )
 
-    def _format_expansion_plans(self, api_data: str) -> str:
-        """Formats Strategic Expansion & Capital Allocation Pipeline Markdown block using live WebSearch data."""
-        web_info = perform_web_search(f"{self.symbol} expansion plans capex artificial intelligence cloud investment", max_results=3)
-        expansion_text = web_info if web_info else (
-            "Investing $1 Billion in Wipro ai360 ecosystem over three years, expanding nearshore delivery centers, "
-            "and deploying strategic capital into cloud ecosystem partnerships."
+    def _format_expansion_plans(self, api_data: str, web_context: str = "") -> str:
+        """Formats Strategic Expansion & Capital Allocation Pipeline Markdown block from live data only."""
+        expansion_text = web_context if web_context else (
+            f"No live expansion-plan headlines retrieved for {self.symbol}. "
+            "Strategic initiatives should be drawn from the retrieved filing context below."
         )
+
+        metric_lines = _collect_comment_lines(api_data, max_lines=8)
+        metrics_block = ""
+        if metric_lines:
+            bullets = "\n".join(f"  - {line}" for line in metric_lines)
+            metrics_block = f"\n\n- **Computed Capital Allocation & Liquidity Metrics (TTM)**:\n{bullets}"
 
         return (
             f"### Strategic Expansion & Capital Allocation Pipeline\n\n"
             f"#### Live Strategic Initiatives & Capex Pipeline\n"
-            f"{expansion_text}\n\n"
-            f"- **Core Growth Pillars**:\n"
-            f"  - **Wipro ai360 $1B Investment Commitment**: Integrating Generative AI across all consulting and engineering workflows.\n"
-            f"  - **Hyperscaler Ecosystem Expansion**: Deepening strategic partnerships with AWS, Microsoft Azure, Google Cloud, and SAP.\n"
-            f"  - **High-Margin Consulting M&A**: Reinvesting FCF into specialized domain acquisitions (e.g. Capco, Rizing) to boost margins.\n\n"
-            f"💡 **Simple Summary for Investors**:\n"
-            f"The company is aggressively reallocating capital into Artificial Intelligence (ai360) and Cloud services, aiming to expand margins and secure large enterprise deals."
+            f"{expansion_text}"
+            f"{metrics_block}"
         )
 
-    def _format_clients_market(self, api_data: str) -> str:
-        """Formats Competitive Moat, Concessions & Market Footprint Markdown block using live WebSearch data."""
-        web_info = perform_web_search(f"{self.symbol} major clients enterprise customers competitive moat market footprint", max_results=3)
-        moat_text = web_info if web_info else (
-            "Serves global Fortune 500 enterprise tenants across 65+ countries with over 1,400 active client accounts."
+    def _format_clients_market(self, api_data: str, web_context: str = "") -> str:
+        """Formats Competitive Moat & Market Footprint Markdown block from live data only."""
+        moat_text = web_context if web_context else (
+            f"No live market-footprint headlines retrieved for {self.symbol}. "
+            "Competitive positioning should be drawn from the retrieved filing context below."
         )
+
+        peers_block = ""
+        try:
+            peer_names: List[str] = []
+            peers_obj = _extract_json_object_by_header(api_data, "--- PEER COMPANIES LIST ---")
+            peers_list = peers_obj.get("peers") if isinstance(peers_obj, dict) else None
+            if isinstance(peers_list, list):
+                peer_names = [
+                    p.get("name", "") for p in peers_list
+                    if isinstance(p, dict) and p.get("name") and p.get("name", "").upper() != self.symbol
+                ]
+            if peer_names:
+                bullets = "\n".join(f"  - {peer}" for peer in peer_names[:6])
+                peers_block = f"\n\n- **Listed Peer Companies (Live)**:\n{bullets}"
+        except Exception:
+            pass
 
         return (
             f"### Competitive Moat, Concessions & Market Footprint\n\n"
             f"#### Enterprise Footprint & Market Standing\n"
-            f"{moat_text}\n\n"
-            f"- **Enterprise Portfolio & Economic Moat Factors**:\n"
-            f"  - **Fortune 500 Enterprise Portfolio**: Serving over 1,400 active global accounts across BFSI, Healthcare, Technology, and Energy.\n"
-            f"  - **High Switching Costs Moat**: Deeply embedded mission-critical core banking and IT infrastructure software creates a durable economic moat.\n\n"
-            f"💡 **Simple Summary for Investors**:\n"
-            f"Sticky enterprise relationships and proprietary technology IP generate high customer retention rates, underpinning defensive recurring cash flow."
+            f"{moat_text}"
+            f"{peers_block}"
         )
 
-    def _format_financial_results(self, api_data: str) -> str:
+    def _format_financial_results(self, api_data: str, web_context: str = "") -> str:
         """Formats Financial Performance & Growth Metrics Markdown block with LATEST FIRST tables."""
         q_table_rows: List[str] = []
         a_table_rows: List[str] = []
@@ -681,8 +772,9 @@ class FinancialRAGEngine:
 
                 a_table_rows.append(f"| {period} | {rev_str} | {ebi_str} | {pat_str} | {eps_str} | {growth} |")
 
-        q_table_str = "\n".join(q_table_rows) if q_table_rows else "| Latest Quarter | ₹22,205.10 | ₹4,188.30 | ₹3,052.90 | ₹2.79 | [+] +3.85% |"
-        a_table_str = "\n".join(a_table_rows) if a_table_rows else "| FY 2026 | ₹96,523.40 | ₹21,710.60 | ₹13,197.40 | ₹12.59 | [+] +3.79% |\n| FY 2025 | ₹92,997.80 | ₹21,930.60 | ₹13,135.40 | ₹12.56 | [+] +0.66% |\n| FY 2024 | ₹92,391.10 | ₹19,383.30 | ₹11,045.20 | ₹10.31 | [-] -0.40% |\n| FY 2023 | ₹92,762.20 | ₹19,113.60 | ₹11,350.00 | ₹10.35 | [+] +13.99% |\n| FY 2022 | ₹81,378.90 | ₹18,751.10 | ₹12,229.60 | ₹11.16 | [+] +26.48% |"
+        unavailable_row = "| Data unavailable from live API | — | — | — | — | — |"
+        q_table_str = "\n".join(q_table_rows) if q_table_rows else unavailable_row
+        a_table_str = "\n".join(a_table_rows) if a_table_rows else unavailable_row
 
         return (
             f"### Financial Performance & Growth Metrics\n\n"
@@ -694,81 +786,152 @@ class FinancialRAGEngine:
             f"| Fiscal Year | Total Sales / Revenue | Operating Profit | Net Profit (PAT) | EPS (₹) | Yearly Sales Growth |\n"
             f"| :--- | :--- | :--- | :--- | :--- | :--- |\n"
             f"{a_table_str}\n\n"
-            f"💡 **Simple Investor Insights on Financial Performance**:\n"
-            f"1. **Sales & Revenue**: Multi-year revenue trajectory reflects resilient enterprise IT demand.\n"
-            f"2. **Operating Profit**: Operating margins (EBIT) showcase operational efficiency and cost discipline.\n"
-            f"3. **Net Profit (PAT)**: Stable net earnings convert directly into shareholder dividends and cash reserves."
+            f"💡 **Reading These Tables**:\n"
+            f"1. **Sales & Revenue**: Top-line trajectory across quarters and fiscal years (₹ Cr), latest first.\n"
+            f"2. **Operating Profit (EBIT)**: Profitability from core operations before interest and tax.\n"
+            f"3. **Net Profit (PAT)**: Bottom-line earnings attributable to shareholders, with EPS per share."
         )
 
-    def _format_dupont_analysis(self, api_data: str) -> str:
-        """Formats DuPont Return Decomposition Markdown block with LaTeX formulas."""
-        asset_turnover = "0.70x"
-        equity_multiplier = "1.60x"
-        interest_burden = "79.1%"
-        dupont_roe = "14.85%"
-        roce = "16.40%"
+    def _format_dupont_analysis(self, api_data: str, web_context: str = "") -> str:
+        """Formats DuPont Return Decomposition Markdown block from live computed metrics only."""
+        net_profit_margin = "N/A"
+        asset_turnover = "N/A"
+        equity_multiplier = "N/A"
+        dupont_roe = "N/A"
+        roce = "N/A"
+        period = "TTM"
 
         try:
-            dupont_match = re.search(r"--- EXTENDED DUPONT ROE MODEL ---\s*(\{.*?\})", api_data, re.DOTALL)
-            if dupont_match:
-                obj = json.loads(dupont_match.group(1))
-                if isinstance(obj, dict) and "_comments" in obj:
-                    comments = obj["_comments"]
-                    asset_turnover = comments.get("asset_turnover_x", asset_turnover).split(":")[-1].strip()
-                    equity_multiplier = comments.get("equity_multiplier_x", equity_multiplier).split(":")[-1].strip()
-                    interest_burden = comments.get("interest_burden_ratio", interest_burden).split(":")[-1].strip()
-                    if "dupont_roe_pct" in obj:
-                        dupont_roe = f"{obj['dupont_roe_pct']:.2f}%"
+            obj = _extract_json_object_by_header(api_data, "--- EXTENDED DUPONT ROE MODEL ---")
+            if obj:
+                period = obj.get("period", period)
+                factors = obj.get("dupont_5_factor", {}) if isinstance(obj.get("dupont_5_factor"), dict) else {}
+                if isinstance(factors.get("asset_turnover_x"), (int, float)):
+                    asset_turnover = f"{factors['asset_turnover_x']:.2f}x"
+                if isinstance(factors.get("equity_multiplier_x"), (int, float)):
+                    equity_multiplier = f"{factors['equity_multiplier_x']:.2f}x"
+                roe_val = factors.get("return_on_equity_roe_pct", factors.get("factor_check_roe_pct"))
+                if isinstance(roe_val, (int, float)):
+                    dupont_roe = f"{roe_val:.2f}%"
+
+                raw = obj.get("raw_variables", {}) if isinstance(obj.get("raw_variables"), dict) else {}
+                pat, revenue = raw.get("pat"), raw.get("revenue")
+                if isinstance(pat, (int, float)) and isinstance(revenue, (int, float)) and revenue:
+                    net_profit_margin = f"{(pat / revenue) * 100:.2f}%"
+                ebit, equity, debt = raw.get("ebit"), raw.get("equity"), raw.get("debt")
+                if all(isinstance(v, (int, float)) for v in (ebit, equity, debt)) and (equity + debt):
+                    roce = f"{(ebit / (equity + debt)) * 100:.2f}%"
         except Exception:
             pass
 
         return (
             f"### DuPont Return Decomposition (ROE & ROCE Analysis)\n\n"
-            f"**DuPont ROE Formula Decomposition**:\n"
+            f"**DuPont ROE Formula Decomposition** (Period: {period}):\n"
             f"$$\\text{{ROE}} = \\text{{Net Profit Margin}} \\times \\text{{Asset Turnover}} \\times \\text{{Financial Leverage}}$$\n\n"
             f"| DuPont Driver | Calculation Formula | Value (%) / Ratio | Analyst Interpretation |\n"
             f"| :--- | :--- | :--- | :--- |\n"
-            f"| **1. Net Profit Margin** | PAT ÷ Revenue | **14.62%** | Take-home profit earned per ₹100 of sales |\n"
-            f"| **2. Asset Turnover** | Revenue ÷ Total Capital | **{asset_turnover}** | Efficiency of capital generating sales volume |\n"
-            f"| **3. Financial Leverage** | Total Capital ÷ Net Worth | **{equity_multiplier}** | Equity multiplier from capital leverage |\n"
+            f"| **1. Net Profit Margin** | PAT ÷ Revenue | **{net_profit_margin}** | Take-home profit earned per ₹100 of sales |\n"
+            f"| **2. Asset Turnover** | Revenue ÷ Total Assets | **{asset_turnover}** | Efficiency of capital generating sales volume |\n"
+            f"| **3. Financial Leverage** | Total Assets ÷ Net Worth | **{equity_multiplier}** | Equity multiplier from capital leverage |\n"
             f"| **Return on Equity (ROE)** | **PAT ÷ Net Worth** | **{dupont_roe}** | **Overall return earned on shareholder equity** |\n\n"
             f"#### Return on Capital Employed (ROCE) Summary Table\n"
             f"| Metric | Calculation Formula | Value (%) | Analyst Assessment |\n"
             f"| :--- | :--- | :--- | :--- |\n"
-            f"| **ROCE** | EBIT ÷ Total Capital | **{roce}** | **Efficiency of operating profits across total capital** |\n\n"
-            f"💡 **Simple Summary for Investors**:\n"
-            f"• **What Drives Profits?**: Modest asset turnover ({asset_turnover}) combined with stable net profit margin generates an ROE of {dupont_roe}.\n"
-            f"• **Capital Efficiency (ROCE)**: Operating assets produce a healthy {roce} return on overall capital employed."
+            f"| **ROCE** | EBIT ÷ (Equity + Debt) | **{roce}** | **Efficiency of operating profits across invested capital** |"
         )
 
-    def _format_balance_sheet(self, api_data: str) -> str:
-        """Formats Capital Structure & Solvency Analysis Markdown block."""
+    def _format_balance_sheet(self, api_data: str, web_context: str = "") -> str:
+        """Formats Capital Structure & Solvency Analysis Markdown block from live statement data."""
+        table_rows: List[str] = []
+        bal_list = _extract_json_array_by_header(api_data, "--- BALANCE SHEET STATEMENT ---")
+        if bal_list:
+            for item in list(reversed(bal_list))[:8]:
+                if not isinstance(item, dict):
+                    continue
+                period = item.get("displayPeriod", "N/A")
+                equity = item.get("balTeq")
+                debt = item.get("balTdeb")
+                cash = item.get("balCsti")
+
+                equity_str = f"₹{float(equity):,.2f}" if isinstance(equity, (int, float)) else "N/A"
+                debt_str = f"₹{float(debt):,.2f}" if isinstance(debt, (int, float)) else "N/A"
+                cash_str = f"₹{float(cash):,.2f}" if isinstance(cash, (int, float)) else "N/A"
+
+                de_str, health = "N/A", "N/A"
+                if isinstance(equity, (int, float)) and isinstance(debt, (int, float)) and equity:
+                    de_ratio = debt / equity
+                    de_str = f"{de_ratio:.2f}x"
+                    health = "Healthy Solvency" if de_ratio < 1.0 else "Elevated Leverage"
+
+                table_rows.append(f"| {period} | {equity_str} | {debt_str} | {cash_str} | {de_str} | {health} |")
+
+        table_str = "\n".join(table_rows) if table_rows else "| Data unavailable from live API | — | — | — | — | — |"
+
+        insight_lines = _collect_comment_lines(api_data, max_lines=6)
+        insights_block = ""
+        if insight_lines:
+            bullets = "\n".join(f"{i}. {line}" for i, line in enumerate(insight_lines, 1))
+            insights_block = f"\n\n💡 **Computed Solvency Metrics (TTM)**:\n{bullets}"
+
         return (
             f"### Capital Structure & Solvency Analysis\n\n"
             f"#### Balance Sheet Capital Structure (in ₹ Cr)\n"
-            f"| Fiscal Period | Company Net Worth (Equity) | Total Loans (Debt) | Bank Cash | Debt-to-Equity | Financial Health |\n"
+            f"| Fiscal Period | Company Net Worth (Equity) | Total Loans (Debt) | Cash & Short-Term Investments | Debt-to-Equity | Financial Health |\n"
             f"| :--- | :--- | :--- | :--- | :--- | :--- |\n"
-            f"| FY 2019 | ₹56,801.00 | ₹10,211.50 | ₹15,852.10 | 0.18x | Healthy Solvency |\n"
-            f"| FY 2018 | ₹48,290.40 | ₹13,824.00 | ₹9,812.30 | 0.29x | Healthy Solvency |\n"
-            f"| FY 2017 | ₹52,060.00 | ₹14,241.00 | ₹9,742.00 | 0.27x | Healthy Solvency |\n\n"
-            f"💡 **Simple Investor Insights on Balance Sheet & Solvency**:\n"
-            f"1. **Debt Level**: Conservative borrowing structure with Debt-to-Equity at a safe 0.18x level.\n"
-            f"2. **Cash Buffer**: Substantial bank cash reserves (₹15,852 Cr) provide strong liquidity for dividends and acquisitions."
+            f"{table_str}"
+            f"{insights_block}"
         )
 
-    def _format_strengths_weaknesses(self, api_data: str) -> str:
-        """Formats Investment Thesis & Strategic Risk Audit Markdown block."""
+    def _format_strengths_weaknesses(self, api_data: str, web_context: str = "") -> str:
+        """Formats Investment Thesis & Strategic Risk Audit block from live computed ratios.
+
+        Classifies each computed metric into strengths vs. watch-points using
+        the ratio health flags returned by the metrics API. Qualitative
+        bull/bear narrative is left to the LLM synthesis over retrieved
+        filing context — nothing here is invented.
+        """
+        strengths: List[str] = []
+        watch_points: List[str] = []
+
+        checks = [
+            ("--- SOLVENCY & COVERAGE METRICS ---", "solvency_ratios", "is_debt_safe",
+             "Balance-sheet leverage is within safe limits", "Elevated debt levels warrant monitoring"),
+            ("--- WORKING CAPITAL HEALTH & LIQUIDITY ---", "liquidity_ratios", "is_liquidity_healthy",
+             "Working-capital liquidity is healthy", "Working-capital liquidity is stretched"),
+            ("--- CAPITAL ALLOCATION & ROIC ---", "capital_efficiency", "is_earnings_high_quality",
+             "Reported earnings convert strongly into free cash flow", "Weak earnings-to-cash conversion"),
+        ]
+        for header, ratios_key, flag_key, positive, negative in checks:
+            obj = _extract_json_object_by_header(api_data, header)
+            ratios = obj.get(ratios_key) if isinstance(obj, dict) else None
+            if isinstance(ratios, dict) and flag_key in ratios:
+                (strengths if ratios[flag_key] else watch_points).append(
+                    positive if ratios[flag_key] else negative
+                )
+
+        metric_lines = _collect_comment_lines(api_data, max_lines=10)
+
+        strengths_block = "\n".join(f"{i}. {s}" for i, s in enumerate(strengths, 1)) if strengths else (
+            "No strengths could be computed from live ratio data."
+        )
+        watch_block = "\n".join(f"{i}. {w}" for i, w in enumerate(watch_points, 1)) if watch_points else (
+            "No quantitative red flags in computed ratios; qualitative risks should be assessed from retrieved filing context."
+        )
+        evidence_block = ""
+        if metric_lines:
+            bullets = "\n".join(f"- {line}" for line in metric_lines)
+            evidence_block = f"\n\n#### Supporting Computed Metrics (TTM)\n{bullets}"
+
         return (
             f"### Investment Thesis & Strategic Risk Audit\n\n"
-            f"#### Bull Case Strengths 📈\n"
-            f"1. **Defensive Cash Generation**: Strong recurring IT service revenue and low net debt level (D/E = 0.18x).\n"
-            f"2. **Substantial Cash Buffer**: Large bank liquid reserves provide financial flexibility for strategic acquisitions.\n\n"
-            f"#### Bear Case Vulnerabilities 📉\n"
-            f"1. **Macro Enterprise Tech Spending**: Discretionary IT budget cutbacks by global banking and retail clients.\n"
-            f"2. **Foreign Exchange Sensitivity**: Currency fluctuations across US Dollar and Euro revenue streams."
+            f"#### Quantitative Strengths 📈\n"
+            f"{strengths_block}\n\n"
+            f"#### Quantitative Watch-Points 📉\n"
+            f"{watch_block}"
+            f"{evidence_block}"
         )
 
-    def retrieve_section_context(self, section_name: str, top_k: int = 2) -> str:
+    def retrieve_section_context(self, section_name: str, top_k: int = 5) -> str:
         """Advanced section-aware retrieval engine returning structured section Markdown blocks.
 
         Combines live Vercel REST API ground truth data, live WebSearch findings,
@@ -810,11 +973,11 @@ class FinancialRAGEngine:
         }
 
         formatter = formatters.get(section_name)
-        section_md = formatter(api_data) if formatter else f"### Section Financial Analysis\n\n{api_data}"
-
-        # 4. Append Live WebSearch Findings to RAG Context cleanly without raw debug header
-        if web_search_context:
-            section_md += f"\n\n{web_search_context}"
+        section_md = (
+            formatter(api_data, web_search_context)
+            if formatter
+            else f"### Section Financial Analysis\n\n{api_data}"
+        )
 
         # 5. Retrieve Relevant Filing PDF Text Chunks if PDF index is populated
         if self.child_chunks:
@@ -843,7 +1006,7 @@ class FinancialRAGEngine:
             rrf_fused_parents = reciprocal_rank_fusion(vector_candidates, bm25_candidates, top_k=top_k, rrf_k=60)
 
             if rrf_fused_parents:
-                pdf_chunks = "\n\n".join([f"> **Targeted Filing Context Chunk**: {doc.page_content[:400]}" for doc in rrf_fused_parents])
+                pdf_chunks = "\n\n".join([f"> **Targeted Filing Context Chunk**: {doc.page_content[:1200]}" for doc in rrf_fused_parents])
                 section_md += f"\n\n{pdf_chunks}"
 
         return section_md

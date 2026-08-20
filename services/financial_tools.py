@@ -371,13 +371,17 @@ class FinancialDataAgent:
 
         context_parts: List[str] = []
 
+        # Section keys accepted here MUST cover every key emitted by
+        # services/graph_pipeline.py: company_overview, company_operations,
+        # expansion_plans, clients_market, financial_results, dupont_analysis,
+        # balance_sheet, strengths_weaknesses.
         if section_key == "dupont_analysis":
             dupont_json = fetch_dupont_analysis_tool.invoke({"symbol": symbol_upper})
             cagr_json = fetch_cagr_metrics_tool.invoke({"symbol": symbol_upper})
             context_parts.append(f"--- EXTENDED DUPONT ROE MODEL ---\n{dupont_json}")
             context_parts.append(f"--- MULTI-YEAR COMPOUND ANNUAL GROWTH RATES (CAGR) ---\n{cagr_json}")
 
-        elif section_key == "solvency_analysis":
+        elif section_key in ("solvency_analysis", "balance_sheet"):
             solvency_json = fetch_solvency_metrics_tool.invoke({"symbol": symbol_upper})
             bal_growth_json = fetch_balancesheet_growth_tool.invoke({"symbol": symbol_upper})
             balance_json = fetch_balance_sheet_tool.invoke({"symbol": symbol_upper})
@@ -385,7 +389,7 @@ class FinancialDataAgent:
             context_parts.append(f"--- BALANCE SHEET SOLVENCY GROWTH ---\n{bal_growth_json}")
             context_parts.append(f"--- BALANCE SHEET STATEMENT ---\n{balance_json}")
 
-        elif section_key == "financial_performance":
+        elif section_key in ("financial_performance", "financial_results"):
             q_json = fetch_quarterly_income_tool.invoke({"symbol": symbol_upper})
             q_growth_json = fetch_quarterly_growth_tool.invoke({"symbol": symbol_upper})
             a_json = fetch_annual_income_tool.invoke({"symbol": symbol_upper})
@@ -395,17 +399,23 @@ class FinancialDataAgent:
             context_parts.append(f"--- 5-YEAR ANNUAL INCOME STATEMENT ---\n{a_json}")
             context_parts.append(f"--- ANNUAL YoY GROWTH METRICS ---\n{a_growth_json}")
 
-        elif section_key in ("core_business", "market_footprint", "executive_summary"):
+        elif section_key in (
+            "core_business", "market_footprint", "executive_summary",
+            "company_overview", "company_operations", "clients_market",
+        ):
             summary_json = fetch_stock_summary_tool.invoke({"symbol": symbol_upper})
             peers_json = fetch_stock_peers_tool.invoke({"symbol": symbol_upper})
             context_parts.append(f"--- STOCK SUMMARY PROFILE & BUSINESS OVERVIEW ---\n{summary_json}")
             context_parts.append(f"--- PEER COMPANIES LIST ---\n{peers_json}")
 
-        elif section_key in ("expansion_plans", "investment_thesis"):
+        elif section_key in ("expansion_plans", "investment_thesis", "strengths_weaknesses"):
             cap_json = fetch_capital_efficiency_tool.invoke({"symbol": symbol_upper})
             liq_json = fetch_liquidity_metrics_tool.invoke({"symbol": symbol_upper})
             context_parts.append(f"--- CAPITAL ALLOCATION & ROIC ---\n{cap_json}")
             context_parts.append(f"--- WORKING CAPITAL HEALTH & LIQUIDITY ---\n{liq_json}")
+            if section_key == "strengths_weaknesses":
+                solvency_json = fetch_solvency_metrics_tool.invoke({"symbol": symbol_upper})
+                context_parts.append(f"--- SOLVENCY & COVERAGE METRICS ---\n{solvency_json}")
 
         else:
             bundle_json = fetch_full_financial_bundle_tool.invoke({"symbol": symbol_upper})
