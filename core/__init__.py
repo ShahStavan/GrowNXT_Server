@@ -6,7 +6,6 @@ from core.config import (
     MAPPING_FILE_PATH,
     OUTPUT_DIR,
     PROJECT_ROOT,
-    REPORTS_DIR,
     REQUIRED_ENV_VARS,
     report_path,
     safe_ticker,
@@ -17,7 +16,6 @@ from core.llm_config import LLMError, generate_llm_response
 __all__ = [
     "PROJECT_ROOT",
     "OUTPUT_DIR",
-    "REPORTS_DIR",
     "MAPPING_FILE_PATH",
     "FINANCIAL_DATA_COLLECTOR_BASE_URL",
     "HTTP_HEADERS",

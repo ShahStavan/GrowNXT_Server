@@ -70,8 +70,8 @@ The PDF engine never calls a language model. Every figure it prints is either re
                                        │
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 5. OUTPUT: reports/<TICKER>_report.pdf — every stock's typeset A4 report     │
-│            output/<TICKER>/ — charts, Typst source, caches, dossier          │
+│ 5. OUTPUT: output/<TICKER>/<TICKER>_report.pdf — the typeset A4 report       │
+│            build artefacts swept once it compiles; caches and dossier stay   │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -141,7 +141,7 @@ venv/Scripts/python.exe scripts/generate_report.py WIPRO RELIANCE TCS HDFCBANK
 venv/Scripts/python.exe scripts/verify_reporting.py
 ```
 
-The compiled PDF lands in `reports/<TICKER>_report.pdf`; the generated `.typ` source and its SVG charts stay in `output/<TICKER>/`, which keeps a layout problem inspectable after the fact. Typical output is **7–8 pages carrying 34–43 numbered exhibits**.
+The compiled PDF lands in `output/<TICKER>/<TICKER>_report.pdf`. The chart SVGs and the generated `.typ` are written beside it during the build and swept once it compiles, so the directory holds the report rather than the scaffolding; pass `--keep-build` to retain them when a layout problem needs inspecting. Typical output is **7–8 pages carrying 34–43 numbered exhibits**.
 
 ### Document structure
 
@@ -502,14 +502,16 @@ venv/Scripts/python.exe -m scripts.verify_ingestion --offline  # 85, no network
 
 | Path | Holds |
 | :--- | :--- |
-| `reports/<TICKER>_report.pdf` | Every stock's finished report, together in one directory |
-| `output/<TICKER>/` | That stock's build workspace: chart SVGs, the Typst source, the ingestion caches and evidence dossier, and the Drive upload record |
+| `output/<TICKER>/<TICKER>_report.pdf` | That stock's finished report |
+| `output/<TICKER>/` | Its ingestion caches and evidence dossier, and the Drive upload record. Chart SVGs and the Typst source appear here during a build and are swept when the PDF compiles |
 | `.cache/api/<TICKER>/` | Cached collector payloads, so a rebuild costs no requests |
+| `reports/` | **Not written to by this codebase.** Reference notes a person put there |
 
-Both roots are configurable (`GROWNXT_REPORTS_DIR`, `GROWNXT_OUTPUT_DIR`). The
-split exists because Typst resolves `#image` paths relative to its source file
-and chart names repeat across tickers -- so the workspace stays per-stock, while
-the artifact a person actually wants is collected in one place.
+The root is configurable with `GROWNXT_OUTPUT_DIR`. Charts are written beside
+the Typst source because Typst resolves `#image` paths relative to it, and
+their names repeat across tickers -- which is why the build happens in the
+stock's own directory rather than a shared one. The sweep keeps only what
+cannot be regenerated from the cached payloads: `--keep-build` turns it off.
 
 ---
 
@@ -598,8 +600,7 @@ pip install -r requirements.txt
 # 3. Configure environment variables (.env) — all optional
 # GROWNXT_LLM_API_URL=https://grownxt-llm.vercel.app   # hosted model endpoint
 # GROWNXT_LLM_API_KEY=...                              # only if the endpoint requires one
-# GROWNXT_OUTPUT_DIR=/var/lib/grownxt/output           # per-stock build workspace
-# GROWNXT_REPORTS_DIR=/var/lib/grownxt/reports         # finished PDFs, all stocks
+# GROWNXT_OUTPUT_DIR=/var/lib/grownxt/output           # per-stock artifact root
 # GDRIVE_CLIENT_ID=...                                 # Drive delivery (see above)
 # GDRIVE_CLIENT_SECRET=...
 # GDRIVE_FOLDER_ID=...                                 # optional destination folder

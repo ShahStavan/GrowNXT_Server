@@ -22,8 +22,8 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("tickers", nargs="+", help="Ticker symbols, e.g. WIPRO")
     p.add_argument("--output-dir", type=Path,
                    help="Root of the per-ticker build workspace (default: output/).")
-    p.add_argument("--reports-dir", type=Path,
-                   help="Directory collecting every finished PDF (default: reports/).")
+    p.add_argument("--keep-build", action="store_true",
+                   help="Keep the chart SVGs and Typst source beside the PDF.")
     p.add_argument("--refresh", action="store_true",
                    help="Re-request collector data instead of using the local cache.")
     p.add_argument("--as-of", help="Display date for the header (default: today).")
@@ -46,8 +46,8 @@ def main() -> int:
         sym = ticker.upper()
         try:
             path = generate_report(sym, output_dir=args.output_dir,
-                                   reports_dir=args.reports_dir,
-                                   refresh=args.refresh, as_of=args.as_of)
+                                   refresh=args.refresh, as_of=args.as_of,
+                                   keep_build=args.keep_build)
         except Exception as exc:  # noqa: BLE001 - report and continue the batch
             # A ReportError is about this company's data; anything else is a
             # defect, and the label says which so a batch log stays readable.

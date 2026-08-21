@@ -23,15 +23,6 @@ OUTPUT_DIR: Final[Path] = (
     Path(_env_output_dir).resolve() if _env_output_dir else PROJECT_ROOT / "output"
 )
 
-# Every finished report, for every stock, in one directory. The build workspace
-# stays per-stock under OUTPUT_DIR because Typst resolves chart paths relative
-# to its source file and chart names repeat across tickers; only the compiled
-# PDF is collected here, where a reader can find them all together.
-_env_reports_dir: str = os.getenv("GROWNXT_REPORTS_DIR", "").strip()
-REPORTS_DIR: Final[Path] = (
-    Path(_env_reports_dir).resolve() if _env_reports_dir else PROJECT_ROOT / "reports"
-)
-
 # Ground-truth metric dictionary shipped with the repository.
 MAPPING_FILE_PATH: Final[Path] = PROJECT_ROOT / "mapping.json"
 
@@ -87,13 +78,16 @@ def stock_dir(ticker: str, create: bool = False) -> Path:
 def report_path(ticker: str, create_parent: bool = False) -> Path:
     """Returns the finished PDF's path for one stock.
 
+    The report sits in the stock's own directory. The repository's top-level
+    ``reports/`` folder holds reference notes a person put there and is never
+    written to by this codebase.
+
     Args:
         ticker: Exchange symbol, in any case and with any punctuation.
-        create_parent: Whether to create ``REPORTS_DIR`` when it is absent.
+        create_parent: Whether to create the stock's directory when absent.
 
     Returns:
-        Path: ``REPORTS_DIR/<TICKER>_report.pdf``.
+        Path: ``OUTPUT_DIR/<TICKER>/<TICKER>_report.pdf``.
     """
-    if create_parent:
-        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    return REPORTS_DIR / ("%s_report.pdf" % safe_ticker(ticker))
+    folder = stock_dir(ticker, create=create_parent)
+    return folder / ("%s_report.pdf" % safe_ticker(ticker))

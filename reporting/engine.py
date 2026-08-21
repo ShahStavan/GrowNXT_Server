@@ -1,15 +1,16 @@
 """Report orchestration: snapshot to compiled PDF.
 
-Charts and the generated Typst source land in one workspace per ticker,
-because Typst resolves `#image` paths relative to the source file and chart
-file names repeat across tickers. The compiled PDF is written to the shared
-`reports/` directory instead, so every stock's finished report sits together.
+Charts and the generated Typst source are written into the stock's own
+directory, because Typst resolves `#image` paths relative to the source file.
+Once the PDF compiles they are swept away: they are reproducible from the
+cached payloads, and what a reader wants in that directory is the report.
 """
 
 from datetime import date
 import logging
 from pathlib import Path
-from typing import Optional
+import shutil
+from typing import Optional, Tuple
 
 import typst
 
@@ -18,16 +19,26 @@ from reporting import charts as charts_module
 from reporting import composites as composites_module
 from reporting import selfcheck
 from reporting import typst_doc
-from core.config import OUTPUT_DIR, REPORTS_DIR, safe_ticker
+from core.config import OUTPUT_DIR, safe_ticker
 from reporting.client import CollectorClient
 from reporting.snapshot import build_snapshot
 
 logger = logging.getLogger(__name__)
 
 # The API server, the CLI and the ingestion layer all write into the same
-# per-stock directory, so the roots and the folding rule are owned by config.
+# per-stock directory, so the root and the folding rule are owned by config.
 DEFAULT_OUTPUT_DIR: Path = OUTPUT_DIR
-DEFAULT_REPORTS_DIR: Path = REPORTS_DIR
+
+# Byproducts of a build: the chart SVGs the document referenced, the generated
+# Typst source, and any rendered page previews. Once the PDF exists these are
+# reproducible from the cached payloads, so they are swept away.
+#
+# Only these. The same directory holds the ingestion layer's caches and the
+# Drive upload record, which belong to other layers: clearing those would
+# re-download and re-embed a company's filings, and re-upload a report that
+# had not changed.
+BUILD_GLOBS: Tuple[str, ...] = ("*.svg", "*.typ")
+PREVIEW_DIR: str = "preview"
 
 
 class ReportError(RuntimeError):
@@ -39,24 +50,22 @@ def generate_report(
     output_dir: Optional[Path] = None,
     refresh: bool = False,
     as_of: Optional[str] = None,
-    keep_source: bool = True,
-    reports_dir: Optional[Path] = None,
+    keep_build: bool = False,
 ) -> Path:
     """Builds the institutional PDF report for one ticker.
 
     Args:
         ticker: Stock ticker symbol, e.g. 'WIPRO'.
-        output_dir: Root of the per-ticker build workspace, holding the charts
-            and the Typst source. Defaults to `output/`.
+        output_dir: Root holding one directory per stock. Defaults to
+            `output/`.
         refresh: Re-request collector data instead of using the cache.
         as_of: Display date for the header and disclaimer. Defaults to today.
-        keep_source: Retain the generated `.typ` in the workspace, which makes
-            a layout problem inspectable after the fact.
-        reports_dir: Directory collecting every stock's finished PDF. Defaults
-            to `reports/`.
+        keep_build: Retain the chart SVGs and the generated `.typ` instead of
+            sweeping them, which makes a layout problem inspectable after the
+            fact. A failed compile keeps them regardless.
 
     Returns:
-        Path to the written PDF, inside `reports_dir`.
+        Path to the written PDF, in the stock's own directory.
 
     Raises:
         ReportError: If the snapshot is too sparse to report on, or Typst
@@ -67,7 +76,6 @@ def generate_report(
     symbol = ticker.upper().strip()
     folded = safe_ticker(symbol)
     root = Path(output_dir) if output_dir else DEFAULT_OUTPUT_DIR
-    reports_root = Path(reports_dir) if reports_dir else DEFAULT_REPORTS_DIR
     work_dir = root / folded
     work_dir.mkdir(parents=True, exist_ok=True)
 
@@ -118,12 +126,40 @@ def generate_report(
             % (symbol, source_path, exc)
         ) from exc
 
-    reports_root.mkdir(parents=True, exist_ok=True)
-    pdf_path = reports_root / (folded + "_report.pdf")
+    pdf_path = work_dir / (folded + "_report.pdf")
     pdf_path.write_bytes(pdf_bytes)
-
-    if not keep_source:
-        source_path.unlink(missing_ok=True)
-
     logger.info("[%s] wrote %s (%.1f KB)", symbol, pdf_path, pdf_path.stat().st_size / 1024)
+
+    if not keep_build:
+        swept = _sweep_build(work_dir, pdf_path)
+        logger.info("[%s] swept %d build artefact(s); the PDF is what remains",
+                    symbol, swept)
     return pdf_path
+
+
+def _sweep_build(work_dir: Path, pdf_path: Path) -> int:
+    """Removes the build byproducts from a stock's directory.
+
+    Args:
+        work_dir: The stock's directory.
+        pdf_path: The report, which is never removed.
+
+    Returns:
+        How many entries were removed.
+    """
+    removed = 0
+    for pattern in BUILD_GLOBS:
+        for path in work_dir.glob(pattern):
+            if path == pdf_path:
+                continue
+            try:
+                path.unlink()
+                removed += 1
+            except OSError as exc:  # pragma: no cover - a locked viewer, say
+                logger.warning("could not remove %s: %s", path, exc)
+
+    preview = work_dir / PREVIEW_DIR
+    if preview.is_dir():
+        shutil.rmtree(preview, ignore_errors=True)
+        removed += 1
+    return removed
