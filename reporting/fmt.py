@@ -101,11 +101,6 @@ def ratio(value: Any, decimals: int = 2) -> str:
     return num(value, decimals)
 
 
-def crore_to_display(value: Any, decimals: int = 0) -> str:
-    """Formats a rupee-crore value for a table cell."""
-    return num(value, decimals)
-
-
 def growth(current: Any, prior: Any) -> Optional[float]:
     """Computes period-on-period growth in percentage points.
 

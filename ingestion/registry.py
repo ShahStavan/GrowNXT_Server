@@ -37,6 +37,13 @@ from pathlib import Path
 import tempfile
 from typing import Any, Dict, Iterable, List, Optional
 
+# The folding rule is owned by core.config so that a stock's directory name
+# is identical whichever layer creates it. Re-exported here because the
+# registry is the ingestion layer's own entry point for it.
+from core.config import safe_ticker
+
+__all__ = ["safe_ticker"]
+
 logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION: int = 1
@@ -89,18 +96,6 @@ def sha256_file(path: Path, block_size: int = 1 << 20) -> str:
         logger.warning("Could not hash %s: %s", path, exc)
         return ""
     return digest.hexdigest()
-
-
-def safe_ticker(ticker: str) -> str:
-    """Returns a ticker normalised for use as a directory name.
-
-    Indian symbols carry punctuation -- ampersands and hyphens are both common --
-    and the symbol reaches the filesystem as a directory name, so every character
-    that is not alphanumeric, a dash, or an underscore is folded to an
-    underscore.
-    """
-    upper = (ticker or "").strip().upper()
-    return "".join(c if (c.isalnum() or c in "-_") else "_" for c in upper) or "UNKNOWN"
 
 
 @dataclass

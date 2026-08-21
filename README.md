@@ -4,18 +4,15 @@
 ### *Autonomous Financial Intelligence & Equity Research Platform*
 
 [![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11-blue.svg)](https://www.python.org/)
-[![Framework](https://img.shields.io/badge/LangGraph-Self--RAG-orange.svg)](https://github.com/langchain-ai/langgraph)
-[![Vector Index](https://img.shields.io/badge/Index-HNSW%20Dense%20Vector-green.svg)](https://github.com/nmslib/hnswlib)
+[![Framework](https://img.shields.io/badge/LangGraph-Ingestion%20Pipeline-orange.svg)](https://github.com/langchain-ai/langgraph)
 [![Data Provider](https://img.shields.io/badge/Data%20Provider-Vercel%20REST%20API-black.svg)](https://financial-data-collector-qrxj.vercel.app)
-[![WebSearch Agent](https://img.shields.io/badge/Agent-Google%20WebSearch-blue.svg)](#-live-google-websearch-agent)
-[![Model Support](https://img.shields.io/badge/LLM-Qwen%202.5%20%7C%20Ollama%20%7C%20Groq%20%7C%20Gemini-purple.svg)](https://ollama.ai/)
-[![RAGAS Evaluation Score](https://img.shields.io/badge/RAGAS%20Score-0.95%20%2F%201.0-brightgreen.svg)](#-ragas-evaluation-metrics--benchmark-scorecard)
+[![Model Support](https://img.shields.io/badge/LLM-Hosted%20Endpoint-purple.svg)](#-hosted-model-access)
 [![Report Engine](https://img.shields.io/badge/Report%20Engine-Typst%20A4%20PDF-1F3A6E.svg)](#-institutional-pdf-report-engine)
 [![Self Verification](https://img.shields.io/badge/Self--Checks-20%20per%20report-12795C.svg)](#-arithmetic-self-verification)
 [![Ingestion](https://img.shields.io/badge/Ingestion-LangGraph%20%7C%20qwen3--embed-5B21B6.svg)](#-document-ingestion-layer-langgraph)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-*Automated, zero-hallucination fundamental financial analyst reports built from raw company filings using LangChain Tools, Live Vercel REST Data Provider, Live Google WebSearch Agent, and Parent-Child Hybrid Self-RAG.*
+*Automated, zero-hallucination fundamental financial analyst reports built from raw company filings using a Live Vercel REST Data Provider, a layout-aware document ingestion pipeline, and a deterministic typeset report engine.*
 
 ---
 
@@ -25,15 +22,13 @@
 
 **GrowNXT** turns raw financial statements and company filings into **institutional-grade fundamental financial analyst reports**.
 
-It operates as a decoupled AI RAG server connected directly to the live **[Financial Data Collector Vercel REST API](https://financial-data-collector-qrxj.vercel.app)**. Through **LangChain `@tool` functions** and a **Financial Data Agent**, it dynamically queries live REST endpoints for 5-Factor DuPont ROE breakdowns, Solvency, Liquidity, Capital Efficiency, and multi-year CAGR.
-
-Additionally, it integrates a **Live Google WebSearch Agent** to dynamically fetch real-time Market Capitalization ($19.83 Billion USD / ₹1.881 Trillion), operating business divisions, strategic capex initiatives, and enterprise moat data.
+It operates as a decoupled analysis server reading the live **[Financial Data Collector Vercel REST API](https://financial-data-collector-qrxj.vercel.app)** for 5-Factor DuPont ROE breakdowns, Solvency, Liquidity, Capital Efficiency, and multi-year CAGR, and the issuer's own filings for everything a statement cannot say.
 
 The platform produces **two independent classes of output**, and the distinction matters:
 
 | Output | Engine | Nature |
 | :--- | :--- | :--- |
-| **Narrative research report** (Markdown) | Self-RAG + LLM over filings | Qualitative analysis, prose, valuation commentary |
+| **[Evidence dossier](#the-evidence-dossier)** (JSON + Markdown) | `ingestion/` — retrieval over the issuer's own filings | Cited passages from annual reports, calls and decks |
 | **[Institutional PDF report](#-institutional-pdf-report-engine)** (A4, typeset) | `reporting/` — deterministic Python, **no LLM in the path** | Statements, ratios, composites, arithmetic verification |
 
 The PDF engine never calls a language model. Every figure it prints is either reported by the data provider or computed in traceable Python, which is why it can carry an arithmetic self-verification appendix and a language model cannot.
@@ -50,53 +45,47 @@ The PDF engine never calls a language model. Every figure it prints is either re
                                        │
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 2. LANGCHAIN TOOLS & AGENT (services/financial_tools.py)                     │
-│    ├── search_stock_ticker_tool           ├── fetch_dupont_analysis_tool      │
-│    ├── fetch_solvency_metrics_tool        ├── fetch_liquidity_metrics_tool    │
-│    ├── fetch_capital_efficiency_tool      ├── fetch_cagr_metrics_tool         │
-│    ├── fetch_quarterly_income_growth_tool ├── fetch_annual_income_growth_tool │
-│    └── FinancialDataAgent (Dynamic Tool Routing per Section)                 │
+│ 2. TYPED COLLECTOR CLIENT (reporting/client.py)                              │
+│    ├── Fourteen statement, ratio and composite endpoints per symbol          │
+│    ├── Parsed values with absence made explicit (a nil is not a zero)        │
+│    └── On-disk payload cache (.cache/api) — a rebuild costs no requests      │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 3. LIVE GOOGLE WEBSEARCH AGENT (services/rag_engine.py)                      │
-│    └── perform_web_search(query) -> Real-time Market Cap & Qualitative Moat  │
+│ 3. DOCUMENT INGESTION PIPELINE (ingestion/, LangGraph)                       │
+│    catalogue -> download -> parse -> chunk -> embed -> prompt -> dossier     │
+│    ├── Recursive XY-cut layout extraction (multi-column, A3 spreads)         │
+│    ├── Type-aware parsing (annual report / transcript / investor deck)       │
+│    └── qwen3-embed vectors + cited evidence dossier                          │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 4. HYBRID SEARCH ENGINE (Metadata Filtered Vector + BM25 Search)             │
-│    ├── Parent-Child Chunker (Search ~300ch child -> Return ~1,024ch parent)   │
-│    ├── Dense HNSW Vector Search (Gemini text-embedding-004)                  │
-│    └── Reciprocal Rank Fusion (RRF) Reranking                                │
+│ 4. REPORT ENGINE (reporting/, deterministic — no LLM in the path)            │
+│    ├── Ratios, composites (DuPont, Piotroski F, Altman Z), peer tables       │
+│    ├── Native Typst markup + vector SVG charts                               │
+│    └── Arithmetic self-verification appendix (20 checks per report)          │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
                                        ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ 5. AI WORKFLOW: LangGraph Stateful Self-RAG Machine (Qwen 2.5 Model)          │
-│    ├── Step 1: Executive Summary & Corporate Profile (Live Market Cap)       │
-│    ├── Step 2: Core Business Segments & Revenue Engine                       │
-│    ├── Step 3: Strategic Expansion & Capital Allocation Pipeline             │
-│    ├── Step 4: Multi-Year Financial Performance Tables (Latest First)        │
-│    ├── Step 5: Extended 5-Factor DuPont ROE & ROCE (LaTeX Equations)         │
-│    ├── Step 6: Solvency, Debt Structure & Liquidity Analysis                 │
-│    └── Corrective Self-RAG Loop (CRAG Query Rewriting on low confidence)     │
-└──────────────────────────────────────┬───────────────────────────────────────┘
-                                       │
-                                       ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ 6. OUTPUT REPORT: Verified Financial Analyst Report (report.md & REST API)    │
+│ 5. OUTPUT: reports/<TICKER>_report.pdf — every stock's typeset A4 report     │
+│            output/<TICKER>/ — charts, Typst source, caches, dossier          │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+Generation itself goes through one hosted OpenAI-compatible endpoint
+(`core/llm_config.py`); see [Hosted model access](#-hosted-model-access).
+
 ---
 
-## 🌐 Live Vercel REST API Endpoints & LangChain Tools
+## 🌐 Collector REST Endpoints Consumed
 
-The system uses **LangChain `@tool` decorators** in `services/financial_tools.py` to wrap the live Vercel REST service:
+`reporting/client.py` reads the following endpoints of the live Vercel service,
+caching each payload under `.cache/api/<TICKER>/`:
 
-| Endpoint Route | HTTP Method | Tool Description |
+| Endpoint Route | HTTP Method | Payload |
 | :--- | :---: | :--- |
 | `/api/v1/stocks/<symbol>/summary` | `GET` | Company profile summary & market peer list |
 | `/api/v1/stocks/<symbol>/income/quarterly` | `GET` | 8-quarter interim income statements |
@@ -114,26 +103,28 @@ The system uses **LangChain `@tool` decorators** in `services/financial_tools.py
 
 ---
 
-## 🔎 Live Google WebSearch Agent
+## 🤖 Hosted Model Access
 
-When processing qualitative sections (`company_overview`, `company_operations`, `expansion_plans`, `clients_market`), the RAG engine automatically triggers `perform_web_search()`:
-- **Live Market Capitalization**: Resolves missing market cap figures to exact values (e.g., `$19.83 Billion USD` / `₹1.881 Trillion`).
-- **Strategic Capex Pipelines**: Fetches live AI ecosystem investments (e.g. Wipro ai360 $1B commitment).
-- **Enterprise Footprint**: Retrieves client portfolio sectors and economic moat factors.
+Every generation call in the repository goes through one OpenAI-compatible
+chat-completions endpoint (`core/llm_config.py`). The deployment selects the
+model server-side, so nothing in this codebase names one, and there is no
+provider to choose between — the earlier Ollama, Groq and Gemini branches are
+gone along with the environment variables that selected them.
 
----
+```python
+from core.llm_config import LLMError, generate_llm_response
 
-## 📊 RAGAS Evaluation Metrics & Benchmark Scorecard
+try:
+    answer = generate_llm_response(prompt, context=evidence)
+except LLMError as exc:      # request failed, or the completion came back empty
+    ...
+```
 
-Evaluated using **RAGAS** (Retrieval Augmented Generation Assessment) across 50 fundamental financial query test cases:
-
-| Metric | Score | Grade | Status | Description |
-| :--- | :---: | :---: | :---: | :--- |
-| **Faithfulness** | **0.98** | A+ | Passed | Measures factual grounding against retrieved financial filings. |
-| **Answer Relevance** | **0.96** | A+ | Passed | Evaluates how directly the answer addresses the financial question. |
-| **Context Precision** | **0.94** | A+ | Passed | Measures signal-to-noise ratio of retrieved parent chunks. |
-| **Context Recall** | **0.92** | A+ | Passed | Evaluates if all relevant financial facts were retrieved. |
-| **Overall RAGAS Score** | **0.95** | **Grade A+** | **Production Ready** | Combined weighted quality score of the Self-RAG engine. |
+A failed call raises. The previous implementation returned the prompt's own
+context when the endpoint was unreachable, which produced output that read like
+analysis but was unprocessed source text — indistinguishable, to a caller, from
+a real answer. `GROWNXT_LLM_API_KEY` is attached only when it is set, and
+`GROWNXT_LLM_TIMEOUT` (default 120s) bounds the request.
 
 ---
 
@@ -150,7 +141,7 @@ venv/Scripts/python.exe scripts/generate_report.py WIPRO RELIANCE TCS HDFCBANK
 venv/Scripts/python.exe scripts/verify_reporting.py
 ```
 
-Output lands in `output/<TICKER>/` as the compiled PDF plus the generated `.typ` source and its SVG charts, which keeps a layout problem inspectable after the fact. Typical output is **7–8 pages carrying 34–43 numbered exhibits**.
+The compiled PDF lands in `reports/<TICKER>_report.pdf`; the generated `.typ` source and its SVG charts stay in `output/<TICKER>/`, which keeps a layout problem inspectable after the fact. Typical output is **7–8 pages carrying 34–43 numbered exhibits**.
 
 ### Document structure
 
@@ -271,7 +262,7 @@ venv/Scripts/python.exe -m scripts.verify_ingestion WIPRO
 venv/Scripts/python.exe -m scripts.verify_ingestion --offline   # no network, no API
 ```
 
-Everything lands under `data/<TICKER>/`: the PDFs in `documents/`, the parse and chunk caches in `parsed/` and `chunks/`, the vectors in `vectors/`, the built prompts and the [evidence dossier](#the-evidence-dossier) in `findings/`, and the state that ties them together in `registry.json`.
+Everything lands under `output/<TICKER>/` — the same per-stock workspace the PDF engine builds in: the filings in `documents/`, the parse and chunk caches in `parsed/` and `chunks/`, the vectors in `vectors/`, the built prompts and the [evidence dossier](#the-evidence-dossier) in `findings/`, and the state that ties them together in `registry.json`.
 
 ### The registry, and why a second run does nothing
 
@@ -423,7 +414,7 @@ The live verification asserts that the manifest accounts for every chunk -- embe
 
 ### The evidence dossier
 
-The pipeline's last stage pivots the per-document evidence into the report's own structure. `ingestion/dossier.py` writes two files to `data/<TICKER>/findings/`:
+The pipeline's last stage pivots the per-document evidence into the report's own structure. `ingestion/dossier.py` writes two files to `output/<TICKER>/findings/`:
 
 - **`evidence_dossier.json`** — what the report generator consumes, keyed by the eight report section keys.
 - **`evidence_dossier.md`** — the same content as a readable, citable document, so a person can check that the evidence behind a section is the evidence they would have chosen.
@@ -507,6 +498,91 @@ venv/Scripts/python.exe -m scripts.verify_ingestion --offline  # 85, no network
 
 ---
 
+### Where artifacts land
+
+| Path | Holds |
+| :--- | :--- |
+| `reports/<TICKER>_report.pdf` | Every stock's finished report, together in one directory |
+| `output/<TICKER>/` | That stock's build workspace: chart SVGs, the Typst source, the ingestion caches and evidence dossier, and the Drive upload record |
+| `.cache/api/<TICKER>/` | Cached collector payloads, so a rebuild costs no requests |
+
+Both roots are configurable (`GROWNXT_REPORTS_DIR`, `GROWNXT_OUTPUT_DIR`). The
+split exists because Typst resolves `#image` paths relative to its source file
+and chart names repeat across tickers -- so the workspace stays per-stock, while
+the artifact a person actually wants is collected in one place.
+
+---
+
+## ☁️ Google Drive Delivery
+
+`storage/gdrive.py` mirrors each compiled report into Google Drive, shared as
+readable by anyone with the link, and `GET /api/stocks/<symbol>/report` returns
+that link. Free-account storage is 15 GB shared with Gmail and Photos, which is
+roughly 14,000 reports at ~700 KB each.
+
+```bash
+# One-time authorisation (opens Google's consent screen, stores the grant)
+venv/Scripts/python.exe -m scripts.gdrive_auth
+
+# Confirm the stored grant still works, without re-consenting
+venv/Scripts/python.exe -m scripts.gdrive_auth --check
+
+# Verify the whole delivery path offline -- 32 checks, no credentials needed
+venv/Scripts/python.exe -m scripts.verify_gdrive
+```
+
+Setup, once, in the Google Cloud console: create a project, enable the **Google
+Drive API**, create an **OAuth client ID of type Desktop**, and put the id and
+secret in `.env` as `GDRIVE_CLIENT_ID` / `GDRIVE_CLIENT_SECRET`. Optionally set
+`GDRIVE_FOLDER_ID` to a folder; without it, reports land in the account root.
+`scripts/gdrive_auth.py` then writes the refresh token to `.gdrive_token.json`,
+which is git-ignored because it is a live credential.
+
+### Publish the consent screen, or it breaks after a week
+
+Access tokens last an hour and are refreshed automatically, so a running server
+needs no attention. A **refresh** token is different: while the OAuth consent
+screen sits in *Testing* status, Google expires it after **7 days**, and minting
+a new one requires a human at the consent screen -- no code can do that
+unattended. **Publishing the consent screen to Production removes that clock**,
+which turns `gdrive_auth` into a once-ever step.
+
+Everything either side of that is handled:
+
+| Situation | Behaviour |
+| :--- | :--- |
+| Access token expired (hourly) | Refreshed silently before the next call, with a two-minute margin so a slow upload cannot race the expiry |
+| Drive answers `401` mid-request | Token re-minted and the call retried once |
+| Google rotates the refresh token | The new one is written to the token file, so a restart still works |
+| Grant revoked or expired | `DriveAuthError`, and the API answers **503** naming the re-auth command rather than quietly returning no link |
+| Drive down, or a network fault | `DriveError`, and the API answers **502**; the PDF endpoint still serves the report |
+
+### Why a service account is not used
+
+A service account has no Drive storage of its own and cannot own files -- an
+upload to My Drive fails with `403 storageQuotaExceeded` even on an empty
+account. Owning files requires either a Shared Drive or domain-wide delegation,
+both of which need Google Workspace. An OAuth grant against a real account is
+what works on a free plan.
+
+### What the upload does, and does not, repeat
+
+A report is uploaded once. The PDF's SHA-256 is recorded in
+`output/<TICKER>/drive.json`, and a request whose PDF hashes the same is
+answered from that record with no Drive traffic at all. A rebuilt report
+**replaces the Drive file in place** rather than adding a second copy, so a link
+already shared with someone keeps resolving to the current report -- Drive
+permits duplicate names, so an upload that did not look for its predecessor
+would accumulate one copy per rebuild.
+
+One caveat worth knowing before this becomes the primary viewer: Drive is not a
+CDN. Public links hit hard enough trip Google's anti-abuse lock -- the
+"download quota exceeded" error, triggered by request frequency -- and there is
+no dial to raise. The `/report/file` endpoint remains as the path that no
+external quota can throttle.
+
+---
+
 ## ⚡ Quick Start & Installation
 
 ```bash
@@ -519,12 +595,16 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
-# 3. Configure environment variables (.env)
-# LLM_PROVIDER=ollama
-# OLLAMA_MODEL=qwen2.5:1.5b
-# OLLAMA_BASE_URL=http://localhost:11434
+# 3. Configure environment variables (.env) — all optional
+# GROWNXT_LLM_API_URL=https://grownxt-llm.vercel.app   # hosted model endpoint
+# GROWNXT_LLM_API_KEY=...                              # only if the endpoint requires one
+# GROWNXT_OUTPUT_DIR=/var/lib/grownxt/output           # per-stock build workspace
+# GROWNXT_REPORTS_DIR=/var/lib/grownxt/reports         # finished PDFs, all stocks
+# GDRIVE_CLIENT_ID=...                                 # Drive delivery (see above)
+# GDRIVE_CLIENT_SECRET=...
+# GDRIVE_FOLDER_ID=...                                 # optional destination folder
 
-# 4. Start Flask REST API Server
+# 4. Start the Flask API server (search + PDF delivery)
 python api/app.py
 
 # 5. Generate a typeset institutional PDF report (no LLM required)
@@ -538,7 +618,38 @@ python -m scripts.ingest_documents WIPRO
 
 # 8. Verify the ingestion layer, including the run-twice guarantee
 python -m scripts.verify_ingestion WIPRO
+
+# 9. Authorise Google Drive delivery, then verify it offline
+python -m scripts.gdrive_auth
+python -m scripts.verify_gdrive
 ```
+
+### Server routes
+
+| Route | Returns |
+| :--- | :--- |
+| `GET /api/search?q=<query>` | Matching listed companies (min. 3 characters) |
+| `GET /api/stocks/<symbol>/report` | JSON carrying the **Google Drive link** to the report, compiled and uploaded on first request. `?refresh=1` rebuilds it and replaces the Drive file in place |
+| `GET /api/stocks/<symbol>/report/file` | The PDF bytes themselves, for clients not using Drive. `?download=1` sends it as an attachment instead of inline |
+
+```bash
+curl "http://localhost:5000/api/search?q=wipro"
+curl "http://localhost:5000/api/stocks/WIPRO/report"
+curl -o WIPRO.pdf "http://localhost:5000/api/stocks/WIPRO/report/file"
+```
+
+```json
+{
+  "success": true, "symbol": "WIPRO", "generated": false,
+  "view_link": "https://drive.google.com/file/d/<id>/view",
+  "preview_link": "https://drive.google.com/file/d/<id>/preview",
+  "drive": { "file_id": "<id>", "shared": true, "uploaded_at": "..." },
+  "pdf_endpoint": "/api/stocks/WIPRO/report/file"
+}
+```
+
+`preview_link` is the one to drop into an `iframe`; `view_link` is Drive's own
+viewer page.
 
 Steps 5 and 6 need no LLM provider and no API key — the PDF engine talks only to the Financial Data Collector REST service, and caches every payload under `.cache/api/` so iterating on layout costs no network traffic.
 

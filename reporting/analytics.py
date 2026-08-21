@@ -44,11 +44,6 @@ DAYS_IN_YEAR: float = 365.0
 MIN_RAW_MATERIAL_SHARE_PCT: float = 15.0
 
 
-def _div(numerator: Optional[float], denominator: Optional[float]) -> Optional[float]:
-    """Divides, returning None on missing or zero denominator."""
-    return fmt.safe_div(numerator, denominator)
-
-
 def _div_positive(numerator: Optional[float], denominator: Optional[float]) -> Optional[float]:
     """Divides only when the denominator is strictly positive.
 

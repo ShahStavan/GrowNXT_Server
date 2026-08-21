@@ -44,6 +44,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from scripts import cli  # noqa: E402
+from scripts.checks import Report, banner  # noqa: E402
 from ingestion.chunker import (  # noqa: E402
     Chunk,
     ChunkSet,
@@ -77,50 +79,6 @@ from ingestion.registry import (  # noqa: E402
 )
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class CheckResult:
-    """One verification check.
-
-    Attributes:
-        name: Short identifier.
-        passed: Whether the check held.
-        detail: What was observed, whether it passed or not.
-    """
-
-    name: str
-    passed: bool
-    detail: str = ""
-
-
-@dataclass
-class Report:
-    """Accumulated results of a verification run."""
-
-    results: List[CheckResult] = field(default_factory=list)
-
-    def check(self, name: str, condition: bool, detail: str = "") -> bool:
-        """Records one check and returns its outcome."""
-        self.results.append(CheckResult(name=name, passed=bool(condition), detail=detail))
-        return bool(condition)
-
-    @property
-    def failures(self) -> List[CheckResult]:
-        """Returns the checks that did not hold."""
-        return [result for result in self.results if not result.passed]
-
-    def render(self) -> str:
-        """Returns a printable summary."""
-        width = max([len(result.name) for result in self.results] + [4])
-        lines = []
-        for result in self.results:
-            mark = "PASS" if result.passed else "FAIL"
-            lines.append("  [%s] %-*s  %s" % (mark, width, result.name, result.detail))
-        lines.append("")
-        lines.append("  %d of %d checks passed." % (
-            len(self.results) - len(self.failures), len(self.results)))
-        return "\n".join(lines)
 
 
 # --- Offline checks ------------------------------------------------------------
@@ -1464,18 +1422,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
-    if hasattr(sys.stdout, "reconfigure"):
-        try:
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        except (ValueError, OSError):
-            pass
-    logging.basicConfig(
-        level=logging.INFO if args.verbose else logging.WARNING,
-        format="%(levelname)-7s %(name)s: %(message)s",
-    )
+    cli.setup(logging.INFO if args.verbose else logging.WARNING, cli.NAMED)
 
-    print("Ingestion verification")
-    print("=" * 72)
+    banner("Ingestion verification")
     print("\nOffline checks")
     report = run_offline_checks()
     print(report.render())
@@ -1502,16 +1451,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             if temporary:
                 shutil.rmtree(temporary, ignore_errors=True)
         print(live.render())
-        report.results.extend(live.results)
+        report.extend(live)
 
-    print("\n" + "=" * 72)
-    if report.failures:
-        print("FAILED: %d check(s) did not hold." % len(report.failures))
-        for result in report.failures:
-            print("  - %s: %s" % (result.name, result.detail))
-        return 1
-    print("All %d checks passed." % len(report.results))
-    return 0
+    return report.finish()
 
 
 if __name__ == "__main__":

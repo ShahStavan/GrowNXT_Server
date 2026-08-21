@@ -22,6 +22,7 @@ Structural conventions, taken from how sell-side research is actually set:
       the header, below the header, below the body.
 """
 
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
@@ -87,6 +88,28 @@ class Exhibits:
         return ("#block(breakable: false, width: 100%)[\n"
                 + self.caption(title) + body + self.source(note)
                 + "]\n")
+
+
+@dataclass
+class Doc:
+    """Everything a section builder reads, passed as one value.
+
+    Each of the ten sections needs most of the same inputs, and threading six
+    parameters through every signature made adding a section a six-place edit.
+    `ex` is shared deliberately: exhibit numbers run continuously across the
+    document, so the counter cannot be per-section.
+    """
+
+    snap: CompanySnapshot
+    derived: DerivedAnalytics
+    comp: Composites
+    check: SelfCheck
+    charts: Dict[str, Path]
+    ex: Exhibits = field(default_factory=Exhibits)
+
+    def chart(self, key: str) -> Optional[Path]:
+        """Returns a chart path, or None when that chart was not rendered."""
+        return self.charts.get(key)
 
 
 def _font_list(fonts: Sequence[str]) -> str:
@@ -233,6 +256,19 @@ def _table(
     return "\n".join(parts) + "\n"
 
 
+def _period_cols(count: int) -> Dict[str, str]:
+    """Specs for a table of one label column and `count` numeric columns.
+
+    The column and alignment lists must be the same length or the table
+    silently mis-renders, and they were written out in parallel at every
+    site. Deriving both from one number removes that chance.
+    """
+    return {
+        "columns": "(auto, %s)" % ", ".join(["1fr"] * count),
+        "align": "(left, %s)" % ", ".join(["right"] * count),
+    }
+
+
 def _section(title: str, question: str = "") -> str:
     """Renders a section heading with a brand rule beneath it.
 
@@ -274,6 +310,19 @@ def _two_up(left: str, right: str, ratio: str = "(1fr, 1fr)") -> str:
 def _image(path: Path, width: str = "100%") -> str:
     """Embeds a chart SVG by bare filename."""
     return "#image(\"%s\", width: %s)" % (path.name, width)
+
+
+def _figure(d: "Doc", key: str, title: str, note: str = SOURCE_DEFAULT) -> str:
+    """An image exhibit for one chart, or nothing when it was not rendered.
+
+    Charts are optional -- a series the collector does not carry produces no
+    SVG -- so every site used to guard before wrapping. Returning "" for an
+    absent chart lets a caller append unconditionally, since the parts are
+    joined; it also keeps the exhibit counter untouched, which is why the
+    guard cannot simply be dropped.
+    """
+    path = d.chart(key)
+    return d.ex.wrap(title, _image(path), note) if path is not None else ""
 
 
 def _panel(title: str, pairs: Sequence[Sequence[str]]) -> str:
@@ -401,12 +450,9 @@ def cover(snap: CompanySnapshot, derived: DerivedAnalytics,
 # --- section 1: earnings power -------------------------------------------
 
 
-def earnings_power(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def earnings_power(d: Doc) -> str:
     """Annual income statement and the cost structure that produces it."""
-    periods = _annual_window(list(snap.years) + ([snap.ttm] if snap.ttm else []))
+    periods = _annual_window(list(d.snap.years) + ([d.snap.ttm] if d.snap.ttm else []))
     rows: List[List[str]] = []
     for index, row in enumerate(periods):
         prior = periods[index - 1] if index > 0 else None
@@ -422,7 +468,7 @@ def earnings_power(
         ])
 
     cost_rows: List[List[str]] = []
-    for metrics in _annual_window(derived.annual):
+    for metrics in _annual_window(d.derived.annual):
         cost_rows.append([
             _cell(fmt.period_label(metrics.period)),
             _cell(fmt.pct(metrics.raw_material_ratio)),
@@ -438,32 +484,28 @@ def earnings_power(
         "Earnings power",
         "How much the business earns, and what the cost structure behind it looks like.",
     )]
-    out.append(ex.wrap(
+    out.append(d.ex.wrap(
         "Annual income statement (Rs cr, EPS in Rs)",
         _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right, right, right)",
+            **_period_cols(7),
             header=["Period", "Revenue", "YoY", "EBITDA", "EBIT", "PAT", "PAT YoY", "EPS"],
             rows=rows,
-            emphasise_last=bool(snap.ttm),
+            emphasise_last=bool(d.snap.ttm),
         ),
         "Financial Data Collector; EBITDA, growth and margins computed by GrowNXT. "
         "TTM is trailing twelve months, not a fiscal year.",
     ))
-    if charts.get("annual") is not None:
-        out.append(ex.wrap("Revenue and EBIT with operating margin", _image(charts["annual"])))
+    out.append(_figure(d, "annual", "Revenue and EBIT with operating margin"))
 
     out.append(_two_up(
-        ex.wrap("Cost structure and margins (% of revenue)", _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right, right, right)",
+        d.ex.wrap("Cost structure and margins (% of revenue)", _table(
+            **_period_cols(7),
             header=["Period", "Raw mat", "SG&A", "D&A", "EBITDA", "EBIT", "PAT", "Tax rate"],
             rows=cost_rows,
             size=tokens.SIZE_SMALL,
         ), "Raw materials is the provider's reported material cost, not total "
             "cost of goods sold; it is immaterial for services businesses."),
-        (ex.wrap("Margin trajectory", _image(charts["margins"])))
-        if charts.get("margins") is not None else "",
+        _figure(d, "margins", "Margin trajectory"),
         ratio="(1.55fr, 1fr)",
     ))
     return "".join(out)
@@ -472,12 +514,9 @@ def earnings_power(
 # --- section 2: near-term trajectory -------------------------------------
 
 
-def near_term(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def near_term(d: Doc) -> str:
     """Quarterly results and the trailing trend built from them."""
-    quarters = snap.quarters[-tokens.DISPLAY_QUARTERS:]
+    quarters = d.snap.quarters[-tokens.DISPLAY_QUARTERS:]
     rows: List[List[str]] = []
     for index, row in enumerate(quarters):
         prior = quarters[index - 1] if index > 0 else None
@@ -498,11 +537,10 @@ def near_term(
         "Near-term trajectory",
         "Where momentum sits now, with seasonality removed by a trailing window.",
     )]
-    out.append(ex.wrap(
+    out.append(d.ex.wrap(
         "Quarterly income statement (Rs cr, EPS in Rs)",
         _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right, right, right, right)",
+            **_period_cols(8),
             header=["Quarter", "Revenue", "QoQ", "YoY", "EBIT", "EBIT %",
                     "PAT", "PAT %", "EPS"],
             rows=rows,
@@ -510,28 +548,25 @@ def near_term(
         "Financial Data Collector. YoY compares the same quarter a year earlier.",
     ))
 
-    left = charts.get("quarterly")
-    right = charts.get("rolling")
+    left = d.charts.get("quarterly")
+    right = d.charts.get("rolling")
     if left is not None and right is not None:
         out.append(_two_up(
-            ex.wrap("Quarterly revenue and PAT margin", _image(left)),
-            ex.wrap("Trailing twelve-month revenue and margin", _image(right), "Financial Data Collector; four-quarter rolling sums by GrowNXT"),
+            d.ex.wrap("Quarterly revenue and PAT margin", _image(left)),
+            d.ex.wrap("Trailing twelve-month revenue and margin", _image(right), "Financial Data Collector; four-quarter rolling sums by GrowNXT"),
         ))
     elif left is not None:
-        out.append(ex.wrap("Quarterly revenue and PAT margin", _image(left)))
+        out.append(d.ex.wrap("Quarterly revenue and PAT margin", _image(left)))
     return "".join(out)
 
 
 # --- section 3: returns on capital ---------------------------------------
 
 
-def returns_on_capital(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def returns_on_capital(d: Doc) -> str:
     """Return series, plus the DuPont decomposition across every period."""
     rows: List[List[str]] = []
-    for metrics in _annual_window(derived.annual):
+    for metrics in _annual_window(d.derived.annual):
         rows.append([
             _cell(fmt.period_label(metrics.period)),
             _cell(fmt.pct(metrics.roe)),
@@ -542,7 +577,7 @@ def returns_on_capital(
             _cell(fmt.pct(metrics.effective_tax_rate)),
         ])
 
-    dupont = snap.dupont
+    dupont = d.snap.dupont
     dupont_rows = [
         [_cell("Tax burden"), _cell(fmt.ratio(dupont.get("tax_burden_ratio"), 4)),
          _cell("PAT / PBT")],
@@ -563,20 +598,19 @@ def returns_on_capital(
         "Returns on capital",
         "What the business earns on the money tied up in it, and why that has moved.",
     )]
-    out.append(ex.wrap(
+    out.append(d.ex.wrap(
         "Return series (Rs cr where absolute)",
         _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right, right)",
+            **_period_cols(6),
             header=["Period", "ROE", "ROCE", "ROIC", "NOPAT", "Invested capital", "Tax rate"],
             rows=rows,
-            emphasise_last=bool(snap.ttm),
+            emphasise_last=bool(d.snap.ttm),
         ),
         "Computed by GrowNXT on period-end capital, matching the provider's own "
         "DuPont and capital-efficiency methodology.",
     ))
     out.append(_two_up(
-        ex.wrap(
+        d.ex.wrap(
             "DuPont decomposition as published by the provider (%s)"
             % str(dupont.get("period") or "TTM"),
             _table(
@@ -586,11 +620,10 @@ def returns_on_capital(
                 rows=dupont_rows,
             ),
         ),
-        (ex.wrap("Return trend", _image(charts["returns"])))
-        if charts.get("returns") is not None else "",
+        _figure(d, "returns", "Return trend"),
         ratio="(1.2fr, 1fr)",
     ))
-    out.append(_dupont_series(comp, ex, charts))
+    out.append(_dupont_series(d.comp, d.ex, d.charts))
     return "".join(out)
 
 
@@ -664,10 +697,7 @@ def _dupont_series(comp: Composites, ex: Exhibits, charts: Dict[str, Path]) -> s
 # --- section 4: financial position --------------------------------------
 
 
-def financial_position(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def financial_position(d: Doc) -> str:
     """Balance sheet with the leverage and coverage series drawn from it."""
     balance_rows = [[
         _cell(fmt.period_label(row.period)),
@@ -677,12 +707,12 @@ def financial_position(
         _cell(fmt.num(row.net_debt)),
         _cell(fmt.num(row.total_assets)),
         _cell(fmt.per_share(row.book_value_per_share)),
-    ] for row in _annual_window(snap.balance)]
+    ] for row in _annual_window(d.snap.balance)]
 
     # Only periods with at least one computable leverage measure earn a row;
     # when none do, the exhibit is dropped entirely rather than printed as a
     # grid of em-dashes, and the reason appears in the limitations band.
-    leverage_source = [m for m in _annual_window(derived.annual)
+    leverage_source = [m for m in _annual_window(d.derived.annual)
                        if any(v is not None for v in (
                            m.debt_to_equity, m.net_debt_to_ebitda,
                            m.interest_coverage, m.short_term_debt_share,
@@ -700,21 +730,19 @@ def financial_position(
         "Financial position",
         "How the balance sheet is funded, and how much room it leaves.",
     )]
-    out.append(ex.wrap(
+    out.append(d.ex.wrap(
         "Balance sheet (Rs cr, BV/share in Rs)",
         _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right, right)",
+            **_period_cols(6),
             header=["Period", "Equity", "Debt", "Cash", "Net debt", "Assets", "BV/sh"],
             rows=balance_rows,
         ),
         "Financial Data Collector. Negative net debt indicates a net cash position.",
     ))
-    leverage_exhibit = ex.wrap(
+    leverage_exhibit = d.ex.wrap(
         "Leverage and coverage",
         _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right)",
+            **_period_cols(5),
             header=["Period", "D/E", "Net debt / EBITDA", "Interest cover",
                     "Short-term debt", "Goodwill / equity"],
             rows=leverage_rows,
@@ -724,17 +752,17 @@ def financial_position(
         "than shown with a misleading sign.",
     ) if leverage_rows else ""
 
-    has_capital_chart = charts.get("capital") is not None
+    has_capital_chart = d.charts.get("capital") is not None
     if leverage_exhibit and has_capital_chart:
         out.append(_two_up(
             leverage_exhibit,
-            ex.wrap("Capital structure", _image(charts["capital"])),
+            d.ex.wrap("Capital structure", _image(d.charts["capital"])),
             ratio="(1.35fr, 1fr)",
         ))
     elif has_capital_chart:
         # With no leverage table to sit beside, the chart is held to a
         # contained width rather than stretched across the full measure.
-        out.append(ex.wrap("Capital structure", _image(charts["capital"], "64%")))
+        out.append(d.ex.wrap("Capital structure", _image(d.charts["capital"], "64%")))
     elif leverage_exhibit:
         out.append(leverage_exhibit)
     return "".join(out)
@@ -743,10 +771,7 @@ def financial_position(
 # --- section 5: cash and earnings quality --------------------------------
 
 
-def cash_and_quality(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def cash_and_quality(d: Doc) -> str:
     """Cash flow, earnings-quality tests and the working-capital cycle.
 
     Grouped because all three ask the same question from different angles:
@@ -758,13 +783,13 @@ def cash_and_quality(
         _cell(fmt.num(row.capex)),
         _cell(fmt.num(row.fcf)),
         _cell(fmt.num(row.dividends_paid)),
-    ] for row in _annual_window(snap.cashflow)]
+    ] for row in _annual_window(d.snap.cashflow)]
 
     # These families are cash-flow and balance-sheet derived, and the
     # provider publishes no TTM cash flow, so a trailing row would be
     # entirely em-dashes. Drop rows with nothing in them rather than
     # printing an empty one.
-    quality_source = [m for m in _annual_window(derived.annual)
+    quality_source = [m for m in _annual_window(d.derived.annual)
                       if any(v is not None for v in (
                           m.cfo_to_pat, m.accrual_ratio, m.fcf_margin,
                           m.capex_intensity, m.capex_to_depreciation, m.retained_fcf))]
@@ -778,7 +803,7 @@ def cash_and_quality(
         _cell(fmt.num(m.retained_fcf)),
     ] for m in quality_source]
 
-    workcap_source = [m for m in _annual_window(derived.annual)
+    workcap_source = [m for m in _annual_window(d.derived.annual)
                       if m.cash_conversion_cycle is not None]
     workcap_rows = [[
         _cell(fmt.period_label(m.period)),
@@ -792,11 +817,10 @@ def cash_and_quality(
         "Cash generation and earnings quality",
         "Whether reported profit converts into cash, and where working capital absorbs it.",
     )]
-    out.append(ex.wrap(
+    out.append(d.ex.wrap(
         "Earnings quality and reinvestment",
         _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right, right)",
+            **_period_cols(6),
             header=["Period", "CFO / PAT", "Accruals / assets", "FCF margin",
                     "Capex / sales", "Capex / D&A", "FCF after dividends"],
             rows=quality_rows,
@@ -807,29 +831,25 @@ def cash_and_quality(
         "cash. Capex below depreciation indicates under-investment.",
     ))
     out.append(_two_up(
-        ex.wrap("Cash flow statement (Rs cr)", _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right)",
+        d.ex.wrap("Cash flow statement (Rs cr)", _table(
+            **_period_cols(4),
             header=["Period", "Operating CF", "Capex", "Free CF", "Dividends"],
             rows=cash_rows,
         ), "Financial Data Collector"),
-        (ex.wrap("Cash generation and reinvestment", _image(charts["cash"])))
-        if charts.get("cash") is not None else "",
+        _figure(d, "cash", "Cash generation and reinvestment"),
         ratio="(1.1fr, 1fr)",
     ))
 
-    if any(m.cash_conversion_cycle is not None for m in derived.annual):
+    if any(m.cash_conversion_cycle is not None for m in d.derived.annual):
         out.append(_two_up(
-            ex.wrap("Working-capital cycle (days)", _table(
-                columns="(auto, 1fr, 1fr, 1fr, 1fr)",
-                align="(left, right, right, right, right)",
+            d.ex.wrap("Working-capital cycle (days)", _table(
+                **_period_cols(4),
                 header=["Period", "DSO", "DIO", "DPO", "Cash cycle"],
                 rows=workcap_rows,
             ), "Computed by GrowNXT. A negative cycle means suppliers fund "
                 "operations. Inventory and payable days use reported material "
                 "cost as the base."),
-            (ex.wrap("Working-capital days", _image(charts["workcap"])))
-            if charts.get("workcap") is not None else "",
+            _figure(d, "workcap", "Working-capital days"),
             ratio="(1fr, 1.15fr)",
         ))
     return "".join(out)
@@ -838,10 +858,7 @@ def cash_and_quality(
 # --- section 6: capital allocation ---------------------------------------
 
 
-def capital_allocation(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def capital_allocation(d: Doc) -> str:
     """Where the cash went, and whether what was put back in earned its keep.
 
     These two exhibits belong together and nowhere else. The first traces
@@ -850,7 +867,7 @@ def capital_allocation(
     generation, in the section before, establishes how much there was to
     allocate; valuation, in the section after, prices the result.
     """
-    allocation = comp.sources_uses
+    allocation = d.comp.sources_uses
     out = [_section(
         "Capital allocation",
         "Where the cash generated has gone, and what the reinvested share bought.",
@@ -904,14 +921,14 @@ def capital_allocation(
                           % fmt.signed_pct(allocation.share_change_pct, 2))
 
     out.append(_two_up(
-        ex.wrap("Sources of cash, %s (Rs cr)" % window, _table(
+        d.ex.wrap("Sources of cash, %s (Rs cr)" % window, _table(
             columns="(1fr, auto, auto)",
             align="(left, right, right)",
             header=["Source", "Amount", "Share"],
             rows=source_rows,
             emphasise_last=True,
         ), "Cumulative over %d years. Computed by GrowNXT." % allocation.years),
-        ex.wrap("Uses of cash, %s (Rs cr)" % window, _table(
+        d.ex.wrap("Uses of cash, %s (Rs cr)" % window, _table(
             columns="(1fr, auto, auto)",
             align="(left, right, right)",
             header=["Use", "Amount", "Share"],
@@ -924,20 +941,19 @@ def capital_allocation(
     # line: it explains both columns, and a long note under the shorter of
     # two side-by-side tables unbalances them.
     out.append(_note_block(residual_note))
-    if charts.get("allocation") is not None:
-        out.append(ex.wrap(
-            "Sources and uses as matched compositions",
-            _image(charts["allocation"]),
-            "Computed by GrowNXT. The two bars are the same length because "
-            "sources equal uses; the exhibit shows the mix, and the tables "
-            "above carry the amounts. Segments run in the same order as "
-            "those tables, and a segment too narrow to hold its name "
-            "carries its share alone.",
-        ))
+    out.append(_figure(
+        d, "allocation",
+        "Sources and uses as matched compositions",
+        "Computed by GrowNXT. The two bars are the same length because "
+        "sources equal uses; the exhibit shows the mix, and the tables "
+        "above carry the amounts. Segments run in the same order as "
+        "those tables, and a segment too narrow to hold its name "
+        "carries its share alone.",
+    ))
     for note in allocation.notes:
         out.append(_note_block(note))
 
-    out.append(_reinvestment_exhibits(comp, ex, charts))
+    out.append(_reinvestment_exhibits(d.comp, d.ex, d.charts))
     return "".join(out)
 
 
@@ -1015,10 +1031,7 @@ def _reinvestment_exhibits(
 # --- section 7: composite scores ------------------------------------------
 
 
-def composite_scores(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def composite_scores(d: Doc) -> str:
     """The two published scoring frameworks, shown as their sub-tests.
 
     Neither score is presented as a number with a verdict attached. The
@@ -1031,8 +1044,8 @@ def composite_scores(
         "Composite quality and solvency scores",
         "What two standard frameworks conclude, and the evidence each one rests on.",
     )]
-    out.append(_piotroski_exhibits(comp, ex, charts))
-    out.append(_altman_exhibits(comp, ex, charts))
+    out.append(_piotroski_exhibits(d.comp, d.ex, d.charts))
+    out.append(_altman_exhibits(d.comp, d.ex, d.charts))
     return "".join(out)
 
 
@@ -1223,13 +1236,10 @@ def _altman_exhibits(
 # --- section 8: valuation -----------------------------------------------
 
 
-def valuation(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def valuation(d: Doc) -> str:
     """Enterprise-value bridge, multiples, and the peer set."""
-    enterprise = derived.enterprise
-    ratios = snap.key_ratios
+    enterprise = d.derived.enterprise
+    ratios = d.snap.key_ratios
 
     bridge_rows = [
         [_cell("Market capitalisation"), _cell(fmt.num(enterprise.market_cap))],
@@ -1262,7 +1272,7 @@ def valuation(
     ]
 
     peer_rows: List[List[str]] = []
-    for peer in snap.peers:
+    for peer in d.snap.peers:
         name = fmt.escape_typst(peer.name or peer.ticker)
         label = ("#text(weight: \"semibold\", fill: %s)[%s]" % (C_BRAND, name)
                  if peer.is_subject else name)
@@ -1282,7 +1292,7 @@ def valuation(
         "What the market is paying, on equity and on the whole enterprise.",
     )]
     out.append(_two_up(
-        ex.wrap("Enterprise value bridge (Rs cr)", _table(
+        d.ex.wrap("Enterprise value bridge (Rs cr)", _table(
             columns="(1fr, auto)",
             align="(left, right)",
             header=["Component", "Amount"],
@@ -1290,7 +1300,7 @@ def valuation(
             emphasise_last=True,
         ), "Computed by GrowNXT from the latest balance sheet. Minority "
             "interest is included because enterprise earnings consolidate it."),
-        ex.wrap("Valuation multiples", _table(
+        d.ex.wrap("Valuation multiples", _table(
             columns="(1fr, auto, auto)",
             align="(left, right, right)",
             header=["Measure", "Company", "Industry"],
@@ -1299,7 +1309,7 @@ def valuation(
             "by GrowNXT. No industry benchmark is published for EV measures."),
         ratio="(1fr, 1.05fr)",
     ))
-    out.append(ex.wrap(
+    out.append(d.ex.wrap(
         "Peer comparison",
         _table(
             columns="(1.7fr, auto, 1fr, auto, auto, auto, auto, auto)",
@@ -1311,22 +1321,18 @@ def valuation(
         "Financial Data Collector. Market caps converted from the provider's "
         "rupee-million denomination. Subject company highlighted.",
     ))
-    if charts.get("peers") is not None:
-        out.append(ex.wrap(
-            "Peer multiples ranked against the industry",
-            _image(charts["peers"]),
-            "Financial Data Collector. Dashed line marks the industry multiple.",
-        ))
+    out.append(_figure(
+        d, "peers",
+        "Peer multiples ranked against the industry",
+        "Financial Data Collector. Dashed line marks the industry multiple.",
+    ))
     return "".join(out)
 
 
 # --- section 7: shareholder returns and ownership ------------------------
 
 
-def shareholder_returns(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def shareholder_returns(d: Doc) -> str:
     """Per-share economics, the EPS bridge, ownership and dividends."""
     per_share_rows = [[
         _cell(fmt.period_label(m.period)),
@@ -1335,9 +1341,9 @@ def shareholder_returns(
         _cell(fmt.per_share(m.dps)),
         _cell(fmt.pct(m.payout_pct)),
         _cell(fmt.per_share(m.book_value_per_share)),
-    ] for m in _annual_window(derived.annual)]
+    ] for m in _annual_window(d.derived.annual)]
 
-    bridge = derived.per_share
+    bridge = d.derived.per_share
     bridge_rows = [
         [_cell("EPS, %s" % (bridge.from_period or fmt.DASH)),
          _cell(fmt.per_share(bridge.eps_start))],
@@ -1353,13 +1359,13 @@ def shareholder_returns(
         _cell(fmt.pct(h.fii, 2)),
         _cell(fmt.pct(h.dii, 2)),
         _cell(fmt.pct(h.mutual_fund, 2)),
-    ] for h in snap.holdings]
+    ] for h in d.snap.holdings]
 
     dividend_rows = [[
         _cell(d.ex_date),
         _cell(fmt.escape_typst(d.kind or fmt.DASH)),
         _cell(fmt.per_share(d.amount)),
-    ] for d in snap.dividends]
+    ] for d in d.snap.dividends]
 
     share_note = "Computed by GrowNXT"
     if bridge.share_change_pct is not None:
@@ -1375,13 +1381,12 @@ def shareholder_returns(
         "What accrues per share, how much is paid out, and who owns the register.",
     )]
     out.append(_two_up(
-        ex.wrap("Per-share economics", _table(
-            columns="(auto, 1fr, 1fr, 1fr, 1fr, 1fr)",
-            align="(left, right, right, right, right, right)",
+        d.ex.wrap("Per-share economics", _table(
+            **_period_cols(5),
             header=["Period", "Shares (cr)", "EPS", "DPS", "Payout", "BV/share"],
             rows=per_share_rows,
         ), "Financial Data Collector; payout cross-checked against DPS over EPS."),
-        ex.wrap("What moved earnings per share", _table(
+        d.ex.wrap("What moved earnings per share", _table(
             columns="(1fr, auto)",
             align="(left, right)",
             header=["Driver", "Rs per share"],
@@ -1390,21 +1395,15 @@ def shareholder_returns(
         ), share_note),
         ratio="(1.4fr, 1fr)",
     ))
-    holding_table = ex.wrap("Shareholding pattern (%)", _table(
-        columns="(auto, 1fr, 1fr, 1fr, 1fr)",
-        align="(left, right, right, right, right)",
+    holding_table = d.ex.wrap("Shareholding pattern (%)", _table(
+        **_period_cols(4),
         header=["Quarter end", "Promoter", "FII", "DII", "MF"],
         rows=holding_rows,
     ), "Financial Data Collector")
-    if charts.get("holding") is not None:
-        out.append(_two_up(
-            holding_table,
-            ex.wrap("Institutional holdings trend (%)", _image(charts["holding"])),
-            ratio="(1fr, 1.1fr)",
-        ))
-    else:
-        out.append(holding_table)
-    out.append(ex.wrap(
+    trend = _figure(d, "holding", "Institutional holdings trend (%)")
+    out.append(_two_up(holding_table, trend, ratio="(1fr, 1.1fr)")
+               if trend else holding_table)
+    out.append(d.ex.wrap(
         "Declared dividend history",
         _table(
             columns="(auto, auto, 1fr)",
@@ -1417,10 +1416,7 @@ def shareholder_returns(
     return "".join(out)
 
 
-def verification(
-    snap: CompanySnapshot, derived: DerivedAnalytics, comp: Composites,
-    check: SelfCheck, ex: Exhibits, charts: Dict[str, Path],
-) -> str:
+def verification(d: Doc) -> str:
     """The report's own arithmetic, re-derived and reported.
 
     This section exists because a typeset PDF gives a wrong figure the same
@@ -1430,11 +1426,11 @@ def verification(
     published in the same table as a pass; suppressing it would defeat the
     purpose of running the check.
     """
-    if not check.checks:
+    if not d.check.checks:
         return ""
 
     rows: List[List[str]] = []
-    for item in check.checks:
+    for item in d.check.checks:
         if item.passed is None:
             verdict = "[#text(fill: %s)[not applicable]]" % C_MUTED
         elif item.passed:
@@ -1450,12 +1446,12 @@ def verification(
         ])
 
     summary = [
-        ["Checks run", str(len(check.applicable))],
-        ["Closed within tolerance", str(check.passed_count)],
-        ["Failed", str(len(check.failures))],
-        ["Not applicable", str(len(check.skipped))],
+        ["Checks run", str(len(d.check.applicable))],
+        ["Closed within tolerance", str(d.check.passed_count)],
+        ["Failed", str(len(d.check.failures))],
+        ["Not applicable", str(len(d.check.skipped))],
         ["Largest identity residual",
-         _verification_number(check.worst_identity_residual, "")],
+         _verification_number(d.check.worst_identity_residual, "")],
     ]
 
     out = [_section(
@@ -1464,7 +1460,7 @@ def verification(
         "with its residuals.",
     )]
     out.append(_two_up(
-        ex.wrap("Arithmetic verification", _table(
+        d.ex.wrap("Arithmetic verification", _table(
             columns="(2.4fr, auto, auto, auto, auto)",
             align="(left, left, right, right, center)",
             header=["Check", "Type", "Residual", "Tolerance", "Result"],
@@ -1476,14 +1472,14 @@ def verification(
            "provider's published value for the same quantity and is allowed "
            "the rounding the provider's own precision implies. A guardrail "
            "asserts an editorial rule held in practice."),
-        ex.wrap("Verification summary", _panel("RESULT", summary),
+        d.ex.wrap("Verification summary", _panel("RESULT", summary),
                 "A check with nothing to compare is recorded as not "
                 "applicable rather than as a pass."),
         ratio="(2.5fr, 1fr)",
     ))
 
-    if check.failures:
-        for failure in check.failures:
+    if d.check.failures:
+        for failure in d.check.failures:
             out.append(_note_block(
                 "%s. Expected %s, computed %s, a residual of %s against a "
                 "tolerance of %s. %s" % (
@@ -1656,8 +1652,8 @@ def build_document(
         Typst source ready to compile.
     """
     stamp = as_of or date.today().strftime("%d %b %Y")
-    ex = Exhibits()
-    sections = [
+    doc = Doc(snap, derived, comp, check, charts)
+    sections = (
         earnings_power,
         near_term,
         returns_on_capital,
@@ -1668,9 +1664,8 @@ def build_document(
         valuation,
         shareholder_returns,
         verification,
-    ]
+    )
     parts = [preamble(snap, stamp), cover(snap, derived, comp, stamp)]
-    parts += [builder(snap, derived, comp, check, ex, charts)
-              for builder in sections]
+    parts += [section(doc) for section in sections]
     parts.append(disclaimer(stamp))
     return "\n".join(parts)

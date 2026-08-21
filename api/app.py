@@ -1,290 +1,162 @@
-"""Flask Web Application API Server for GrowNXT Fundamental Financial Platform.
+"""Flask API for the GrowNXT platform: find a stock, get its report.
 
-Provides RESTful endpoints for stock discovery, live statement data retrieval,
-Self-RAG financial report generation, DCF valuation, and document filing uploads.
+`/api/search` resolves a query to listed companies. `/api/stocks/<sym>/report`
+returns the Google Drive link to that company's typeset PDF, compiling and
+uploading it the first time it is asked for; `/report/file` serves the bytes
+for clients that would rather not go through Drive.
 
-Google Python Style Guide Compliant.
+Domain failures are raised, not branched on. The handlers registered in
+`create_app` map each exception type to its status, which is what keeps every
+route down to the happy path.
 """
 
-import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple
+
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request, send_file
 from flask_cors import CORS
-import requests
 
-from api.search import StockSearch
-from core.config import DATA_DIR, MAPPING_FILE_PATH, REQUIRED_ENV_VARS
-from services.analysis_service import generate_dcf_analysis, generate_financial_analysis
-from services.financial_tools import fetch_full_financial_bundle_tool, fetch_stock_summary_tool
+from api.search import find
+from core.config import OUTPUT_DIR, REQUIRED_ENV_VARS, report_path
+from reporting.engine import ReportError, generate_report
+from storage import gdrive
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
-# Standard Headers for BSE/NSE Document Downloader
-BSE_HEADERS: Dict[str, str] = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/123.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Connection": "keep-alive",
-    "Referer": "https://www.bseindia.com/",
-    "Upgrade-Insecure-Requests": "1",
-}
+ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+PDF_MIME = "application/pdf"
+TRUTHY = ("1", "true", "yes")
+NO_DRIVE = (
+    "Google Drive is not configured. Run 'python -m scripts.gdrive_auth' "
+    "after setting GDRIVE_CLIENT_ID and GDRIVE_CLIENT_SECRET."
+)
+
+# Domain failure -> status. Most specific first: DriveAuthError is a DriveError,
+# and a lost grant needs re-consent (503) while a failed call may be retried.
+STATUSES: Tuple[Tuple[type, int], ...] = (
+    (ReportError, 404),
+    (gdrive.DriveAuthError, 503),
+    (gdrive.DriveError, 502),
+)
+
+Json = Tuple[Response, int]
 
 
 def check_env() -> bool:
-    """Verifies that all required environment variables are present before starting.
-
-    Returns:
-        bool: True if environment validation passes, False otherwise.
-    """
+    """Reports whether every required environment variable is set."""
     load_dotenv()
-    missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
-    if missing_vars:
-        logger.error("Environment verification failed. Missing required variables: %s", ", ".join(missing_vars))
+    missing = [name for name in REQUIRED_ENV_VARS if not os.getenv(name)]
+    if missing:
+        log.error("missing environment variables: %s", ", ".join(missing))
         return False
-    logger.info("Environment variable check passed successfully.")
     return True
 
 
-def create_app() -> Flask:
-    """Application factory for constructing and initializing the Flask application instance.
+def _flag(name: str) -> bool:
+    """Reads a boolean query-string flag."""
+    return request.args.get(name, "").strip().lower() in TRUTHY
 
-    Returns:
-        Flask: Fully configured Flask application instance.
+
+def _sym(symbol: str) -> str:
+    """Normalises a symbol taken from the URL."""
+    return symbol.strip().upper()
+
+
+def _file_url(sym: str) -> str:
+    """The endpoint serving the raw PDF for a symbol."""
+    return "/api/stocks/%s/report/file" % sym
+
+
+def _pdf(sym: str, refresh: bool) -> Tuple[Path, bool]:
+    """Returns the report PDF, and whether this call compiled it.
+
+    Raises:
+        ReportError: If the collector has nothing to report on, or Typst
+            refuses the generated source.
     """
+    pdf = report_path(sym)
+    if pdf.exists() and not refresh:
+        return pdf, False
+
+    log.info("building report for %s (refresh=%s)", sym, refresh)
+    return generate_report(sym, output_dir=OUTPUT_DIR, refresh=refresh), True
+
+
+def _failed(exc: Exception) -> Json:
+    """Renders a domain failure, with the status mapped from its type."""
+    status = next(code for kind, code in STATUSES if isinstance(exc, kind))
+    sym = _sym((request.view_args or {}).get("symbol", ""))
+    log.warning("%s (%d) for %s: %s", type(exc).__name__, status, sym or "-", exc)
+
+    body: Dict[str, Any] = {"success": False, "error": str(exc)}
+    if sym:
+        body["symbol"] = sym
+        # The report itself may still be reachable even when Drive is not.
+        body["pdf_endpoint"] = _file_url(sym)
+    return jsonify(body), status
+
+
+def create_app() -> Flask:
+    """Builds the configured application."""
     app = Flask(__name__)
+    CORS(app, resources={r"/api/*": {
+        "origins": ORIGINS,
+        "methods": ["GET", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+    }})
 
-    # Centralized CORS setup for API routes
-    CORS(
-        app,
-        resources={
-            r"/api/*": {
-                "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
-                "methods": ["GET", "POST", "OPTIONS"],
-                "allow_headers": ["Content-Type", "Authorization"],
-            }
-        },
-    )
+    @app.get("/api/search")
+    def search() -> Json:
+        """Companies matching `q`; a query under three characters matches none."""
+        return jsonify(find(request.args.get("q", ""))), 200
 
-    # -------------------------------------------------------------------------
-    # Route Handlers
-    # -------------------------------------------------------------------------
+    @app.get("/api/stocks/<symbol>/report")
+    def report(symbol: str) -> Json:
+        """The Drive link to this symbol's report.
 
-    @app.route("/api/search", methods=["GET"])
-    def search_stocks() -> Tuple[Any, int]:
-        """Searches for stock tickers given a query parameter 'q'."""
-        query_param = request.args.get("q", "").strip()
-        if not query_param or len(query_param) < 3:
-            return jsonify([]), 200
+        Compiled and uploaded on first request, then answered from the recorded
+        links. `?refresh=1` rebuilds it and replaces the Drive file in place, so
+        a link already shared keeps resolving to the current report.
+        """
+        sym, refresh = _sym(symbol), _flag("refresh")
+        pdf, built = _pdf(sym, refresh)
+        body = {
+            "success": True,
+            "symbol": sym,
+            "generated": built,
+            "pdf_endpoint": _file_url(sym),
+        }
 
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        searcher = StockSearch(DATA_DIR)
-        results = searcher.instant_search(query_param)
-        return jsonify(results), 200
+        if not gdrive.credentials_present():
+            # Local runs without credentials still serve the PDF; say why there
+            # is no link rather than returning a bare null.
+            return jsonify(dict(body, drive=None, drive_status=NO_DRIVE)), 200
 
-    @app.route("/api/stock/save", methods=["POST"])
-    def save_stock() -> Tuple[Any, int]:
-        """Saves stock metadata and verifies ticker accessibility."""
-        payload = request.get_json(silent=True)
-        if not payload:
-            return jsonify({"success": False, "error": "Request body must contain valid JSON data"}), 400
+        up = gdrive.ensure_uploaded(pdf, sym, force=refresh)
+        return jsonify(dict(body, drive=up.as_dict(),
+                            view_link=up.view_link,
+                            preview_link=up.preview_link)), 200
 
-        ticker = payload.get("ticker") or payload.get("symbol")
-        if not ticker:
-            return jsonify({"success": False, "error": "Ticker symbol is required"}), 400
+    @app.get("/api/stocks/<symbol>/report/file")
+    def report_file(symbol: str) -> Response:
+        """The PDF itself. `?download=1` sends it as an attachment."""
+        pdf, _ = _pdf(_sym(symbol), _flag("refresh"))
+        return send_file(pdf, mimetype=PDF_MIME, as_attachment=_flag("download"),
+                         download_name=pdf.name, max_age=0)
 
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        searcher = StockSearch(DATA_DIR)
-
-        if not searcher.save_stock_data(payload):
-            return jsonify({"success": False, "error": f"Failed to save financial data for {ticker}"}), 500
-
-        return jsonify({"success": True, "message": f"Successfully registered stock ticker {ticker}"}), 200
-
-    @app.route("/api/stocks/<symbol>", methods=["GET"])
-    def get_stock_data(symbol: str) -> Tuple[Any, int]:
-        """Retrieves aggregated JSON financial statements live from Vercel REST service."""
-        try:
-            clean_symbol = symbol.strip().upper()
-            logger.info("Fetching live financial statement bundle for symbol '%s' via Vercel REST API...", clean_symbol)
-
-            bundle_json_str = fetch_full_financial_bundle_tool.invoke({"symbol": clean_symbol})
-            summary_json_str = fetch_stock_summary_tool.invoke({"symbol": clean_symbol})
-
-            if "unavailable for stock" in bundle_json_str and "unavailable for stock" in summary_json_str:
-                return jsonify({"success": False, "error": f"Stock data for '{symbol}' not found on Vercel service"}), 404
-
-            combined_data = {}
-
-            # Parse summary profile if available
-            try:
-                summary_obj = json.loads(summary_json_str)
-                if isinstance(summary_obj, dict):
-                    combined_data["info"] = summary_obj
-            except Exception:
-                pass
-
-            # Parse financial statement bundle
-            try:
-                bundle_obj = json.loads(bundle_json_str)
-                if isinstance(bundle_obj, dict):
-                    combined_data.update(bundle_obj)
-            except Exception:
-                pass
-
-            combined_data["ticker"] = clean_symbol
-            return jsonify(combined_data), 200
-
-        except Exception as exc:
-            logger.error("Failed retrieving live stock data for symbol %s: %s", symbol, exc, exc_info=True)
-            return jsonify({"success": False, "error": "Failed to fetch stock financial data"}), 500
-
-    @app.route("/api/stocks/<symbol>/analysis", methods=["GET"])
-    def get_stock_analysis(symbol: str) -> Tuple[Any, int]:
-        """Generates or retrieves Self-RAG financial analysis report for a stock."""
-        try:
-            folder = DATA_DIR / symbol.strip().lower()
-            folder.mkdir(parents=True, exist_ok=True)
-            report_file = folder / "report.md"
-
-            if report_file.exists():
-                with open(report_file, "r", encoding="utf-8") as f_handle:
-                    report_text = f_handle.read()
-            else:
-                report_text = generate_financial_analysis(folder, MAPPING_FILE_PATH)
-
-            # Clean markdown code block wraps if present
-            cleaned_text = report_text.strip()
-            if cleaned_text.startswith("```markdown"):
-                cleaned_text = cleaned_text.split("```markdown", 1)[1].rsplit("```", 1)[0]
-            elif cleaned_text.startswith("```"):
-                cleaned_text = cleaned_text.split("```", 1)[1].rsplit("```", 1)[0]
-
-            return jsonify({"success": True, "analysis": cleaned_text.strip()}), 200
-
-        except Exception as exc:
-            logger.error("Analysis generation failed for symbol %s: %s", symbol, exc, exc_info=True)
-            return jsonify({"success": False, "error": "Financial analysis generation failed"}), 500
-
-    @app.route("/api/stocks/<symbol>/dcf", methods=["GET"])
-    def get_stock_dcf_analysis(symbol: str) -> Tuple[Any, int]:
-        """Generates or retrieves Discounted Cash Flow (DCF) valuation report for a stock."""
-        try:
-            folder = DATA_DIR / symbol.strip().lower()
-            folder.mkdir(parents=True, exist_ok=True)
-
-            dcf_report_file = folder / "dcf_report.md"
-
-            if dcf_report_file.exists():
-                with open(dcf_report_file, "r", encoding="utf-8") as f_handle:
-                    report_text = f_handle.read()
-            else:
-                report_text = generate_dcf_analysis(folder)
-
-            # Clean markdown code blocks
-            cleaned_text = report_text.strip()
-            if cleaned_text.startswith("```markdown"):
-                cleaned_text = cleaned_text.split("```markdown", 1)[1].rsplit("```", 1)[0]
-            elif cleaned_text.startswith("```"):
-                cleaned_text = cleaned_text.split("```", 1)[1].rsplit("```", 1)[0]
-
-            return jsonify({"success": True, "analysis": cleaned_text.strip()}), 200
-
-        except Exception as exc:
-            logger.error("DCF analysis failed for symbol %s: %s", symbol, exc, exc_info=True)
-            return jsonify({"success": False, "error": "DCF analysis calculation failed"}), 500
-
-    @app.route("/api/stocks/<symbol>/upload", methods=["POST"])
-    def upload_stock_files(symbol: str) -> Tuple[Any, int]:
-        """Handles PDF annual report downloads and manual file uploads for RAG indexing."""
-        try:
-            folder = DATA_DIR / symbol.strip().lower()
-            folder.mkdir(parents=True, exist_ok=True)
-            saved_files = []
-
-            # 1. Process Annual Report URL Download
-            annual_url = request.form.get("annual_url", "").strip()
-            if annual_url:
-                try:
-                    headers = BSE_HEADERS if "bseindia.com" in annual_url else None
-                    response = requests.get(annual_url, stream=True, timeout=30, headers=headers)
-                    if response.ok:
-                        pdf_path = folder / "annual_report.pdf"
-                        downloaded_bytes = 0
-                        with open(pdf_path, "wb") as f_out:
-                            for chunk in response.iter_content(chunk_size=8192):
-                                if chunk:
-                                    f_out.write(chunk)
-                                    downloaded_bytes += len(chunk)
-
-                        if downloaded_bytes > 0:
-                            saved_files.append("annual_report.pdf")
-                        else:
-                            return jsonify({"success": False, "error": "Downloaded annual report file was empty"}), 400
-                    else:
-                        return jsonify({"success": False, "error": f"Download failed with status {response.status_code}"}), 400
-                except Exception as exc:
-                    logger.error("Failed downloading annual report from URL %s: %s", annual_url, exc)
-                    return jsonify({"success": False, "error": f"Download exception: {str(exc)}"}), 500
-
-            # 2. Process Direct File Uploads
-            if "annual" in request.files:
-                request.files["annual"].save(str(folder / "annual_report.pdf"))
-                saved_files.append("annual_report.pdf")
-
-            if "presentation" in request.files:
-                request.files["presentation"].save(str(folder / "presentation.pdf"))
-                saved_files.append("presentation.pdf")
-
-            # 3. Process Presentation URL Download
-            presentation_url = request.form.get("presentation_url", "").strip()
-            if presentation_url:
-                try:
-                    headers = BSE_HEADERS if "bseindia.com" in presentation_url else None
-                    response = requests.get(presentation_url, stream=True, timeout=30, headers=headers)
-                    if response.ok:
-                        with open(folder / "presentation.pdf", "wb") as f_out:
-                            for chunk in response.iter_content(chunk_size=8192):
-                                if chunk:
-                                    f_out.write(chunk)
-                        saved_files.append("presentation.pdf")
-                except Exception as exc:
-                    logger.warning("Presentation download exception: %s", exc)
-
-            # Regenerate analysis report if files were updated
-            if saved_files:
-                try:
-                    generate_financial_analysis(folder, MAPPING_FILE_PATH)
-                except Exception as exc:
-                    logger.warning("Failed auto-regenerating analysis after file upload: %s", exc)
-
-            return jsonify({
-                "success": True,
-                "message": f"Successfully processed files: {', '.join(saved_files)}" if saved_files else "No files processed"
-            }), 200
-
-        except Exception as exc:
-            logger.error("File upload route failed for symbol %s: %s", symbol, exc, exc_info=True)
-            return jsonify({"success": False, "error": "File upload processing failed"}), 500
-
-    # -------------------------------------------------------------------------
-    # Error Handlers
-    # -------------------------------------------------------------------------
+    for kind, _ in STATUSES:
+        app.register_error_handler(kind, _failed)
 
     @app.errorhandler(404)
-    def handle_not_found(error: Any) -> Tuple[Any, int]:
-        return jsonify({"success": False, "error": "Requested API route not found"}), 404
+    def unknown_route(_: Any) -> Json:
+        return jsonify({"success": False, "error": "No such route"}), 404
 
     @app.errorhandler(500)
-    def handle_server_error(error: Any) -> Tuple[Any, int]:
-        return jsonify({"success": False, "error": "Internal server error occurred"}), 500
+    def unexpected(_: Any) -> Json:
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
     return app
 
@@ -293,18 +165,16 @@ app: Flask = create_app()
 
 
 def main() -> None:
-    """Server entry point execution handler."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
-
+    """Server entry point."""
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     if not check_env():
-        logger.error("Stopping application startup due to missing environment variables.")
+        log.error("startup aborted: environment incomplete")
         return
 
-    logger.info("Starting GrowNXT Flask API Server on port 5000...")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.getenv("PORT", "5000"))
+    log.info("serving on port %d", port)
+    app.run(host="0.0.0.0", port=port, debug=False)
 
 
 if __name__ == "__main__":

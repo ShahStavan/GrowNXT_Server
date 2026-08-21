@@ -13,62 +13,53 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from reporting.engine import ReportError, generate_report  # noqa: E402
+from scripts import cli  # noqa: E402
+
+
+def _parser() -> argparse.ArgumentParser:
+    """Builds the argument parser."""
+    p = argparse.ArgumentParser(description="Generate an institutional PDF equity report.")
+    p.add_argument("tickers", nargs="+", help="Ticker symbols, e.g. WIPRO")
+    p.add_argument("--output-dir", type=Path,
+                   help="Root of the per-ticker build workspace (default: output/).")
+    p.add_argument("--reports-dir", type=Path,
+                   help="Directory collecting every finished PDF (default: reports/).")
+    p.add_argument("--refresh", action="store_true",
+                   help="Re-request collector data instead of using the local cache.")
+    p.add_argument("--as-of", help="Display date for the header (default: today).")
+    p.add_argument("--quiet", action="store_true", help="Log warnings and errors only.")
+    return p
 
 
 def main() -> int:
-    """Parses arguments and generates one report per ticker.
+    """Generates one report per ticker.
 
     Returns:
-        Process exit code: 0 when every report was written, 1 otherwise.
+        0 when every report was written, 1 otherwise.
     """
-    parser = argparse.ArgumentParser(
-        description="Generate an institutional PDF equity report.",
-    )
-    parser.add_argument("tickers", nargs="+", help="Ticker symbols, e.g. WIPRO")
-    parser.add_argument(
-        "--output-dir", type=Path, default=None,
-        help="Root output directory (default: output/).",
-    )
-    parser.add_argument(
-        "--refresh", action="store_true",
-        help="Re-request collector data instead of using the local cache.",
-    )
-    parser.add_argument(
-        "--as-of", default=None,
-        help="Display date for the header and disclaimer (default: today).",
-    )
-    parser.add_argument(
-        "--quiet", action="store_true", help="Log warnings and errors only.",
-    )
-    args = parser.parse_args()
+    args = _parser().parse_args()
+    cli.setup(logging.WARNING if args.quiet else logging.INFO,
+              cli.PLAIN, stream=sys.stderr)
 
-    logging.basicConfig(
-        level=logging.WARNING if args.quiet else logging.INFO,
-        format="%(levelname)s %(message)s",
-        stream=sys.stderr,
-    )
-
-    failures = []
+    failed = []
     for ticker in args.tickers:
+        sym = ticker.upper()
         try:
-            path = generate_report(
-                ticker,
-                output_dir=args.output_dir,
-                refresh=args.refresh,
-                as_of=args.as_of,
-            )
-            print("%-12s %s" % (ticker.upper(), path))
-        except ReportError as exc:
-            print("%-12s FAILED: %s" % (ticker.upper(), exc), file=sys.stderr)
-            failures.append(ticker.upper())
+            path = generate_report(sym, output_dir=args.output_dir,
+                                   reports_dir=args.reports_dir,
+                                   refresh=args.refresh, as_of=args.as_of)
         except Exception as exc:  # noqa: BLE001 - report and continue the batch
-            print("%-12s ERROR: %s" % (ticker.upper(), exc), file=sys.stderr)
-            failures.append(ticker.upper())
+            # A ReportError is about this company's data; anything else is a
+            # defect, and the label says which so a batch log stays readable.
+            label = "FAILED" if isinstance(exc, ReportError) else "ERROR"
+            print("%-12s %s: %s" % (sym, label, exc), file=sys.stderr)
+            failed.append(sym)
+        else:
+            print("%-12s %s" % (sym, path))
 
-    if failures:
-        print("failed: %s" % ", ".join(failures), file=sys.stderr)
-        return 1
-    return 0
+    if failed:
+        print("failed: %s" % ", ".join(failed), file=sys.stderr)
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

@@ -112,6 +112,23 @@ CHART_H_STD: Final[float] = 1.92
 CHART_H_SHORT: Final[float] = 1.80
 
 
+# --- Chart text ----------------------------------------------------------
+
+# Chart text is set in points against the figure rather than in the
+# document's type scale, because a chart is sized independently of the text
+# block. Each role is named separately even where two share a value today, so
+# one can be adjusted without dragging the other with it.
+
+TICK_PERIOD: Final[float] = 5.9       # Period labels on an annual axis
+TICK_DENSE: Final[float] = 5.6        # Same, where eight periods crowd the axis
+TICK_RANKED: Final[float] = 6.1       # Peer names on a ranked horizontal panel
+TICK_CATEGORY: Final[float] = 6.4     # Named categories, e.g. Sources / Uses
+DATA_LABEL: Final[float] = 6.0        # Value printed at a series end
+DATA_LABEL_TIGHT: Final[float] = 5.7  # Same, where the panel leaves less room
+ANNOTATION: Final[float] = 5.6        # Muted explanatory text inside a chart
+SEGMENT_CAPTION: Final[float] = 5.5   # Label set inside a composition bar
+SCORE_VALUE: Final[float] = 6.2       # Emphasised score printed on a chart
+
 def matplotlib_rc() -> dict:
     """Builds the matplotlib rcParams that mirror these tokens.
 

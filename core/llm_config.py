@@ -1,251 +1,91 @@
-"""LLM Configuration and Multi-Provider Orchestration Engine.
+"""Hosted model invocation for GrowNXT Server.
 
-Provides unified invocation abstractions across LLM providers:
-1. Google Generative AI (Gemini 1.5 Flash / Gemini Pro)
-2. Local Open-Source Models via Ollama (Qwen 2.5, Llama 3.2)
-3. GrowNXT Hosted Model API (OpenAI-compatible deployed inference endpoint)
-4. Open-Source Cloud Inference via Groq
-5. Data-Driven Dynamic Fallback Extraction Engine for offline/init states.
+All generation goes through one OpenAI-compatible chat-completions endpoint.
+Model selection is managed server-side by the deployment, so this module sends
+a prompt and returns the completion -- it does not name a model, and there is
+no provider to choose.
 
-Google Python Style Guide Compliant.
+Failures raise ``LLMError``. An earlier version fell back to returning the
+prompt's own context when the endpoint was unreachable, which produced output
+that read like analysis but was unprocessed source text; a caller cannot detect
+that, so a raised error is the honest outcome.
 """
 
-import json
 import logging
 import os
-from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Final, Optional
+
 from dotenv import load_dotenv
+import requests
 
 logger = logging.getLogger(__name__)
 
-# Lazy imports for optional heavy dependencies
-try:
-    import pypdf as PyPDF2
-except ImportError:
-    try:
-        import PyPDF2
-    except ImportError:
-        PyPDF2 = None
-
 load_dotenv()
 
-# Global Configuration Parameters
-LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "ollama").lower()
-DEFAULT_MODEL: str = os.getenv("MODEL_1", "gemini-1.5-flash")
-OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
-OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-GROWNXT_LLM_API_URL: str = os.getenv("GROWNXT_LLM_API_URL", "https://grownxt-llm.vercel.app")
-GROWNXT_LLM_API_KEY: str = os.getenv("GROWNXT_LLM_API_KEY", "")
+API_URL: Final[str] = os.getenv(
+    "GROWNXT_LLM_API_URL", "https://grownxt-llm.vercel.app"
+).rstrip("/")
+
+# Long-form sections legitimately take over a minute to generate.
+REQUEST_TIMEOUT: Final[int] = int(os.getenv("GROWNXT_LLM_TIMEOUT", "120"))
 
 
-def create_client() -> Any:
-    """Configures and returns the Google GenerativeAI client instance.
+class LLMError(RuntimeError):
+    """Raised when the hosted endpoint refuses, fails, or returns nothing."""
+
+
+def _headers() -> Dict[str, str]:
+    """Builds request headers, attaching the API key only when one is set."""
+    headers = {"Content-Type": "application/json"}
+    api_key = os.getenv("GROWNXT_LLM_API_KEY", "").strip()
+    if api_key:
+        headers["Authorization"] = "Bearer %s" % api_key
+    return headers
+
+
+def _completion_text(payload: Any) -> Optional[str]:
+    """Extracts the assistant message from a chat-completions response body."""
+    if not isinstance(payload, dict):
+        return None
+    choices = payload.get("choices") or []
+    if not choices:
+        return None
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+    return str(content).strip() if content else None
+
+
+def generate_llm_response(prompt: str, context: str = "") -> str:
+    """Generates a completion for ``prompt``, grounded in ``context``.
+
+    Args:
+        prompt: Task instructions.
+        context: Ground-truth data the answer must be drawn from.
 
     Returns:
-        Any: Configured google.generativeai module reference.
+        str: The completion text.
 
     Raises:
-        ValueError: If GEMINI_API_KEY environment variable is missing.
+        LLMError: If the request fails or the response carries no content.
     """
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY environment variable is not configured.")
+    full_prompt = "%s\n\nGround Truth Context Data:\n%s" % (prompt, context) if context else prompt
 
-    import google.generativeai as genai
-    genai.configure(api_key=api_key)
-    return genai
-
-
-def create_content_part(text: str) -> Dict[str, Any]:
-    """Creates standard GenAI content dictionary wrapper.
-
-    Args:
-        text (str): Input text chunk.
-
-    Returns:
-        Dict[str, Any]: Formatted content part.
-    """
-    return {"text": text}
-
-
-def _generate_data_fallback_summary(prompt: str, context: str) -> str:
-    """Extracts fundamental metric context directly when LLM provider is unreachable.
-
-    Senior Engineer Design Rationale:
-        Instead of returning raw prompt instructions or empty placeholders when offline,
-        this function cleans and passes through structured ground-truth Markdown sections
-        directly to the report output.
-
-    Args:
-        prompt (str): Task prompt instructions.
-        context (str): Ground-truth financial context data.
-
-    Returns:
-        str: Cleaned section Markdown text block.
-    """
-    combined_text = f"{context}\n{prompt}" if context else prompt
-
-    # Strip out task instructions prompt wrapper if present
-    if "=== TASK INSTRUCTIONS ===" in combined_text:
-        combined_text = combined_text.split("=== TASK INSTRUCTIONS ===")[0]
-
-    if "=== LIVE VERCEL REST API & TARGETED RAG CONTEXT ===" in combined_text:
-        combined_text = combined_text.replace("=== LIVE VERCEL REST API & TARGETED RAG CONTEXT ===", "")
-
-    cleaned_text = combined_text.strip()
-    if cleaned_text:
-        return cleaned_text
-
-    logger.warning("LLM provider unavailable and context clean-pass empty. Returning default status slice.")
-    return (
-        "### Section Financial Analysis\n"
-        "Financial data extracted and verified directly against fundamental context filings."
-    )
-
-
-def generate_llm_response(prompt: str, context: str = "", provider: Optional[str] = None) -> str:
-    """Invokes configured LLM provider with context ground-truth injection.
-
-    Supports Gemini, Ollama, GrowNXT Hosted Model API, and Groq with fallback chaining to local ground-truth context.
-
-    Args:
-        prompt (str): Target query or generation instructions.
-        context (str, optional): Retrieved financial context string. Defaults to "".
-        provider (str, optional): Override LLM provider string. Defaults to None.
-
-    Returns:
-        str: Generated LLM response text or ground-truth fallback string.
-    """
-    full_prompt = f"{prompt}\n\nGround Truth Context Data:\n{context}" if context else prompt
-    target_provider = (provider or os.getenv("LLM_PROVIDER", LLM_PROVIDER)).lower()
-
-    # 1. Local Open-Source Ollama Execution
-    if target_provider == "ollama":
-        try:
-            import requests
-            url = f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate"
-            payload = {
-                "model": OLLAMA_MODEL,
-                "prompt": full_prompt,
-                "stream": False
-            }
-            res = requests.post(url, json=payload, timeout=20)
-            if res.ok and res.json().get("response"):
-                return res.json().get("response").strip()
-            logger.warning("Ollama API call failed with status: %s", res.status_code)
-        except Exception as exc:
-            logger.warning("Ollama execution exception: %s. Continuing fallback...", exc)
-
-    # 2. GrowNXT Hosted Model API (OpenAI-compatible deployed inference endpoint).
-    # Model selection is managed server-side by the deployment.
-    elif target_provider == "grownxt":
-        try:
-            import requests
-            url = f"{GROWNXT_LLM_API_URL.rstrip('/')}/v1/chat/completions"
-            headers = {"Content-Type": "application/json"}
-            api_key = os.getenv("GROWNXT_LLM_API_KEY", GROWNXT_LLM_API_KEY)
-            if api_key:
-                headers["Authorization"] = f"Bearer {api_key}"
-            payload = {
-                "messages": [{"role": "user", "content": full_prompt}],
-                "stream": False,
-            }
-            res = requests.post(url, json=payload, headers=headers, timeout=120)
-            if res.ok:
-                choices = res.json().get("choices") or []
-                content = (choices[0].get("message") or {}).get("content") if choices else None
-                if content:
-                    return str(content).strip()
-            logger.warning("GrowNXT LLM API call failed with status: %s", res.status_code)
-        except Exception as exc:
-            logger.warning("GrowNXT LLM API execution exception: %s. Continuing fallback...", exc)
-
-    # 3. Open-Source Cloud Groq API
-    elif target_provider == "groq":
-        try:
-            groq_key = os.getenv("GROQ_API_KEY")
-            if groq_key:
-                from langchain_groq import ChatGroq
-                chat = ChatGroq(model_name=GROQ_MODEL, groq_api_key=groq_key)
-                res = chat.invoke(full_prompt)
-                if res and res.content:
-                    return str(res.content).strip()
-            else:
-                logger.warning("GROQ_API_KEY missing from environment.")
-        except Exception as exc:
-            logger.warning("Groq execution exception: %s. Continuing fallback...", exc)
-
-    # 4. Google Gemini Model API
-    elif target_provider == "gemini":
-        try:
-            api_key = os.getenv("GEMINI_API_KEY")
-            if api_key:
-                import google.generativeai as genai
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(DEFAULT_MODEL)
-                res = model.generate_content(full_prompt)
-                if res and res.text:
-                    return res.text.strip()
-            else:
-                logger.warning("GEMINI_API_KEY missing from environment.")
-        except Exception as exc:
-            logger.warning("Gemini execution exception: %s. Continuing fallback...", exc)
-
-    # Ground-truth Data Fallback Pass-through
-    logger.info("Executing ground-truth data fallback extraction for section prompt.")
-    return _generate_data_fallback_summary(prompt, context)
-
-
-def call_llm(prompt: str, provider: Optional[str] = None) -> str:
-    """Convenience wrapper for generate_llm_response without explicit context.
-
-    Args:
-        prompt (str): Generation prompt string.
-        provider (str, optional): Optional provider string override.
-
-    Returns:
-        str: Response text string.
-    """
-    return generate_llm_response(prompt=prompt, context="", provider=provider)
-
-
-def read_file_content(filepath: Union[str, Path]) -> str:
-    """Reads PDF or plain text content from disk safely with encoding fallback.
-
-    Args:
-        filepath (Union[str, Path]): Absolute or relative file path string.
-
-    Returns:
-        str: Extracted text content, or empty string on failure.
-    """
-    path = Path(filepath)
-    if not path.exists():
-        logger.warning("Target file for content reading does not exist: %s", path)
-        return ""
-
-    if path.suffix.lower() == ".pdf":
-        if PyPDF2 is None:
-            logger.error("PDF reading requested for %s but PyPDF2/pypdf library is not installed.", path)
-            return ""
-        try:
-            extracted_pages = []
-            with open(path, "rb") as pdf_file:
-                reader = PyPDF2.PdfReader(pdf_file)
-                for page in reader.pages:
-                    text = page.extract_text()
-                    if text:
-                        extracted_pages.append(text)
-            return "\n".join(extracted_pages)
-        except Exception as exc:
-            logger.error("Failed extracting text from PDF %s: %s", path, exc)
-            return ""
-
-    # Plain text / JSON / Markdown files
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as text_file:
-            return text_file.read()
-    except Exception as exc:
-        logger.error("Failed reading text file %s: %s", path, exc)
-        return ""
+        response = requests.post(
+            "%s/v1/chat/completions" % API_URL,
+            json={"messages": [{"role": "user", "content": full_prompt}], "stream": False},
+            headers=_headers(),
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        content = _completion_text(response.json())
+    except requests.RequestException as exc:
+        raise LLMError("Hosted model request failed: %s" % exc) from exc
+    except ValueError as exc:
+        raise LLMError("Hosted model returned a malformed response body: %s" % exc) from exc
+
+    if not content:
+        raise LLMError("Hosted model returned an empty completion.")
+
+    logger.debug("Hosted model returned %d characters.", len(content))
+    return content

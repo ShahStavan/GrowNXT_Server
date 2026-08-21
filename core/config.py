@@ -1,124 +1,47 @@
-"""Centralized System Configuration for GrowNXT Server.
+"""System-wide configuration for GrowNXT Server.
 
-This module provides system-wide constants, path management, REST API endpoints,
-and environment setup definitions following Google Python Style Guide standards.
+Paths are derived from this file's own location, so a checkout works unchanged
+on any machine, with environment overrides (``GROWNXT_OUTPUT_DIR``) for
+containerised deployments.
 
-Senior Engineering Note:
-    Avoid hardcoding absolute paths (e.g., 'D:/Stock_Fundamental'). Instead,
-    we compute project-relative fallbacks and support environment overrides
-    (GROWNXT_BASE_DIR, GROWNXT_DATA_DIR) for containerized and multi-platform deployments.
+Every artifact belonging to a stock -- the filings ingested for it, the parse
+and vector caches, the extracted findings, and the typeset PDF report -- lives
+under one directory per symbol: ``OUTPUT_DIR/<TICKER>/``. One root keeps a
+company's evidence and its report together, and makes a stock's entire
+footprint removable in a single step.
 """
 
-from dataclasses import dataclass
 import os
 from pathlib import Path
-from typing import Dict, List, Final
+from typing import Dict, Final, Tuple
 
-# Project root directory derived dynamically relative to this file's position
 PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parent.parent
 
-# Base system paths with environment variable overrides for containerization support
-_default_base_dir: Path = PROJECT_ROOT
-env_base_dir: str = os.getenv("GROWNXT_BASE_DIR", "")
-if env_base_dir:
-    BASE_DIR: Final[Path] = Path(env_base_dir).resolve()
-elif Path(r"D:/Stock_Fundamental").exists():
-    # Legacy fallback for local dev environments where data was hosted externally
-    BASE_DIR: Final[Path] = Path(r"D:/Stock_Fundamental")
-else:
-    BASE_DIR: Final[Path] = _default_base_dir
+# Root of all per-stock artifacts. Override for container volumes.
+_env_output_dir: str = os.getenv("GROWNXT_OUTPUT_DIR", "").strip()
+OUTPUT_DIR: Final[Path] = (
+    Path(_env_output_dir).resolve() if _env_output_dir else PROJECT_ROOT / "output"
+)
 
-env_data_dir: str = os.getenv("GROWNXT_DATA_DIR", "")
-DATA_DIR: Final[Path] = Path(env_data_dir).resolve() if env_data_dir else BASE_DIR / "data"
+# Every finished report, for every stock, in one directory. The build workspace
+# stays per-stock under OUTPUT_DIR because Typst resolves chart paths relative
+# to its source file and chart names repeat across tickers; only the compiled
+# PDF is collected here, where a reader can find them all together.
+_env_reports_dir: str = os.getenv("GROWNXT_REPORTS_DIR", "").strip()
+REPORTS_DIR: Final[Path] = (
+    Path(_env_reports_dir).resolve() if _env_reports_dir else PROJECT_ROOT / "reports"
+)
 
-env_output_dir: str = os.getenv("GROWNXT_OUTPUT_DIR", "")
-OUTPUT_FOLDER: Final[Path] = Path(env_output_dir).resolve() if env_output_dir else BASE_DIR / "output"
-
-# Global Mapping file path (ground-truth metric dictionary)
+# Ground-truth metric dictionary shipped with the repository.
 MAPPING_FILE_PATH: Final[Path] = PROJECT_ROOT / "mapping.json"
 
-
-@dataclass(frozen=True)
-class FilePaths:
-    """Immutable collection of core Excel and JSON dataset file paths."""
-
-    stock_listings: Path = DATA_DIR / "stock_listings.xlsx"
-    stock_data: Path = DATA_DIR / "stockData.xlsx"
-    filtered_stock_listings: Path = DATA_DIR / "filtered_stock_listings.xlsx"
-    mapping_json: Path = MAPPING_FILE_PATH
-
-    # Legacy attribute alias support
-    STOCK_LISTINGS: Path = DATA_DIR / "stock_listings.xlsx"
-    STOCK_DATA: Path = DATA_DIR / "stockData.xlsx"
-    FILTERED_STOCK_LISTINGS: Path = DATA_DIR / "filtered_stock_listings.xlsx"
-
-
-FILE_PATHS: Final[FilePaths] = FilePaths()
-
-
-# Live Financial Data Collector Vercel REST Service URL
+# Live Financial Data Collector REST service.
 FINANCIAL_DATA_COLLECTOR_BASE_URL: Final[str] = os.getenv(
     "FINANCIAL_DATA_SERVICE_URL",
-    "https://financial-data-collector-qrxj.vercel.app"
+    "https://financial-data-collector-qrxj.vercel.app",
 ).rstrip("/")
 
-
-@dataclass(frozen=True)
-class WebsiteUrls:
-    """Web service and external API endpoint configurations."""
-
-    screener_api_search: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/search"
-    screener_base: str = "https://www.screener.in"
-
-    # Legacy uppercase aliases
-    SCREENER_API_SEARCH: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/search"
-    SCREENER_BASE: str = "https://www.screener.in"
-
-
-WEBSITE_URLS: Final[WebsiteUrls] = WebsiteUrls()
-
-
-@dataclass(frozen=True)
-class ApiEndpoints:
-    """REST API endpoint paths for financial statement ingestion."""
-
-    base_url: str = FINANCIAL_DATA_COLLECTOR_BASE_URL
-    search: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/search"
-    quarterly: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/quarterly"
-    annual: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/annual"
-    qt_growth: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/quarterly/growth"
-    an_growth: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/annual/growth"
-    balance_sheet: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/balancesheet"
-    bal_growth: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/balancesheet/growth"
-    cash_flow: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/cashflow"
-    summary: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/summary"
-    dupont: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/dupont"
-    solvency: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/solvency"
-    liquidity: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/liquidity"
-    capital_efficiency: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/capital-efficiency"
-    cagr: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/cagr"
-
-    # Legacy uppercase aliases
-    BASE_URL: str = FINANCIAL_DATA_COLLECTOR_BASE_URL
-    SEARCH: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/search"
-    QUARTERLY: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/quarterly"
-    ANNUAL: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/annual"
-    QT_GROWTH: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/quarterly/growth"
-    AN_GROWTH: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/income/annual/growth"
-    BALANCE_SHEET: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/balancesheet"
-    BAL_GROWTH: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/balancesheet/growth"
-    CASH_FLOW: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/cashflow"
-    SUMMARY: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/summary"
-    DUPONT: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/dupont"
-    SOLVENCY: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/solvency"
-    LIQUIDITY: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/liquidity"
-    CAPITAL_EFFICIENCY: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/capital-efficiency"
-    CAGR: str = f"{FINANCIAL_DATA_COLLECTOR_BASE_URL}/api/v1/stocks/{{sid}}/cagr"
-
-
-API_ENDPOINTS: Final[ApiEndpoints] = ApiEndpoints()
-
-# Standard HTTP Client Request Headers
+# Default outbound HTTP headers for the REST and document hosts.
 HTTP_HEADERS: Final[Dict[str, str]] = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -128,19 +51,49 @@ HTTP_HEADERS: Final[Dict[str, str]] = {
     "Accept": "application/json, text/plain, */*",
 }
 
+# The hosted model endpoint carries its own default URL and treats its key as
+# optional, so no variable has to be present for the server to start.
+REQUIRED_ENV_VARS: Final[Tuple[str, ...]] = ()
 
-def get_required_env_vars() -> List[str]:
-    """Determines required environment variables dynamically based on configured LLM provider.
+
+def safe_ticker(ticker: str) -> str:
+    """Returns a ticker normalised for use as a directory name.
+
+    Indian symbols carry punctuation -- ampersands and hyphens are both common --
+    and the symbol reaches the filesystem as a directory name, so every character
+    that is not alphanumeric, a dash, or an underscore is folded to an
+    underscore.
+    """
+    upper = (ticker or "").strip().upper()
+    return "".join(c if (c.isalnum() or c in "-_") else "_" for c in upper) or "UNKNOWN"
+
+
+def stock_dir(ticker: str, create: bool = False) -> Path:
+    """Returns the build workspace for one stock: charts, caches, Typst source.
+
+    Args:
+        ticker: Exchange symbol, in any case and with any punctuation.
+        create: Whether to create the directory when it is absent.
 
     Returns:
-        List[str]: List of required environment variable names.
+        Path: ``OUTPUT_DIR/<TICKER>``.
     """
-    provider = os.getenv("LLM_PROVIDER", "gemini").lower()
-    if provider == "groq":
-        return ["GROQ_API_KEY"]
-    if provider == "gemini":
-        return ["GEMINI_API_KEY"]
-    return []
+    path = OUTPUT_DIR / safe_ticker(ticker)
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
-REQUIRED_ENV_VARS: List[str] = get_required_env_vars()
+def report_path(ticker: str, create_parent: bool = False) -> Path:
+    """Returns the finished PDF's path for one stock.
+
+    Args:
+        ticker: Exchange symbol, in any case and with any punctuation.
+        create_parent: Whether to create ``REPORTS_DIR`` when it is absent.
+
+    Returns:
+        Path: ``REPORTS_DIR/<TICKER>_report.pdf``.
+    """
+    if create_parent:
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    return REPORTS_DIR / ("%s_report.pdf" % safe_ticker(ticker))

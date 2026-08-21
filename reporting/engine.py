@@ -1,9 +1,9 @@
 """Report orchestration: snapshot to compiled PDF.
 
-Charts, the generated Typst source and the output PDF all land in one
-directory per ticker. Typst resolves `#image` paths relative to the source
-file, so co-locating them is what lets the document reference charts by
-bare filename.
+Charts and the generated Typst source land in one workspace per ticker,
+because Typst resolves `#image` paths relative to the source file and chart
+file names repeat across tickers. The compiled PDF is written to the shared
+`reports/` directory instead, so every stock's finished report sits together.
 """
 
 from datetime import date
@@ -18,12 +18,16 @@ from reporting import charts as charts_module
 from reporting import composites as composites_module
 from reporting import selfcheck
 from reporting import typst_doc
+from core.config import OUTPUT_DIR, REPORTS_DIR, safe_ticker
 from reporting.client import CollectorClient
-from reporting.snapshot import CompanySnapshot, build_snapshot
+from reporting.snapshot import build_snapshot
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OUTPUT_DIR: Path = Path(__file__).resolve().parent.parent / "output"
+# The API server, the CLI and the ingestion layer all write into the same
+# per-stock directory, so the roots and the folding rule are owned by config.
+DEFAULT_OUTPUT_DIR: Path = OUTPUT_DIR
+DEFAULT_REPORTS_DIR: Path = REPORTS_DIR
 
 
 class ReportError(RuntimeError):
@@ -36,27 +40,35 @@ def generate_report(
     refresh: bool = False,
     as_of: Optional[str] = None,
     keep_source: bool = True,
+    reports_dir: Optional[Path] = None,
 ) -> Path:
     """Builds the institutional PDF report for one ticker.
 
     Args:
         ticker: Stock ticker symbol, e.g. 'WIPRO'.
-        output_dir: Root output directory. Defaults to `output/`.
+        output_dir: Root of the per-ticker build workspace, holding the charts
+            and the Typst source. Defaults to `output/`.
         refresh: Re-request collector data instead of using the cache.
         as_of: Display date for the header and disclaimer. Defaults to today.
-        keep_source: Retain the generated `.typ` alongside the PDF, which
-            makes a layout problem inspectable after the fact.
+        keep_source: Retain the generated `.typ` in the workspace, which makes
+            a layout problem inspectable after the fact.
+        reports_dir: Directory collecting every stock's finished PDF. Defaults
+            to `reports/`.
 
     Returns:
-        Path to the written PDF.
+        Path to the written PDF, inside `reports_dir`.
 
     Raises:
         ReportError: If the snapshot is too sparse to report on, or Typst
             fails to compile the generated source.
     """
+    # The unfolded symbol addresses the collector; the folded one addresses
+    # the filesystem, because Indian symbols carry ampersands.
     symbol = ticker.upper().strip()
+    folded = safe_ticker(symbol)
     root = Path(output_dir) if output_dir else DEFAULT_OUTPUT_DIR
-    work_dir = root / symbol
+    reports_root = Path(reports_dir) if reports_dir else DEFAULT_REPORTS_DIR
+    work_dir = root / folded
     work_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info("[%s] fetching collector data", symbol)
@@ -94,7 +106,7 @@ def generate_report(
     source = typst_doc.build_document(
         snapshot, derived, composites, check, produced, as_of=stamp)
 
-    source_path = work_dir / (symbol + "_report.typ")
+    source_path = work_dir / (folded + "_report.typ")
     source_path.write_text(source, encoding="utf-8")
 
     logger.info("[%s] compiling %d chars of Typst source", symbol, len(source))
@@ -106,7 +118,8 @@ def generate_report(
             % (symbol, source_path, exc)
         ) from exc
 
-    pdf_path = work_dir / (symbol + "_report.pdf")
+    reports_root.mkdir(parents=True, exist_ok=True)
+    pdf_path = reports_root / (folded + "_report.pdf")
     pdf_path.write_bytes(pdf_bytes)
 
     if not keep_source:
@@ -114,9 +127,3 @@ def generate_report(
 
     logger.info("[%s] wrote %s (%.1f KB)", symbol, pdf_path, pdf_path.stat().st_size / 1024)
     return pdf_path
-
-
-def snapshot_for(ticker: str, refresh: bool = False) -> CompanySnapshot:
-    """Builds a snapshot without rendering, for inspection and tests."""
-    symbol = ticker.upper().strip()
-    return build_snapshot(symbol, CollectorClient().fetch_all(symbol, refresh=refresh))

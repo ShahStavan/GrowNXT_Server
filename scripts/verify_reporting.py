@@ -33,6 +33,8 @@ from typing import Callable, List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from scripts import cli  # noqa: E402
+from scripts.checks import Failure, Report, banner, require  # noqa: E402
 from reporting import analytics, composites, fmt, selfcheck  # noqa: E402
 from reporting.client import CollectorClient  # noqa: E402
 from reporting.snapshot import (  # noqa: E402
@@ -47,19 +49,9 @@ CACHED_TICKERS: Tuple[str, ...] = ("WIPRO", "RELIANCE", "TCS", "HDFCBANK")
 CACHE_ROOT: Path = Path(__file__).resolve().parent.parent / ".cache" / "api"
 
 
-class Failure(AssertionError):
-    """Raised when a verification check does not hold."""
-
-
-def _require(condition: bool, message: str) -> None:
-    """Raises with a readable message when a check fails."""
-    if not condition:
-        raise Failure(message)
-
-
 def _absent(value, label: str) -> None:
     """Asserts a ratio was withheld rather than computed."""
-    _require(value is None,
+    require(value is None,
              "%s should have been withheld but came back as %r" % (label, value))
 
 
@@ -138,7 +130,7 @@ def check_division_helpers() -> str:
     # survive. Interest cover of minus two says the company cannot service
     # its debt, which is exactly what a reader needs to see.
     result = fmt.pos_div(-800.0, 400.0)
-    _require(result is not None and abs(result + 2.0) < 1e-12,
+    require(result is not None and abs(result + 2.0) < 1e-12,
              "a negative numerator over a positive base must survive, got %r"
              % result)
     return "division helpers guard the denominator only"
@@ -149,7 +141,7 @@ def check_distressed_ratios() -> str:
     snap = _distressed_snapshot()
     derived = analytics.compute(snap)
     latest = derived.annual[-1]
-    _require(latest.period == "FY 2026", "expected the distressed year last")
+    require(latest.period == "FY 2026", "expected the distressed year last")
 
     _absent(latest.roe, "return on equity on negative equity")
     _absent(latest.roce, "return on capital employed on negative capital")
@@ -165,7 +157,7 @@ def check_distressed_ratios() -> str:
 
     # Interest cover is not withheld: the denominator is positive and the
     # negative result is the finding.
-    _require(latest.interest_coverage is not None and latest.interest_coverage < 0,
+    require(latest.interest_coverage is not None and latest.interest_coverage < 0,
              "interest cover should be negative and present, got %r"
              % latest.interest_coverage)
     return "11 ratios withheld on the distressed year, interest cover retained"
@@ -186,17 +178,17 @@ def check_distressed_composites() -> str:
 
     # The F-Score still scores: its signals are sign and direction tests, and
     # a company failing all of them is precisely what the framework is for.
-    _require(comp.piotroski.score is not None,
+    require(comp.piotroski.score is not None,
              "the F-Score should still be computable for a distressed company")
-    _require(comp.piotroski.score <= 3,
+    require(comp.piotroski.score <= 3,
              "a company losing money on every axis should score low, got %s"
              % comp.piotroski.score)
 
     # Altman is designed for exactly this company and must produce a score
     # in the distress band rather than withhold.
-    _require(comp.altman.score is not None,
+    require(comp.altman.score is not None,
              "the Z-Score should be computable for a distressed manufacturer")
-    _require(comp.altman.zone == "Distress",
+    require(comp.altman.zone == "Distress",
              "expected the distress band, got %r at %r"
              % (comp.altman.zone, comp.altman.score))
     return "DuPont withheld, F-Score %d of %d, Z-Score %.2f in the %s band" % (
@@ -218,7 +210,7 @@ def check_guardrail_detector_fires() -> str:
     clean = selfcheck.run(snap, derived, comp)
     guardrail = next(c for c in clean.checks
                      if c.name.startswith("No ratio published against"))
-    _require(guardrail.passed is True,
+    require(guardrail.passed is True,
              "the clean distressed report should show no breach, got %r"
              % guardrail.actual)
 
@@ -227,9 +219,9 @@ def check_guardrail_detector_fires() -> str:
     tampered = selfcheck.run(snap, derived, comp)
     planted = next(c for c in tampered.checks
                    if c.name.startswith("No ratio published against"))
-    _require(planted.passed is False,
+    require(planted.passed is False,
              "the detector failed to report a planted breach")
-    _require("return on equity" in planted.detail,
+    require("return on equity" in planted.detail,
              "the detector should name the offending figure, got %r"
              % planted.detail)
     return "detector reports nil breaches when clean and one when planted"
@@ -248,37 +240,37 @@ def check_composites_carry_components() -> str:
 
         score = comp.piotroski
         if score.score is not None:
-            _require(bool(score.tests),
+            require(bool(score.tests),
                      "%s published an F-Score with no sub-tests" % ticker)
             awarded = [t.points for t in score.tests if t.points is not None]
-            _require(sum(awarded) == score.score,
+            require(sum(awarded) == score.score,
                      "%s F-Score %s does not equal its sub-tests %s"
                      % (ticker, score.score, sum(awarded)))
-            _require(all(t.definition for t in score.tests),
+            require(all(t.definition for t in score.tests),
                      "%s has an F-Score signal with no stated test" % ticker)
-            _require(score.computable > 0,
+            require(score.computable > 0,
                      "%s published a score against a nil denominator" % ticker)
 
         altman = comp.altman
         if altman.score is not None:
-            _require(len(altman.components) == 5,
+            require(len(altman.components) == 5,
                      "%s published a Z-Score with %d terms, expected 5"
                      % (ticker, len(altman.components)))
-            _require(all(c.definition and c.weight for c in altman.components),
+            require(all(c.definition and c.weight for c in altman.components),
                      "%s has a Z-Score term with no definition or coefficient"
                      % ticker)
             rebuilt = sum(c.contribution for c in altman.components)
-            _require(abs(rebuilt - altman.score) < 1e-9,
+            require(abs(rebuilt - altman.score) < 1e-9,
                      "%s Z-Score does not equal its terms" % ticker)
         else:
-            _require(bool(altman.withheld_reason) or not altman.components,
+            require(bool(altman.withheld_reason) or not altman.components,
                      "%s withheld a Z-Score without saying why" % ticker)
 
         if comp.reinvestment.withheld_reason:
-            _require(not comp.reinvestment.years,
+            require(not comp.reinvestment.years,
                      "%s withheld the reinvestment identity but kept rows"
                      % ticker)
-    _require(reports > 0, "no cached tickers were available to check")
+    require(reports > 0, "no cached tickers were available to check")
     return "%d reports carry components for every score published" % reports
 
 
@@ -293,11 +285,11 @@ def check_cached_reports_verify() -> str:
         derived = analytics.compute(snap)
         comp = composites.compute(snap, derived)
         result = selfcheck.run(snap, derived, comp)
-        _require(result.all_passed,
+        require(result.all_passed,
                  "%s failed %d self-check(s): %s"
                  % (ticker, len(result.failures),
                     "; ".join(f.name for f in result.failures)))
-        _require(result.passed_count > 0,
+        require(result.passed_count > 0,
                  "%s ran no applicable checks at all" % ticker)
         lines.append("%s %d/%d" % (ticker, result.passed_count,
                                    len(result.applicable)))
@@ -340,10 +332,10 @@ def check_distressed_report_renders() -> str:
         produced = charts_module.render_all(snap, derived, comp, work_dir)
         source = typst_doc.build_document(
             snap, derived, comp, check, produced, as_of="01 Jan 2026")
-        _require(len(source) > 10000,
+        require(len(source) > 10000,
                  "the generated source is implausibly short at %d chars"
                  % len(source))
-        _require("Composite quality" in source,
+        require("Composite quality" in source,
                  "the composite section is missing from the source")
 
         source_path = work_dir / "stress.typ"
@@ -353,7 +345,7 @@ def check_distressed_report_renders() -> str:
             pdf = typst.compile(str(source_path))
         except Exception as exc:  # noqa: BLE001 - surfaced as a failure
             raise Failure("Typst compilation failed: %s" % exc)
-        _require(len(pdf) > 20000,
+        require(len(pdf) > 20000,
                  "the compiled PDF is implausibly small at %d bytes" % len(pdf))
     return "compiled a %d KB report with %d charts from broken statements" % (
         len(pdf) // 1024, len(produced))
@@ -376,27 +368,15 @@ def main() -> int:
     Returns:
         Process exit code: 0 when every check held, 1 otherwise.
     """
-    logging.basicConfig(level=logging.ERROR, format="%(levelname)s %(message)s",
-                        stream=sys.stderr)
-    failures = 0
-    for name, check in CHECKS:
-        try:
-            detail = check()
-        except Failure as exc:
-            print("FAIL  %-30s %s" % (name, exc))
-            failures += 1
-        except Exception as exc:  # noqa: BLE001 - report and keep going
-            print("ERROR %-30s %s: %s" % (name, type(exc).__name__, exc))
-            failures += 1
-        else:
-            print("ok    %-30s %s" % (name, detail))
+    cli.setup(logging.ERROR, cli.PLAIN, stream=sys.stderr)
+    banner("Report engine verification")
 
-    print("-" * 72)
-    if failures:
-        print("%d of %d checks failed" % (failures, len(CHECKS)))
-        return 1
-    print("all %d checks passed" % len(CHECKS))
-    return 0
+    report = Report()
+    for name, check in CHECKS:
+        report.run(name, check)
+
+    print(report.render())
+    return report.finish()
 
 
 if __name__ == "__main__":

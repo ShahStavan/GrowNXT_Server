@@ -2,11 +2,7 @@ flask
 flask-cors
 requests
 python-dotenv
-google-generativeai
 pydantic
-langchain
-langchain-google-genai
-langchain-text-splitters
 langgraph
 pypdf
 pdfplumber

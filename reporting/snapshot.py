@@ -386,37 +386,31 @@ def _ratio_block(payload: Any, key: str) -> Dict[str, Any]:
     return result
 
 
-def build_snapshot(ticker: str, payloads: Dict[str, Any]) -> CompanySnapshot:
-    """Assembles a CompanySnapshot from raw collector payloads.
+def _apply_income(snap: CompanySnapshot, payloads: Dict[str, Any]) -> None:
+    """Fills the quarterly and annual income statements.
 
-    Args:
-        ticker: Stock ticker symbol.
-        payloads: Mapping from `CollectorClient.fetch_all`.
-
-    Returns:
-        A populated snapshot. Endpoints that failed leave their fields
-        empty and append an entry to `warnings` rather than raising, so a
-        partial report still renders with honest gaps.
+    The annual endpoint returns the trailing twelve months as one more row
+    alongside the fiscal years. It is separated here rather than downstream,
+    because a TTM row left in a fiscal-year series silently becomes an extra
+    year in every growth rate and every average computed from it.
     """
-    snap = CompanySnapshot(ticker=ticker.upper())
-
-    # --- income ---------------------------------------------------------
     quarters = _income_rows(payloads.get("income_q"), "qInc")
     snap.quarters = quarters[-QUARTERS_SHOWN:] if quarters else []
     if not quarters:
         snap.warnings.append("quarterly income statement unavailable")
 
     annual = _income_rows(payloads.get("income_a"), "inc")
-    ttm_rows = [r for r in annual if r.period.strip().upper() == "TTM"]
-    fy_rows = [r for r in annual if r.period.strip().upper() != "TTM"]
-    snap.ttm = ttm_rows[-1] if ttm_rows else None
-    snap.years = fy_rows[-YEARS_SHOWN:] if fy_rows else []
-    if not fy_rows:
+    trailing = [r for r in annual if r.period.strip().upper() == "TTM"]
+    fiscal = [r for r in annual if r.period.strip().upper() != "TTM"]
+    snap.ttm = trailing[-1] if trailing else None
+    snap.years = fiscal[-YEARS_SHOWN:] if fiscal else []
+    if not fiscal:
         snap.warnings.append("annual income statement unavailable")
 
-    # --- balance sheet ---------------------------------------------------
-    balance_rows = _rows(payloads.get("balance"))
-    snap.balance = [
+
+def _balance_periods(payload: Any) -> List[BalancePeriod]:
+    """Parses the balance sheet endpoint into the periods shown."""
+    return [
         BalancePeriod(
             period=str(r.get("displayPeriod") or ""),
             equity=_f(r.get("balTeq")),
@@ -436,14 +430,13 @@ def build_snapshot(ticker: str, payloads: Dict[str, Any]) -> CompanySnapshot:
             total_liabilities=_f(r.get("balTotl")),
             minority_interest=_f(r.get("balMint")),
         )
-        for r in balance_rows
+        for r in _rows(payload)
     ][-YEARS_SHOWN:]
-    if not balance_rows:
-        snap.warnings.append("balance sheet unavailable")
 
-    # --- cash flow -------------------------------------------------------
-    cash_rows = _rows(payloads.get("cashflow"))
-    snap.cashflow = [
+
+def _cashflow_periods(payload: Any) -> List[CashflowPeriod]:
+    """Parses the cash flow endpoint into the periods shown."""
+    return [
         CashflowPeriod(
             period=str(r.get("displayPeriod") or ""),
             cfo=_f(r.get("cafCfoa")),
@@ -455,19 +448,46 @@ def build_snapshot(ticker: str, payloads: Dict[str, Any]) -> CompanySnapshot:
             cash_from_investing=_f(r.get("cafCfia")),
             net_change_in_cash=_f(r.get("cafNcic")),
         )
-        for r in cash_rows
+        for r in _rows(payload)
     ][-YEARS_SHOWN:]
-    if not cash_rows:
-        snap.warnings.append("cash flow statement unavailable")
 
-    # --- ratio endpoints -------------------------------------------------
+
+def _apply_ratios(snap: CompanySnapshot, payloads: Dict[str, Any]) -> None:
+    """Fills the five ratio endpoints the provider computes itself."""
     snap.dupont = _ratio_block(payloads.get("dupont"), "dupont_5_factor")
     snap.solvency = _ratio_block(payloads.get("solvency"), "solvency_ratios")
     snap.liquidity = _ratio_block(payloads.get("liquidity"), "liquidity_ratios")
-    snap.capital_efficiency = _ratio_block(payloads.get("capital_efficiency"), "capital_efficiency")
+    snap.capital_efficiency = _ratio_block(
+        payloads.get("capital_efficiency"), "capital_efficiency")
     snap.cagr = _ratio_block(payloads.get("cagr"), "cagr_metrics")
 
-    # --- summary ---------------------------------------------------------
+
+def build_snapshot(ticker: str, payloads: Dict[str, Any]) -> CompanySnapshot:
+    """Assembles a CompanySnapshot from raw collector payloads.
+
+    Args:
+        ticker: Stock ticker symbol.
+        payloads: Mapping from `CollectorClient.fetch_all`.
+
+    Returns:
+        A populated snapshot. Endpoints that failed leave their fields
+        empty and append an entry to `warnings` rather than raising, so a
+        partial report still renders with honest gaps.
+    """
+    snap = CompanySnapshot(ticker=ticker.upper())
+
+    _apply_income(snap, payloads)
+
+    snap.balance = _balance_periods(payloads.get("balance"))
+    if not snap.balance:
+        snap.warnings.append("balance sheet unavailable")
+
+    snap.cashflow = _cashflow_periods(payloads.get("cashflow"))
+    if not snap.cashflow:
+        snap.warnings.append("cash flow statement unavailable")
+
+    _apply_ratios(snap, payloads)
+
     summary = payloads.get("summary")
     if isinstance(summary, dict):
         _apply_summary(snap, summary)

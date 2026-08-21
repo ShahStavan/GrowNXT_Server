@@ -48,3 +48,6 @@ reports/
 # Generated reports and cached API payloads
 output/
 .cache/
+
+# Google Drive OAuth grant (never commit -- it is a live credential)
+.gdrive_token.json

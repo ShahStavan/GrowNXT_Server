@@ -29,7 +29,7 @@ try:
 except ImportError:  # pragma: no cover - Python 3.7
     from typing_extensions import TypedDict  # type: ignore
 
-from core.config import DATA_DIR
+from core.config import OUTPUT_DIR
 from ingestion.catalog import CatalogError, fetch_catalog
 from ingestion.chunker import (
     CHUNKER_VERSION,
@@ -106,7 +106,8 @@ class IngestionPipeline:
 
     Args:
         ticker: Stock ticker symbol.
-        data_dir: Root data directory. Defaults to the configured DATA_DIR.
+        data_dir: Root artifact directory. Defaults to the configured
+            OUTPUT_DIR, i.e. one directory per stock under ``output/``.
         annual_reports: Annual report years to request from the catalogue.
         concall_years: Years of concalls to request from the catalogue.
         doc_types: Document classes to ingest. Defaults to all three.
@@ -133,7 +134,7 @@ class IngestionPipeline:
         skip_sections: Optional[Sequence[str]] = None,
     ) -> None:
         self.ticker = ticker.strip().upper()
-        self.data_dir = Path(data_dir) if data_dir else Path(DATA_DIR)
+        self.data_dir = Path(data_dir) if data_dir else Path(OUTPUT_DIR)
         self.annual_reports = max(1, int(annual_reports))
         self.concall_years = max(0, int(concall_years))
         self.doc_types = list(doc_types) if doc_types else list(DOC_TYPES)

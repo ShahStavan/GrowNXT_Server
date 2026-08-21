@@ -1,9 +1,8 @@
 """Typed client for the Financial Data Collector REST service.
 
-Wraps the collector's endpoints for report generation. This is deliberately
-separate from `services/financial_tools.py`, which returns JSON *strings*
-shaped for prompt injection; a typeset report needs parsed values with
-their absence made explicit.
+Wraps the collector's endpoints for report generation, returning parsed
+values with their absence made explicit -- a typeset report has to distinguish
+a reported zero from a figure the collector does not carry.
 
 Responses are cached on disk per ticker so that iterating on layout costs
 no network traffic — a full report build re-reads one directory instead of
@@ -18,6 +17,8 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
 import requests
+
+from core.config import safe_ticker
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,7 @@ class CollectorClient:
 
     def _cache_path(self, ticker: str, name: str) -> Path:
         """Returns the cache path for one endpoint of one ticker."""
-        safe = "".join(c if c.isalnum() or c in "-&" else "_" for c in ticker.upper())
-        return self.cache_dir / safe / (name + ".json")
+        return self.cache_dir / safe_ticker(ticker) / (name + ".json")
 
     def _get(self, url: str) -> Optional[Any]:
         """GETs a URL and parses JSON, retrying transient failures."""

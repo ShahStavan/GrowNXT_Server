@@ -41,16 +41,58 @@ logger = logging.getLogger(__name__)
 plt.rcParams.update(tokens.matplotlib_rc())
 
 
-def _thousands(value: float, _pos: int = 0) -> str:
-    """Axis tick formatter using international grouping."""
-    return "{:,.0f}".format(value)
-
-
 def _compact(value: float, _pos: int = 0) -> str:
     """Axis tick formatter that abbreviates thousands as 'k'."""
     if abs(value) >= 1000:
         return "{:,.0f}k".format(value / 1000.0)
     return "{:,.0f}".format(value)
+
+
+def _canvas(
+    labels: Sequence[str],
+    width: float = tokens.CHART_W_HALF,
+    height: float = tokens.CHART_H_STD,
+):
+    """Opens a figure and returns it with its axis and the period positions.
+
+    Every chart here plots against a period index rather than a date, so the
+    positions are always `0..n-1` for the labels being shown.
+
+    Returns:
+        The figure, its axis, and the x positions the labels sit at.
+    """
+    fig, axis = plt.subplots(figsize=(width, height))
+    return fig, axis, list(range(len(labels)))
+
+
+def _period_ticks(
+    axis,
+    positions: Sequence[int],
+    labels: Sequence[str],
+    size: Optional[float] = tokens.TICK_PERIOD,
+    **kwargs,
+) -> None:
+    """Places the period labels on the x axis.
+
+    Called after the series are drawn, not at figure creation: matplotlib
+    autoscales from what has been plotted, and fixing the ticks first would
+    make the order a chart is built in matter. Keeping the call last preserves
+    that order while still defining "how a period axis is labelled" once.
+
+    Args:
+        axis: Axis to label.
+        positions: Tick positions, from `_canvas`.
+        labels: Period labels, one per position.
+        size: Font size; None leaves the rcParams default, which the one
+            full-width annual chart relies on.
+        **kwargs: Passed through to `set_xticklabels`, for the one chart that
+            pins rotation explicitly.
+    """
+    axis.set_xticks(list(positions))
+    if size is None:
+        axis.set_xticklabels(labels, **kwargs)
+    else:
+        axis.set_xticklabels(labels, fontsize=size, **kwargs)
 
 
 def _save(fig: "plt.Figure", path: Path) -> Path:
@@ -122,7 +164,7 @@ def _label_ends(
         axis.annotate(
             "{:,.{d}f}".format(value, d=decimals),
             xy=(position, value), xytext=(0, 5), textcoords="offset points",
-            ha="center", va="bottom", fontsize=6.0, color=tokens.INK,
+            ha="center", va="bottom", fontsize=tokens.DATA_LABEL, color=tokens.INK,
             fontweight="semibold" if index else "normal", zorder=6,
             bbox=dict(boxstyle="square,pad=0.14", facecolor=tokens.SURFACE,
                       edgecolor="none", alpha=0.86),
@@ -144,8 +186,7 @@ def annual_revenue_profit(snap: CompanySnapshot, out_dir: Path) -> Optional[Path
     ebit = [y.ebit for y in years]
     margins = [y.ebit_margin for y in years]
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_FULL, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels, width=tokens.CHART_W_FULL)
     width = 0.36
 
     bars_rev = axis.bar([p - width / 2 for p in positions], _bar_values(revenue),
@@ -155,8 +196,7 @@ def annual_revenue_profit(snap: CompanySnapshot, out_dir: Path) -> Optional[Path
     _emphasise_last(bars_rev, tokens.SERIES[0])
     _emphasise_last(bars_ebit, tokens.SERIES[3])
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels)
+    _period_ticks(axis, positions, labels, size=None)
     axis.set_ylabel("Rs cr")
     axis.yaxis.set_major_formatter(FuncFormatter(_compact))
     axis.set_axisbelow(True)
@@ -195,14 +235,12 @@ def quarterly_trend(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     revenue = [q.revenue for q in quarters]
     margins = [q.pat_margin for q in quarters]
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     bars = axis.bar(positions, _bar_values(revenue), 0.58,
                     color=tokens.SERIES[3], zorder=3, label="Revenue")
     _emphasise_last(bars, tokens.SERIES[1])
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, rotation=0, fontsize=5.6)
+    _period_ticks(axis, positions, labels, size=tokens.TICK_DENSE, rotation=0)
     axis.set_ylabel("Revenue (Rs cr)")
     axis.yaxis.set_major_formatter(FuncFormatter(_compact))
     axis.set_axisbelow(True)
@@ -253,8 +291,7 @@ def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
         return None
 
     labels = [fmt.period_label(b.period) for b in rows]
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     width = 0.74 / len(series)
     offset = -(len(series) - 1) / 2.0
 
@@ -262,8 +299,7 @@ def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
         axis.bar([p + (offset + index) * width for p in positions],
                  _bar_values(values), width, color=colour, label=name, zorder=3)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Rs cr")
     axis.yaxis.set_major_formatter(FuncFormatter(_compact))
     axis.set_axisbelow(True)
@@ -311,8 +347,7 @@ def cash_generation(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
         return None
 
     labels = [fmt.period_label(c.period) for c in rows]
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     width = 0.74 / len(series)
     offset = -(len(series) - 1) / 2.0
 
@@ -320,8 +355,7 @@ def cash_generation(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
         axis.bar([p + (offset + index) * width for p in positions],
                  _bar_values(values), width, color=colour, label=name, zorder=3)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Rs cr")
     axis.yaxis.set_major_formatter(FuncFormatter(_compact))
     axis.set_axisbelow(True)
@@ -361,8 +395,7 @@ def shareholding(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     if not series:
         return None
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
 
     for name, values, colour in series:
         axis.plot(positions, _bar_values(values), color=colour, linewidth=1.5,
@@ -370,8 +403,7 @@ def shareholding(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
                   markeredgewidth=0.9, label=name, zorder=4)
         _label_ends(axis, positions, values, decimals=1)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Holding %")
     axis.set_xlim(-0.25, len(labels) - 0.75)
     axis.set_axisbelow(True)
@@ -425,14 +457,14 @@ def _ranked_panel(
                   color=colour, zorder=4)
         axis.annotate(
             "{:,.1f}".format(value),
-            xy=(label_x, position), va="center", ha="right", fontsize=6.1,
+            xy=(label_x, position), va="center", ha="right", fontsize=tokens.TICK_RANKED,
             color=tokens.INK if is_subject else tokens.MUTED,
             fontweight="semibold" if is_subject else "normal",
             annotation_clip=False,
         )
 
     axis.set_yticks(positions)
-    axis.set_yticklabels([t for t, _, _ in ordered], fontsize=6.1)
+    axis.set_yticklabels([t for t, _, _ in ordered], fontsize=tokens.TICK_RANKED)
     for label, (_, _, is_subject) in zip(axis.get_yticklabels(), ordered):
         if is_subject:
             label.set_color(tokens.BRAND)
@@ -451,7 +483,7 @@ def _ranked_panel(
         axis.annotate(
             reference_label + " {:,.1f}".format(reference),
             xy=(reference, axis.get_ylim()[1]), xytext=(3, -6),
-            textcoords="offset points", fontsize=5.7,
+            textcoords="offset points", fontsize=tokens.DATA_LABEL_TIGHT,
             color=tokens.ACCENT_LINE, va="top", ha="left",
         )
 
@@ -503,8 +535,7 @@ def margin_bridge(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     if not _present(ebit_margin) or not _present(pat_margin):
         return None
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
 
     for values, name, colour in (
         (ebit_margin, "EBIT margin", tokens.SERIES[1]),
@@ -515,8 +546,7 @@ def margin_bridge(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
                   markeredgewidth=0.9, label=name, zorder=4)
         _label_ends(axis, positions, values, decimals=1)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.6)
+    _period_ticks(axis, positions, labels, size=tokens.TICK_DENSE)
     axis.set_ylabel("Margin %")
     axis.set_axisbelow(True)
     axis.legend(loc="upper left", bbox_to_anchor=(0.0, 1.13), ncol=2)
@@ -542,14 +572,12 @@ def rolling_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
     revenue = [p.revenue for p in points]
     margins = [p.ebit_margin for p in points]
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     bars = axis.bar(positions, _bar_values(revenue), 0.58,
                     color=tokens.SERIES[3], zorder=3, label="Trailing revenue")
     _emphasise_last(bars, tokens.SERIES[1])
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.6)
+    _period_ticks(axis, positions, labels, size=tokens.TICK_DENSE)
     axis.set_ylabel("Trailing revenue (Rs cr)")
     axis.yaxis.set_major_formatter(FuncFormatter(_compact))
     axis.set_axisbelow(True)
@@ -601,16 +629,14 @@ def returns_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
     if not series:
         return None
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     for name, values, colour in series:
         axis.plot(positions, _bar_values(values), color=colour, linewidth=1.5,
                   marker="o", markersize=2.8, markerfacecolor=tokens.SURFACE,
                   markeredgewidth=0.9, label=name, zorder=4)
         _label_ends(axis, positions, values, decimals=1)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Return %")
     axis.set_axisbelow(True)
     axis.legend(loc="upper left", bbox_to_anchor=(0.0, 1.14), ncol=3)
@@ -636,8 +662,7 @@ def working_capital(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
         return None
 
     labels = [fmt.period_label(r.period) for r in rows]
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     width = 0.26
 
     for index, (name, values, colour) in enumerate([
@@ -648,8 +673,7 @@ def working_capital(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
         axis.bar([p + (index - 1) * width for p in positions],
                  _bar_values(values), width, color=colour, label=name, zorder=3)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Days")
     axis.set_axisbelow(True)
     top = max([v for r in rows for v in (r.dso, r.dio, r.dpo) if v is not None] or [0])
@@ -696,8 +720,7 @@ def piotroski_trend(comp: Composites, out_dir: Path) -> Optional[Path]:
     scores = [p.score for p in points]
     ceiling = max(p.computable for p in points)
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     bars = axis.bar(positions, _bar_values(scores), 0.62,
                     color=tokens.SERIES[2], zorder=3)
     _emphasise_last(bars, tokens.SERIES[0])
@@ -713,16 +736,15 @@ def piotroski_trend(comp: Composites, out_dir: Path) -> Optional[Path]:
     axis.annotate("%d signals evaluated" % ceiling,
                   xy=(len(positions) - 0.5, ceiling), xytext=(0, 2),
                   textcoords="offset points", ha="right", va="bottom",
-                  fontsize=5.6, color=tokens.MUTED, zorder=6)
+                  fontsize=tokens.ANNOTATION, color=tokens.MUTED, zorder=6)
 
     for position, score in zip(positions, scores):
         axis.annotate("%d" % score, xy=(position, score), xytext=(0, 2.5),
                       textcoords="offset points", ha="center", va="bottom",
-                      fontsize=6.2, color=tokens.INK, fontweight="semibold",
+                      fontsize=tokens.SCORE_VALUE, color=tokens.INK, fontweight="semibold",
                       zorder=6)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Signals passed")
     axis.set_ylim(0, ceiling + 1.35)
     axis.set_yticks(list(range(0, ceiling + 1, 2)))
@@ -749,8 +771,7 @@ def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
     safe = composites_module.ALTMAN_PRIVATE_SAFE
     distress = composites_module.ALTMAN_PRIVATE_DISTRESS
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
 
     low = min(min(scores), distress) - 0.55
     high = max(max(scores), safe) + 0.45
@@ -777,7 +798,7 @@ def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
     # value label, and at TCS the 'Safe' band name landed on top of it.
     for centre, name in bands:
         axis.text(0.015, centre, name, transform=axis.get_yaxis_transform(),
-                  ha="left", va="center", fontsize=5.6, color=tokens.MUTED,
+                  ha="left", va="center", fontsize=tokens.ANNOTATION, color=tokens.MUTED,
                   zorder=6)
 
     axis.plot(positions, _bar_values(scores), color=tokens.SERIES[0],
@@ -785,8 +806,7 @@ def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
               markerfacecolor=tokens.SURFACE, markeredgewidth=0.9, zorder=4)
     _label_ends(axis, positions, scores, decimals=2)
 
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Z-prime score")
     axis.set_ylim(low, high)
     axis.set_axisbelow(True)
@@ -829,12 +849,12 @@ def sources_and_uses(comp: Composites, out_dir: Path) -> Optional[Path]:
             if caption:
                 axis.annotate(
                     caption, xy=(left + share / 2.0, row),
-                    ha="center", va="center", fontsize=5.5, color=ink,
+                    ha="center", va="center", fontsize=tokens.SEGMENT_CAPTION, color=ink,
                     linespacing=1.15, zorder=6)
             left += share
 
     axis.set_yticks([0, 1])
-    axis.set_yticklabels(["Uses", "Sources"], fontsize=6.4,
+    axis.set_yticklabels(["Uses", "Sources"], fontsize=tokens.TICK_CATEGORY,
                          fontweight="semibold")
     axis.set_xlim(0, 100)
     axis.set_xlabel("Share of total cash flows over the window (%)")
@@ -920,8 +940,7 @@ def reinvestment_identity(comp: Composites, out_dir: Path) -> Optional[Path]:
     implied = [y.implied_growth for y in rows]
     actual = [y.revenue_growth for y in rows]
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     axis.bar(positions, _bar_values(implied), 0.58, color=tokens.SERIES[3],
              label="Implied by reinvestment", zorder=3)
     axis.plot(positions, _bar_values(actual), color=tokens.ACCENT_LINE,
@@ -930,8 +949,7 @@ def reinvestment_identity(comp: Composites, out_dir: Path) -> Optional[Path]:
               label="Revenue growth delivered", zorder=5)
 
     axis.axhline(0, color=tokens.RULE, linewidth=0.6, zorder=2)
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Growth, % a year")
     axis.set_axisbelow(True)
     values = [v for v in implied + actual if v is not None]
@@ -968,8 +986,7 @@ def dupont_indexed(comp: Composites, out_dir: Path) -> Optional[Path]:
         ("Equity multiplier", [r.equity_multiplier for r in rows], tokens.SERIES[4]),
     ]
 
-    fig, axis = plt.subplots(figsize=(tokens.CHART_W_HALF, tokens.CHART_H_STD))
-    positions = list(range(len(labels)))
+    fig, axis, positions = _canvas(labels)
     plotted = 0
     for name, values, colour in families:
         base = values[0]
@@ -988,8 +1005,7 @@ def dupont_indexed(comp: Composites, out_dir: Path) -> Optional[Path]:
         return None
 
     axis.axhline(100.0, color=tokens.RULE, linewidth=0.7, zorder=2)
-    axis.set_xticks(positions)
-    axis.set_xticklabels(labels, fontsize=5.9)
+    _period_ticks(axis, positions, labels)
     axis.set_ylabel("Indexed, %s = 100" % labels[0])
     axis.set_axisbelow(True)
     axis.legend(loc="upper left", bbox_to_anchor=(0.0, 1.30), ncol=3)
