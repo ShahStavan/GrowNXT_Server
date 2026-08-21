@@ -44,3 +44,7 @@ background_tasks.log
 # Runtime artifacts
 data/
 reports/
+
+# Generated reports and cached API payloads
+output/
+.cache/
