@@ -33,10 +33,83 @@ The Financial Data Collector service runs at:
 | `GET /api/v1/stocks/<symbol>/cashflow` | `GET` | Returns annual cash flow statements (`cashflowData`). |
 | `GET /api/v1/stocks/<symbol>/summary` | `GET` | Returns stock summary profile, business description, and market cap. |
 | `GET /api/v1/stocks/<symbol>/peers` | `GET` | Returns list of peer companies with tickers, names, and SIDs. |
+| `GET /api/v1/stocks/<symbol>/documents` | `GET` | Returns the corporate filing **link catalog** — annual reports, concall transcripts, investor presentations. Windowed by `?annual_reports={n}` (default 1) and `?concall_years={n}` (default 3). |
 
 ---
 
-### 2. Institutional Ratio Analytics Endpoints
+### 2. Document Link Catalog
+
+`GET /api/v1/stocks/<symbol>/documents`
+
+Division of responsibility: **Tickertape** supplies structured statement JSON,
+**Screener.in** supplies document links. The service returns links only — it
+never downloads files. The GrowNXT ingestion layer decides what to fetch,
+hash, parse, and embed.
+
+The two document groups are windowed **independently**, because they are
+consumed differently. An annual report is one authoritative document per
+financial year and the ingestion layer almost always wants the newest, so the
+default is the latest one alone. Transcripts and presentations are read as a
+series, so the default there is three years.
+
+| Query Parameter | Default | Description |
+| :--- | :---: | :--- |
+| `annual_reports` | `1` | Annual reports to return, newest first. `0` returns every report available (capped at 25). |
+| `concall_years` | `3` | Lookback window in years for concall transcripts and presentations. `0` returns every concall available (capped at 15 years). |
+| `years` | — | Legacy alias applying one window to both groups. Either parameter above takes precedence for its own group. |
+
+```json
+{
+  "success": true,
+  "symbol": "WIPRO",
+  "data": {
+    "company_name": "Wipro Ltd",
+    "screener_slug": "WIPRO",
+    "screener_url": "https://www.screener.in/company/WIPRO/consolidated/",
+    "source": "screener.in",
+    "annual_reports_requested": 1,
+    "concall_years": 3,
+    "latest_annual_report": "https://www.bseindia.com/...pdf",
+    "annual_reports": [
+      {"financial_year": "FY2026", "url": "https://www.bseindia.com/...pdf", "source": "bse"}
+    ],
+    "concalls": [
+      {"date": "2026-07", "period": "Jul 2026",
+       "transcript_url": "https://www.bseindia.com/...pdf", "ppt_url": ""}
+    ],
+    "counts": {
+      "annual_reports_found": 1, "annual_reports_available": 15,
+      "concalls_found": 13, "concalls_available": 39,
+      "transcripts_found": 13, "ppts_found": 6
+    }
+  }
+}
+```
+
+Consumer notes:
+
+- Every returned annual report carries a URL. Entries are **not** padded to
+  the requested count, so a company with fewer published reports than
+  requested returns fewer entries. Compare `counts.annual_reports_found`
+  against `counts.annual_reports_available` to see whether more exist.
+- `latest_annual_report` is a convenience copy of the newest URL, since
+  fetching it is the most common reason to call this endpoint. It is an
+  empty string when the company has no discoverable report.
+- A transcript label is not a guarantee of a transcript link. Screener
+  renders the label for some companies as an inert element with no href at
+  all — every one of ITC's 37 and Trent's 14 concalls, for instance — so
+  `transcript_url` is legitimately empty there and the document does not
+  exist to be fetched.
+- `period` is **not** a unique key. A single quarter can appear twice when
+  both an exchange-hosted and a company-IR-hosted document exist for the
+  same call, so deduplicate downstream by document content hash.
+- Empty-string URLs mean "not published / not found", not an error.
+- Linked PDFs are directly downloadable; BSE `AnnPdfOpen.aspx` links need
+  no Referer header or cookie.
+
+---
+
+### 3. Institutional Ratio Analytics Endpoints
 
 | Endpoint Route | Method | Derived Ratios Returned |
 | :--- | :---: | :--- |
@@ -61,8 +134,12 @@ data/wipro/
 ├── anGrowth.json       # YoY annual growth metrics
 ├── balancesheet.json   # Capital structure, Equity, Debt, Cash, Liabilities
 ├── balGrowth.json      # Balance sheet solvency growth trends
-├── cashflow.json       # Operating cash flows, CapEx, and Free Cash Flow
-├── annual_report.pdf   # Company Annual Report PDF (optional)
-├── presentation.pdf    # Investor Pitch Presentation PDF (optional)
-└── transcript.txt      # Earnings Conference Call Transcript (optional)
+└── cashflow.json       # Operating cash flows, CapEx, and Free Cash Flow
 ```
+
+The collector service persists **statement JSON only**. Filing PDFs are not
+stored there — `/documents` returns links, and the GrowNXT ingestion layer
+owns downloading and persisting them under its own
+`data/<ticker>/documents/` tree. Note also that the deployed service writes
+to an ephemeral serverless path (`/tmp/data`), so it must never be treated
+as a durable document store.
