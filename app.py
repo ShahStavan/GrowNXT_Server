@@ -23,6 +23,26 @@ from dotenv import load_dotenv
 import gradio as gr
 import requests
 
+# Patch gradio_client bug with Pydantic v2 boolean additionalProperties schemas
+try:
+    import gradio_client.utils as _client_utils
+
+    _orig_schema_converter = _client_utils._json_schema_to_python_type
+
+    def _safe_json_schema_to_python_type(schema, defs=None):
+        if isinstance(schema, bool):
+            return "Any" if schema else "None"
+        if not isinstance(schema, dict):
+            return "Any"
+        try:
+            return _orig_schema_converter(schema, defs)
+        except Exception:
+            return "Any"
+
+    _client_utils._json_schema_to_python_type = _safe_json_schema_to_python_type
+except Exception:
+    pass
+
 from api.app import create_app
 from core.llm_config import (
     ACTIVE_MODEL,
@@ -234,6 +254,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                 fn=handle_generate_report,
                 inputs=[ticker_in, refresh_in],
                 outputs=[pdf_file_out, status_out, drive_out],
+                show_api=False,
             )
 
         # --- TAB 2: STOCK SEARCH ---
@@ -252,11 +273,13 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                 fn=handle_stock_search,
                 inputs=[search_in],
                 outputs=[search_results_out],
+                show_api=False,
             )
             search_in.submit(
                 fn=handle_stock_search,
                 inputs=[search_in],
                 outputs=[search_results_out],
+                show_api=False,
             )
 
         # --- TAB 3: SLM CHAT (DIRECT STREAMING) ---
@@ -281,13 +304,15 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                 fn=handle_slm_chat,
                 inputs=[msg_in, chatbot, model_dropdown],
                 outputs=[chatbot],
-            ).then(lambda: "", None, msg_in)
+                show_api=False,
+            ).then(lambda: "", None, msg_in, show_api=False)
 
             msg_in.submit(
                 fn=handle_slm_chat,
                 inputs=[msg_in, chatbot, model_dropdown],
                 outputs=[chatbot],
-            ).then(lambda: "", None, msg_in)
+                show_api=False,
+            ).then(lambda: "", None, msg_in, show_api=False)
 
         # --- TAB 4: API & PROXY INFO ---
         with gr.Tab("🔌 REST API & Reverse Proxy"):
