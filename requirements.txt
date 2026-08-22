@@ -1,16 +1,15 @@
+# GrowNXT Server -- Python 3.12 or newer.
+
+
 flask
 flask-cors
 requests
 python-dotenv
 pydantic
 langgraph
-pypdf
-pdfplumber
 chardet
-
-# Institutional PDF report engine (reporting/)
 typst>=0.13
-matplotlib<3.10
-
-# Document ingestion layer (ingestion/)
+matplotlib
+pypdf
+docling>=2.70
 numpy>=1.24

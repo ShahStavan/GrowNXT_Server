@@ -30,7 +30,7 @@ from urllib.parse import quote
 import requests
 
 from core.config import FINANCIAL_DATA_COLLECTOR_BASE_URL, HTTP_HEADERS
-from ingestion.registry import (
+from ingestion.fetcher import (
     DOC_TYPE_ANNUAL_REPORT,
     DOC_TYPE_PRESENTATION,
     DOC_TYPE_TRANSCRIPT,

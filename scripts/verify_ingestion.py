@@ -71,10 +71,9 @@ from ingestion.prompts import (  # noqa: E402
     build_extraction_prompt,
     build_probes,
 )
-from ingestion.registry import (  # noqa: E402
+from ingestion.fetcher import (  # noqa: E402
     DOC_TYPE_ANNUAL_REPORT,
     DOC_TYPE_TRANSCRIPT,
-    DocumentRegistry,
     STAGES,
 )
 
@@ -998,7 +997,7 @@ def check_issuer_agnostic(report: Report) -> None:
     )
 
     # Tickers reach the filesystem, and Indian symbols carry punctuation.
-    from ingestion.registry import safe_ticker
+    from core.config import safe_ticker
 
     report.check(
         "generic.punctuated_tickers_are_safe",

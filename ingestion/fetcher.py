@@ -1,45 +1,47 @@
-"""Document downloader for catalogued filings.
+"""Document fetcher and record models for catalogued filings.
 
-Downloads one catalogued document to ``data/<TICKER>/documents/<doc_id>.pdf``,
-hashes it, and reports what happened so the registry can record it. A document
-already on disk whose catalogue link is unchanged is never fetched again -- an
-annual report is a multi-megabyte request against an exchange server, and a
-re-run of the pipeline must not repeat it.
-
-Two classes of host serve these filings, and each needs care:
-
-* Exchange hosts reject requests without a browser user agent, and serve their
-  attachments through a redirect that must be followed. They also want a referer
-  from their own site, so headers are derived per host rather than pinned to one
-  exchange: the catalogue mixes exchange links with issuers' own CDNs freely.
-* Issuer investor-relations sites return an HTML error page with a 200 status
-  when a document has moved. A response is therefore accepted only if it
-  actually begins with a PDF header, so that an error page can never be filed
-  as a filing and parsed into nonsense.
-
-Downloads go to a temporary file in the destination directory and are renamed
-into place, so an interrupted run leaves no truncated PDF that a later run
-would treat as complete.
+Downloads catalogued documents to ``output/<TICKER>/documents/<doc_id>.pdf``,
+hashes them, and manages document records.
 
 Google Python Style Guide Compliant.
 """
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import datetime as _datetime
+import hashlib
 import logging
 import os
 from pathlib import Path
 import tempfile
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import requests
 
-from ingestion.registry import DocumentRecord, sha256_file
+from core.config import safe_ticker
 
 logger = logging.getLogger(__name__)
 
 FETCHER_VERSION: str = "fetcher/v1"
+
+# Sub-directories of output/<TICKER>/
+DOCUMENTS_DIR: str = "documents"
+PARSED_DIR: str = "parsed"
+CHUNKS_DIR: str = "chunks"
+VECTORS_DIR: str = "vectors"
+FINDINGS_DIR: str = "findings"
+
+# Document classes. The catalogue exposes exactly these three.
+DOC_TYPE_ANNUAL_REPORT: str = "annual_report"
+DOC_TYPE_TRANSCRIPT: str = "concall_transcript"
+DOC_TYPE_PRESENTATION: str = "concall_presentation"
+DOC_TYPES: List[str] = [DOC_TYPE_ANNUAL_REPORT, DOC_TYPE_TRANSCRIPT, DOC_TYPE_PRESENTATION]
+
+# Stage names, in pipeline order.
+STAGES: List[str] = ["download", "parse", "chunk", "embed", "prompt"]
 
 # Exchange hosts reject non-browser agents outright.
 DOWNLOAD_HEADERS = {
@@ -50,58 +52,136 @@ DOWNLOAD_HEADERS = {
     "Accept": "application/pdf,application/octet-stream,*/*",
 }
 
-
-def _request_headers(url: str) -> Dict[str, str]:
-    """Returns download headers appropriate to the URL's own host.
-
-    The catalogue mixes hosts freely: the same company's filings arrive from an
-    exchange's attachment handler and from its own investor-relations CDN, and a
-    third issuer's from a registrar. An exchange attachment handler wants a
-    referer from its own site or it redirects to the announcement page, so the
-    referer is derived from the URL being fetched rather than pinned to one
-    exchange -- sending an exchange's referer to an issuer's CDN is at best
-    meaningless and at worst grounds for a refusal.
-
-    Args:
-        url: The URL about to be requested.
-
-    Returns:
-        Request headers, including a same-origin referer where one can be derived.
-    """
-    headers = dict(DOWNLOAD_HEADERS)
-    try:
-        parsed = urlparse(url)
-    except ValueError:
-        return headers
-    if parsed.scheme in ("http", "https") and parsed.netloc:
-        headers["Referer"] = "%s://%s/" % (parsed.scheme, parsed.netloc)
-    return headers
-
-
 PDF_MAGIC: bytes = b"%PDF"
-
-# An annual report runs to tens of megabytes; anything far beyond that is a
-# misdirected response rather than a filing.
 MAX_BYTES: int = 200 * 1024 * 1024
-
-# Below this, the response is an error page or a stub, not a filing.
 MIN_BYTES: int = 8 * 1024
+
+
+def utc_now() -> str:
+    """Returns the current UTC time as an ISO-8601 string with a Z suffix."""
+    return _datetime.datetime.now(_datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def sha256_text(text: str) -> str:
+    """Returns the SHA-256 hex digest of a string."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def sha256_file(path: Path, block_size: int = 1 << 20) -> str:
+    """Returns the SHA-256 hex digest of a file, read in blocks."""
+    digest = hashlib.sha256()
+    try:
+        with open(str(path), "rb") as handle:
+            for block in iter(lambda: handle.read(block_size), b""):
+                digest.update(block)
+    except OSError as exc:
+        logger.warning("Could not hash %s: %s", path, exc)
+        return ""
+    return digest.hexdigest()
+
+
+@dataclass
+class StageState:
+    """The outcome of one pipeline stage for one document."""
+
+    status: str = "pending"
+    fingerprint: str = ""
+    version: str = ""
+    at: str = ""
+    detail: Dict[str, Any] = field(default_factory=dict)
+    error: str = ""
+
+    @property
+    def is_done(self) -> bool:
+        """True when the stage completed successfully."""
+        return self.status == "done"
+
+    def to_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {
+            "status": self.status,
+            "fingerprint": self.fingerprint,
+            "version": self.version,
+            "at": self.at,
+            "detail": self.detail,
+        }
+        if self.error:
+            out["error"] = self.error
+        return out
+
+    @classmethod
+    def from_dict(cls, payload: Optional[Dict[str, Any]]) -> "StageState":
+        data = payload or {}
+        return cls(
+            status=str(data.get("status", "pending")),
+            fingerprint=str(data.get("fingerprint", "")),
+            version=str(data.get("version", "")),
+            at=str(data.get("at", "")),
+            detail=dict(data.get("detail") or {}),
+            error=str(data.get("error", "")),
+        )
+
+
+@dataclass
+class DocumentRecord:
+    """One catalogued document and its progress through the pipeline."""
+
+    doc_id: str
+    doc_type: str
+    label: str
+    source_url: str
+    period: Dict[str, Any] = field(default_factory=dict)
+    stages: Dict[str, StageState] = field(default_factory=dict)
+    history: List[Dict[str, Any]] = field(default_factory=list)
+
+    def stage(self, name: str) -> StageState:
+        if name not in self.stages:
+            self.stages[name] = StageState()
+        return self.stages[name]
+
+    def record(self, event: str, **fields: Any) -> None:
+        entry: Dict[str, Any] = {"event": event, "at": utc_now()}
+        entry.update({k: v for k, v in fields.items() if v not in (None, "")})
+        self.history.append(entry)
+
+    @property
+    def url_fingerprint(self) -> str:
+        return sha256_text(self.source_url)
+
+    def relative_path(self, sub_dir: str, suffix: str) -> str:
+        return sub_dir + "/" + self.doc_id + suffix
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "doc_id": self.doc_id,
+            "doc_type": self.doc_type,
+            "label": self.label,
+            "source_url": self.source_url,
+            "source_url_sha256": self.url_fingerprint,
+            "period": self.period,
+            "stages": {name: state.to_dict() for name, state in self.stages.items()},
+            "history": self.history,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "DocumentRecord":
+        stages = {
+            name: StageState.from_dict(value)
+            for name, value in (payload.get("stages") or {}).items()
+        }
+        return cls(
+            doc_id=str(payload.get("doc_id", "")),
+            doc_type=str(payload.get("doc_type", "")),
+            label=str(payload.get("label", "")),
+            source_url=str(payload.get("source_url", "")),
+            period=dict(payload.get("period") or {}),
+            stages=stages,
+            history=list(payload.get("history") or []),
+        )
 
 
 @dataclass
 class FetchResult:
-    """Outcome of one download attempt.
-
-    Attributes:
-        ok: True when a valid PDF is on disk at ``path``.
-        path: Absolute path to the stored document, if any.
-        relative_path: Path relative to the ticker directory, for the registry.
-        sha256: Content hash of the stored bytes.
-        n_bytes: Size on disk.
-        reused: True when the file was already present and was not re-fetched.
-        content_type: Content type reported by the server.
-        error: Failure reason when ``ok`` is False.
-    """
+    """Outcome of one download attempt."""
 
     ok: bool = False
     path: Optional[Path] = None
@@ -113,8 +193,18 @@ class FetchResult:
     error: str = ""
 
 
+def _request_headers(url: str) -> Dict[str, str]:
+    headers = dict(DOWNLOAD_HEADERS)
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return headers
+    if parsed.scheme in ("http", "https") and parsed.netloc:
+        headers["Referer"] = "%s://%s/" % (parsed.scheme, parsed.netloc)
+    return headers
+
+
 def _looks_like_pdf(path: Path) -> bool:
-    """Returns True when a file begins with a PDF header."""
     try:
         with open(str(path), "rb") as handle:
             return handle.read(len(PDF_MAGIC)) == PDF_MAGIC
@@ -129,20 +219,7 @@ def download_document(
     max_retries: int = 2,
     force: bool = False,
 ) -> FetchResult:
-    """Downloads one catalogued document, unless it is already on disk.
-
-    Args:
-        record: Registry record naming the URL and the target file name.
-        destination: Directory to write into, normally
-            ``data/<TICKER>/documents``.
-        timeout: Per-request timeout in seconds.
-        max_retries: Additional attempts for transient failures.
-        force: Re-download even when a valid file is already present.
-
-    Returns:
-        A FetchResult. Failures are reported rather than raised so that one
-        unavailable filing does not abort an ingest of several.
-    """
+    """Downloads one catalogued document, unless it is already on disk."""
     destination.mkdir(parents=True, exist_ok=True)
     target = destination / (record.doc_id + ".pdf")
     relative = record.relative_path("documents", ".pdf")
@@ -157,8 +234,7 @@ def download_document(
                 n_bytes=target.stat().st_size,
                 reused=True,
             )
-        logger.warning("[%s] existing file is not a usable PDF; re-downloading.",
-                       record.doc_id)
+        logger.warning("[%s] existing file is not a usable PDF; re-downloading.", record.doc_id)
 
     last_error = ""
     for attempt in range(max_retries + 1):
@@ -189,8 +265,6 @@ def download_document(
                 last_error = "response too small (%d bytes)" % written
                 raise IOError(last_error)
             if not _looks_like_pdf(temporary):
-                # A 200 carrying an HTML error page is the common failure mode
-                # for investor-relations hosts after a document is moved.
                 last_error = "response is not a PDF (content-type %r)" % content_type
                 raise IOError(last_error)
 

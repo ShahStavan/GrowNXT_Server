@@ -1,40 +1,84 @@
-"""Document ingestion layer for GrowNXT.
+"""Document ingestion & Qualitative RAG layer for GrowNXT.
 
-Turns a company's published filings into embedded, citable evidence:
+Turns a company's published filings into extracted, multimodal citable evidence
+and institutional-grade equity research findings:
 
-    catalogue -> download -> parse -> chunk -> embed -> extraction prompt
+    catalog -> download -> extract -> chunk -> embed (Qdrant + Snowflake-Arctic) -> RAG (LangGraph)
 
-Every stage records what it consumed in ``data/<TICKER>/registry.json``, so a
-second run of the pipeline does nothing the first run already did. See
-``ingestion.graph`` for the pipeline and ``ingestion.registry`` for the state
-model.
+Google Python Style Guide Compliant.
 """
 
+from __future__ import annotations
+
 from ingestion.catalog import Catalog, CatalogEntry, CatalogError, fetch_catalog
-from ingestion.chunker import Chunk, ChunkSet, chunk_document
-from ingestion.embedder import EmbeddingClient, EmbeddingError, load_vectors, save_vectors
-from ingestion.fetcher import download_document
-from ingestion.graph import IngestionPipeline, IngestionState, ingest
-from ingestion.layout import PageText, extract_pdf_pages
-from ingestion.parsers import Block, ParsedDocument, Section, parse_document
-from ingestion.prompts import (
-    DOC_PROFILES,
-    REPORT_SECTIONS,
-    build_extraction_prompt,
-    build_probes,
+from ingestion.chunker import (
+    CHUNKER_VERSION,
+    ELEMENT_FIGURE,
+    ELEMENT_TABLE,
+    ELEMENT_TEXT,
+    ELEMENT_TYPES,
+    Chunk,
+    ChunkSet,
+    chunk_document,
+    read_chunk_cache,
+    write_chunk_cache,
 )
-from ingestion.registry import (
+from ingestion.documents.content import (
+    Block,
+    ExtractedDocument,
+    Figure,
+    Table,
+)
+from ingestion.documents.download import (
+    Downloader,
+    DownloadRequest,
+)
+from ingestion.documents.extract import (
+    Extractor,
+    read_extraction,
+    write_extraction,
+)
+from ingestion.documents.storage import (
+    DocumentStore,
+)
+from ingestion.fetcher import (
     DOC_TYPES,
+    DOC_TYPE_ANNUAL_REPORT,
+    DOC_TYPE_PRESENTATION,
+    DOC_TYPE_TRANSCRIPT,
     STAGES,
     DocumentRecord,
-    DocumentRegistry,
+    FetchResult,
+    StageState,
+    download_document,
+    sha256_file,
+    sha256_text,
+    utc_now,
 )
-from ingestion.retrieval import (
-    DocumentIndex,
-    Hit,
-    load_document_index,
-    load_ticker_index,
-    retrieve_for_probes,
+from ingestion.indexer import (
+    DEFAULT_COLLECTION_NAME,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_MODEL_ALIAS,
+    DEFAULT_VECTOR_SIZE,
+    DocumentIndexState,
+    IndexerConfig,
+    IndexResult,
+    QdrantVectorIndexer,
+    TickerState,
+    index_ticker_documents,
+)
+from ingestion.rag import (
+    EvidenceChunk,
+    EvidenceReranker,
+    InstitutionalRAGPipeline,
+    InstitutionalSynthesizer,
+    ParallelVectorRetriever,
+    ResearchDossier,
+    ThematicFinding,
+    ThematicProbe,
+    build_adaptive_probes,
+    extract_ticker_findings,
+    get_default_probes,
 )
 
 __all__ = [
@@ -43,33 +87,56 @@ __all__ = [
     "CatalogError",
     "fetch_catalog",
     "download_document",
-    "PageText",
-    "extract_pdf_pages",
+    "DocumentStore",
+    "Downloader",
+    "DownloadRequest",
+    "Extractor",
+    "read_extraction",
+    "write_extraction",
     "Block",
-    "Section",
-    "ParsedDocument",
-    "parse_document",
+    "Table",
+    "Figure",
+    "ExtractedDocument",
     "Chunk",
     "ChunkSet",
     "chunk_document",
-    "EmbeddingClient",
-    "EmbeddingError",
-    "save_vectors",
-    "load_vectors",
-    "DocumentIndex",
-    "Hit",
-    "load_document_index",
-    "load_ticker_index",
-    "retrieve_for_probes",
-    "DOC_PROFILES",
-    "REPORT_SECTIONS",
-    "build_probes",
-    "build_extraction_prompt",
-    "DocumentRegistry",
+    "read_chunk_cache",
+    "write_chunk_cache",
+    "CHUNKER_VERSION",
+    "ELEMENT_TEXT",
+    "ELEMENT_TABLE",
+    "ELEMENT_FIGURE",
+    "ELEMENT_TYPES",
     "DocumentRecord",
+    "StageState",
+    "FetchResult",
     "DOC_TYPES",
+    "DOC_TYPE_ANNUAL_REPORT",
+    "DOC_TYPE_TRANSCRIPT",
+    "DOC_TYPE_PRESENTATION",
     "STAGES",
-    "IngestionPipeline",
-    "IngestionState",
-    "ingest",
+    "DEFAULT_COLLECTION_NAME",
+    "DEFAULT_EMBEDDING_MODEL",
+    "DEFAULT_MODEL_ALIAS",
+    "DEFAULT_VECTOR_SIZE",
+    "DocumentIndexState",
+    "IndexerConfig",
+    "IndexResult",
+    "QdrantVectorIndexer",
+    "TickerState",
+    "index_ticker_documents",
+    "ThematicProbe",
+    "EvidenceChunk",
+    "ThematicFinding",
+    "ResearchDossier",
+    "ParallelVectorRetriever",
+    "EvidenceReranker",
+    "InstitutionalSynthesizer",
+    "InstitutionalRAGPipeline",
+    "extract_ticker_findings",
+    "build_adaptive_probes",
+    "get_default_probes",
+    "sha256_file",
+    "sha256_text",
+    "utc_now",
 ]

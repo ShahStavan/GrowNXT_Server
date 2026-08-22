@@ -29,9 +29,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.config import OUTPUT_DIR  # noqa: E402
 from ingestion.chunker import DEFAULT_ANNUAL_SKIP_SECTIONS  # noqa: E402
-from ingestion.embedder import DEFAULT_EMBED_MODEL  # noqa: E402
-from ingestion.graph import IngestionPipeline  # noqa: E402
-from ingestion.registry import DOC_TYPES, STAGES, DocumentRegistry  # noqa: E402
+from ingestion.fetcher import DOC_TYPES, STAGES  # noqa: E402
+from ingestion.rag import InstitutionalRAGPipeline  # noqa: E402
 from scripts import cli  # noqa: E402
 
 
