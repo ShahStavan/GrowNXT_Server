@@ -159,17 +159,18 @@ def handle_generate_report(
 
 def handle_slm_chat(
     message: str,
-    history: List[Tuple[str, str]],
+    history: List[Dict[str, str]],
     model_choice: str,
-) -> Generator[List[Tuple[str, str]], None, None]:
+) -> Generator[List[Dict[str, str]], None, None]:
     """Streams real-time token responses from the upstream SLM with thinking tokens removed."""
     if not message or not message.strip():
         yield history
         return
 
     selected_model = model_choice or ACTIVE_MODEL
-    updated_history = list(history)
-    updated_history.append((message, ""))
+    updated_history = list(history) if history else []
+    updated_history.append({"role": "user", "content": message})
+    updated_history.append({"role": "assistant", "content": ""})
 
     try:
         token_generator = stream_llm_response(
@@ -178,12 +179,10 @@ def handle_slm_chat(
             strip_thinking=True,
         )
         for token in token_generator:
-            prev_user, prev_assistant = updated_history[-1]
-            updated_history[-1] = (prev_user, prev_assistant + token)
+            updated_history[-1]["content"] += token
             yield updated_history
     except Exception as exc:
-        prev_user, prev_assistant = updated_history[-1]
-        updated_history[-1] = (prev_user, f"{prev_assistant}\n\n❌ *SLM streaming error: {exc}*")
+        updated_history[-1]["content"] += f"\n\n❌ *SLM streaming error: {exc}*"
         yield updated_history
 
 
@@ -269,7 +268,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                     value=available_models[0] if available_models else "qwen-3.8-27b",
                     interactive=True,
                 )
-            chatbot = gr.Chatbot(label="Chat with SLM (Unbuffered Streaming)", height=450, type="tuples")
+            chatbot = gr.Chatbot(label="Chat with SLM (Unbuffered Streaming)", height=450, type="messages")
             msg_in = gr.Textbox(
                 label="Ask a financial research query...",
                 placeholder="e.g. What are the key margin drivers and capex outlook for Indian IT services?",
@@ -314,8 +313,8 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=HF_PORT,
-        ssr=False,
         show_api=False,
         share=False,
     )
+
 
