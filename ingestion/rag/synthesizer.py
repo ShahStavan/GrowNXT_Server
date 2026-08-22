@@ -275,33 +275,71 @@ OUTPUT FORMAT:
         probes: Sequence[ThematicProbe],
         company_name: str = "",
         available_doc_types: Optional[Sequence[str]] = None,
-        max_workers: int = 1,
+        max_workers: int = 5,
     ) -> ResearchDossier:
-        """Synthesizes findings across all research pillars with sequential pacing for 100% gateway reliability."""
+        """Synthesizes findings across all research pillars concurrently.
+
+        Args:
+            ticker: Stock ticker symbol.
+            reranked_evidence: Map of pillar name to ranked EvidenceChunk sequence.
+            probes: Active thematic probes to synthesize.
+            company_name: Canonical company name.
+            available_doc_types: Document classes available for this company.
+            max_workers: Concurrent LLM synthesis workers (default: 5).
+        """
         start_time = time.perf_counter()
         sym = safe_ticker(ticker)
         pillars_map: dict[str, ThematicFinding] = {}
 
+        workers = max(1, min(max_workers, len(probes)))
         logger.info(
-            "[%s] Reliable LLM Synthesis: synthesizing %d research pillars sequentially...",
+            "[%s] Parallel LLM Synthesis: synthesizing %d research pillars on %d concurrent worker(s)...",
             sym,
             len(probes),
+            workers,
         )
 
         ordered_probes = sorted(probes, key=lambda x: x.priority)
-        for idx, probe in enumerate(ordered_probes, 1):
-            evidence = reranked_evidence.get(probe.pillar, [])
-            logger.info("[%s] [%d/%d] Synthesizing pillar '%s' (%s)...", sym, idx, len(probes), probe.pillar, probe.title)
-            finding = self.synthesize_pillar(
-                ticker=sym,
-                pillar=probe.pillar,
-                title=probe.title,
-                evidence=evidence,
-            )
-            pillars_map[probe.pillar] = finding
-            # Micro-pause between calls to prevent Vercel gateway throttling
-            if idx < len(ordered_probes):
-                time.sleep(0.5)
+
+        if workers == 1:
+            for idx, probe in enumerate(ordered_probes, 1):
+                evidence = reranked_evidence.get(probe.pillar, [])
+                logger.info("[%s] [%d/%d] Synthesizing pillar '%s' (%s)...", sym, idx, len(probes), probe.pillar, probe.title)
+                finding = self.synthesize_pillar(
+                    ticker=sym,
+                    pillar=probe.pillar,
+                    title=probe.title,
+                    evidence=evidence,
+                )
+                pillars_map[probe.pillar] = finding
+        else:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            def _worker_task(probe: ThematicProbe) -> tuple[str, ThematicFinding]:
+                ev = reranked_evidence.get(probe.pillar, [])
+                f = self.synthesize_pillar(
+                    ticker=sym,
+                    pillar=probe.pillar,
+                    title=probe.title,
+                    evidence=ev,
+                )
+                return probe.pillar, f
+
+            with ThreadPoolExecutor(max_workers=workers, thread_name_prefix=f"synth-{sym}") as executor:
+                futures = {executor.submit(_worker_task, p): p for p in ordered_probes}
+                for future in as_completed(futures):
+                    probe_item = futures[future]
+                    try:
+                        pillar_key, res_finding = future.result()
+                        pillars_map[pillar_key] = res_finding
+                    except Exception as exc:
+                        logger.error("[%s] Worker failed for pillar '%s': %s", sym, probe_item.pillar, exc)
+                        pillars_map[probe_item.pillar] = ThematicFinding(
+                            pillar=probe_item.pillar,
+                            title=probe_item.title,
+                            bullet_points=[f"Synthesis error: {exc}"],
+                            citations=[],
+                        )
 
         # Preserve probe priority order
         ordered_pillars = {
@@ -314,12 +352,13 @@ OUTPUT FORMAT:
         success_count = sum(1 for f in ordered_pillars.values() if not f.bullet_points[0].startswith("Synthesis error"))
 
         logger.info(
-            "[%s] Concurrent Synthesis Complete: %d/%d pillars generated in %.2fs (avg %.2fs/pillar).",
+            "[%s] Concurrent Synthesis Complete: %d/%d pillars generated in %.2fs (avg %.2fs/pillar, speedup %.1fx).",
             sym,
             success_count,
             len(probes),
             elapsed,
             elapsed / max(1, len(probes)),
+            (len(probes) * (elapsed / max(1, len(probes)))) / max(1e-3, elapsed),
         )
 
         return ResearchDossier(

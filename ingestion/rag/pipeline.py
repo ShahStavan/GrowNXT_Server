@@ -107,15 +107,12 @@ class InstitutionalRAGPipeline:
                     available_doc_types.add("concall_transcript")
                     available_doc_types.add("transcript")
 
-        if not available_doc_types and ticker_state.documents:
-            for doc_id in ticker_state.documents:
-                doc_lower = doc_id.lower()
-                if "annual" in doc_lower:
-                    available_doc_types.add("annual_report")
-                if "presentation" in doc_lower:
-                    available_doc_types.add("concall_presentation")
-                if "transcript" in doc_lower:
-                    available_doc_types.add("concall_transcript")
+        # If no documents are ingested or indexed yet, auto-ingest available filings from the catalogue
+        if not available_doc_types and not ticker_state.documents:
+            discovered = self._auto_ingest_and_index(ticker)
+            if discovered:
+                available_doc_types.update(discovered)
+                ticker_state = self.indexer.load_ticker_state(ticker)
 
         doc_types_list = sorted(list(available_doc_types)) if available_doc_types else ["annual_report"]
         probes = build_adaptive_probes(ticker=ticker, available_doc_types=doc_types_list)
@@ -134,6 +131,80 @@ class InstitutionalRAGPipeline:
             "probes": [p.to_dict() for p in probes],
             "status": "PLANNING_COMPLETED",
         }
+
+    def _auto_ingest_and_index(self, ticker: str, max_docs: int = 2) -> set[str]:
+        """Automatically discovers, downloads, extracts, chunks, and indexes filings when absent."""
+        found_types: set[str] = set()
+        logger.info("[%s] No filings on disk or vector index; discovering filings from catalogue...", ticker)
+        try:
+            from ingestion.catalog import fetch_catalog
+            from ingestion.documents.download import Downloader, DownloadRequest
+            from ingestion.documents.storage import DocumentStore
+            from ingestion.documents.extract import Extractor
+            from ingestion.chunker import chunk_document, write_chunk_cache
+
+            cat = fetch_catalog(ticker)
+            if not cat.entries:
+                logger.warning("[%s] No catalogue entries found upstream.", ticker)
+                return found_types
+
+            store = DocumentStore.open(ticker, data_dir=self.indexer.config.output_dir).ensure()
+            downloader = Downloader(store=store)
+
+            # Select: 1x Latest Annual Report, 3x Latest Concall Transcripts, 1x Latest Investor Presentation
+            annual_entries = [e for e in cat.entries if e.doc_type == "annual_report"][:1]
+            transcript_entries = [e for e in cat.entries if e.doc_type == "concall_transcript"][:3]
+            presentation_entries = [e for e in cat.entries if e.doc_type == "concall_presentation"][:1]
+
+            target_entries = annual_entries + transcript_entries + presentation_entries
+            logger.info(
+                "[%s] Selected %d filings for ingestion (annual=%d, transcripts=%d, presentations=%d)",
+                ticker,
+                len(target_entries),
+                len(annual_entries),
+                len(transcript_entries),
+                len(presentation_entries),
+            )
+
+            requests = [
+                DownloadRequest(doc_id=e.doc_id, url=e.source_url, label=e.label)
+                for e in target_entries
+            ]
+            results = list(downloader.fetch_all(requests))
+
+            extractor = Extractor(ocr=False, figures=False)
+            for r in results:
+                if r.ok and r.path:
+                    entry = next((e for e in target_entries if e.doc_id == r.doc_id), None)
+                    doc_type = entry.doc_type if entry else "concall_transcript"
+                    try:
+                        doc_extracted = extractor.run(
+                            pdf=r.path,
+                            store=store,
+                            doc_id=r.doc_id,
+                            doc_type=doc_type,
+                            ticker=ticker,
+                            label=r.doc_id,
+                            write=True,
+                        )
+                        chunk_set = chunk_document(doc_extracted, chunk_size=800, chunk_overlap=100)
+                        chunk_path = store.root / "chunks" / f"{r.doc_id}.json"
+                        write_chunk_cache(chunk_set, chunk_path)
+                        found_types.add(doc_type)
+                        logger.info("[%s] Ingested and chunked %s (%d chunks).", ticker, r.doc_id, chunk_set.n_chunks)
+                    except Exception as extract_err:
+                        logger.warning("[%s] Failed to extract %s: %s; continuing with other filings.", ticker, r.doc_id, extract_err)
+
+            # Index all successfully chunked documents into Qdrant & local matrix cache
+            try:
+                self.indexer.index_ticker_documents(ticker)
+                logger.info("[%s] Indexed new filings into Qdrant vector store.", ticker)
+            except Exception as index_err:
+                logger.warning("[%s] Indexing into Qdrant encountered error: %s", ticker, index_err)
+        except Exception as exc:
+            logger.warning("[%s] Auto-ingestion failed: %s", ticker, exc)
+
+        return found_types
 
     # --- Node 2: Parallel Vector Retrieval ---
     def parallel_retrieve(self, state: ResearchState) -> ResearchState:

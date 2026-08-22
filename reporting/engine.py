@@ -79,47 +79,74 @@ def generate_report(
     work_dir = root / folded
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info("[%s] fetching collector data", symbol)
-    payloads = CollectorClient().fetch_all(symbol, refresh=refresh)
-    snapshot = build_snapshot(symbol, payloads)
+    from concurrent.futures import ThreadPoolExecutor
 
-    if not snapshot.years and not snapshot.quarters:
-        raise ReportError(
-            "No income statement data for %s; refusing to render an empty report" % symbol
-        )
-    for warning in snapshot.warnings:
-        logger.warning("[%s] %s", symbol, warning)
+    # Define Track 1: Quantitative statements, ratios, composites, self-check & charts
+    def _run_quantitative_track():
+        logger.info("[%s] [Track 1] Fetching collector data & computing analytics...", symbol)
+        client = CollectorClient(cache_dir=root)
+        payloads = client.fetch_all(symbol, refresh=refresh)
+        snap = build_snapshot(symbol, payloads)
 
-    logger.info("[%s] computing derived analytics", symbol)
-    derived = analytics.compute(snapshot)
-    for note in derived.notes:
-        logger.info("[%s] %s", symbol, note)
+        if not snap.years and not snap.quarters:
+            raise ReportError(
+                "No income statement data for %s; refusing to render an empty report" % symbol
+            )
+        for warning in snap.warnings:
+            logger.warning("[%s] %s", symbol, warning)
 
-    logger.info("[%s] computing composites", symbol)
-    composites = composites_module.compute(snapshot, derived)
-    for note in composites.notes:
-        logger.info("[%s] %s", symbol, note)
+        der = analytics.compute(snap)
+        for note in der.notes:
+            logger.info("[%s] %s", symbol, note)
 
-    # Verification runs before rendering, not after, so that a broken
-    # identity is on the page rather than only in a log nobody reads.
-    check = selfcheck.run(snapshot, derived, composites)
-    for failure in check.failures:
-        logger.error("[%s] self-check failed: %s (residual %s %s)",
-                     symbol, failure.name, failure.delta, failure.unit)
+        comp = composites_module.compute(snap, der)
+        for note in comp.notes:
+            logger.info("[%s] %s", symbol, note)
 
-    logger.info("[%s] rendering charts", symbol)
-    produced = charts_module.render_all(snapshot, derived, composites, work_dir)
+        chk = selfcheck.run(snap, der, comp)
+        for failure in chk.failures:
+            logger.error("[%s] self-check failed: %s (residual %s %s)",
+                         symbol, failure.name, failure.delta, failure.unit)
 
-    # Load qualitative research findings if generated
-    findings_path = work_dir / "findings" / "findings.json"
-    findings_data = None
-    if findings_path.exists():
-        try:
-            import json
-            findings_data = json.loads(findings_path.read_text(encoding="utf-8"))
-            logger.info("[%s] loaded qualitative research findings from %s", symbol, findings_path)
-        except Exception as exc:
-            logger.warning("[%s] could not load qualitative findings: %s", symbol, exc)
+        logger.info("[%s] [Track 1] Rendering charts...", symbol)
+        prod = charts_module.render_all(snap, der, comp, work_dir)
+        return snap, der, comp, chk, prod
+
+    # Define Track 2: Qualitative RAG research synthesis
+    def _run_qualitative_track():
+        findings_path = work_dir / "findings" / "findings.json"
+        findings_data = None
+
+        if not findings_path.exists() or refresh:
+            try:
+                logger.info("[%s] [Track 2] Running RAG pipeline to generate institutional findings...", symbol)
+                from ingestion.rag.pipeline import extract_ticker_findings
+                dossier = extract_ticker_findings(
+                    ticker=symbol,
+                    company_name=symbol,
+                    force=refresh,
+                )
+                findings_data = dossier.to_dict()
+                logger.info("[%s] [Track 2] Qualitative RAG synthesis complete (%d pillars).", symbol, len(dossier.pillars))
+            except Exception as exc:
+                logger.warning("[%s] RAG qualitative extraction skipped: %s", symbol, exc)
+
+        if findings_path.exists() and not findings_data:
+            try:
+                import json
+                findings_data = json.loads(findings_path.read_text(encoding="utf-8"))
+                logger.info("[%s] Loaded qualitative research findings from %s", symbol, findings_path)
+            except Exception as exc:
+                logger.warning("[%s] Could not load qualitative findings: %s", symbol, exc)
+
+        return findings_data
+
+    # Execute Track 1 and Track 2 concurrently
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix=f"report-{symbol}") as executor:
+        f_quant = executor.submit(_run_quantitative_track)
+        f_qual = executor.submit(_run_qualitative_track)
+        snapshot, derived, composites, check, produced = f_quant.result()
+        findings_data = f_qual.result()
 
     stamp = as_of or date.today().strftime("%d %b %Y")
     source = typst_doc.build_document(
@@ -142,15 +169,25 @@ def generate_report(
     pdf_path.write_bytes(pdf_bytes)
     logger.info("[%s] wrote %s (%.1f KB)", symbol, pdf_path, pdf_path.stat().st_size / 1024)
 
+    # Automatically upload / mirror report to Google Drive if credentials exist
+    try:
+        from storage.gdrive import credentials_present, ensure_uploaded
+        if credentials_present():
+            logger.info("[%s] uploading / updating report on Google Drive...", symbol)
+            drive_file = ensure_uploaded(pdf_path, symbol, force=refresh)
+            logger.info("[%s] Google Drive update complete: %s", symbol, drive_file.view_link)
+    except Exception as exc:
+        logger.warning("[%s] Google Drive update skipped: %s", symbol, exc)
+
     if not keep_build:
         swept = _sweep_build(work_dir, pdf_path)
-        logger.info("[%s] swept %d build artefact(s); the PDF is what remains",
+        logger.info("[%s] swept %d build artefact(s); the PDF and findings are what remain",
                     symbol, swept)
     return pdf_path
 
 
 def _sweep_build(work_dir: Path, pdf_path: Path) -> int:
-    """Removes the build byproducts from a stock's directory.
+    """Removes the build byproducts and temporary files from a stock's directory.
 
     Args:
         work_dir: The stock's directory.
@@ -160,7 +197,8 @@ def _sweep_build(work_dir: Path, pdf_path: Path) -> int:
         How many entries were removed.
     """
     removed = 0
-    for pattern in BUILD_GLOBS:
+    patterns = list(BUILD_GLOBS) + ["*.tmp", "*.temp"]
+    for pattern in patterns:
         for path in work_dir.glob(pattern):
             if path == pdf_path:
                 continue

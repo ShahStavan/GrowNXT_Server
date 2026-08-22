@@ -41,12 +41,12 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file if present
 dotenv.load_dotenv()
 
-DEFAULT_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
-DEFAULT_MODEL_ALIAS: str = "all-MiniLM-L6-v2"
+DEFAULT_EMBEDDING_MODEL: str = "Snowflake/snowflake-arctic-embed-m-v1.5"
+DEFAULT_MODEL_ALIAS: str = "snowflake-arctic-embed-m-v1.5"
 DEFAULT_COLLECTION_NAME: str = "grownxt_financial_elements"
-DEFAULT_VECTOR_SIZE: int = 384
-DEFAULT_BATCH_SIZE: int = 32
-DEFAULT_UPSERT_BATCH_SIZE: int = 64
+DEFAULT_VECTOR_SIZE: int = 768
+DEFAULT_BATCH_SIZE: int = 64
+DEFAULT_UPSERT_BATCH_SIZE: int = 128
 STATE_FILENAME: str = "state.json"
 
 # Fixed UUIDv5 namespace for GrowNXT deterministic point IDs

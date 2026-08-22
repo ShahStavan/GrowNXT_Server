@@ -36,6 +36,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import time
 from typing import Any
 
@@ -230,6 +231,29 @@ class Extractor:
 
         limit = max_pages if max_pages is not None else self.max_pages
         started = time.monotonic()
+
+        # Fast-Path: Transcripts are pure textual dialogue; parse directly in <1s
+        is_transcript = (
+            doc_type == "concall_transcript"
+            or "transcript" in doc_id.lower()
+            or "concall" in doc_id.lower()
+        )
+        if is_transcript:
+            try:
+                return self._extract_fast_transcript(
+                    source=source,
+                    store=store,
+                    doc_id=doc_id,
+                    doc_type=doc_type or "concall_transcript",
+                    ticker=ticker,
+                    label=label,
+                    limit=limit,
+                    write=write,
+                    started=started,
+                )
+            except Exception as exc:
+                logger.warning("[%s] Fast-path transcript parser failed (%s); falling back to Docling.", doc_id, exc)
+
         try:
             result = self.converter.convert(
                 str(source),
@@ -259,6 +283,78 @@ class Extractor:
             "image_scale": float(self.image_scale),
             "max_pages": int(limit) if limit else 0,
             "seconds": round(time.monotonic() - started, 1),
+        }
+        self._report(document)
+
+        if write:
+            write_extraction(document, store.extraction(doc_id))
+        return document
+
+    def _extract_fast_transcript(
+        self,
+        source: Path,
+        store: DocumentStore,
+        doc_id: str,
+        doc_type: str,
+        ticker: str,
+        label: str,
+        limit: int | None,
+        write: bool,
+        started: float,
+    ) -> ExtractedDocument:
+        """High-speed, structural text extractor for concall transcripts (<1s latency)."""
+        from pypdf import PdfReader
+        reader = PdfReader(str(source))
+        total_pages = len(reader.pages)
+        max_p = min(total_pages, int(limit)) if limit else total_pages
+
+        document = ExtractedDocument(
+            doc_id=doc_id, doc_type=doc_type, ticker=ticker, label=label,
+            extractor="fast_transcript/v1",
+        )
+        blocks: list[Block] = []
+        current_section = "Earnings Conference Call"
+
+        for p_idx in range(max_p):
+            page_num = p_idx + 1
+            page = reader.pages[p_idx]
+            text = page.extract_text() or ""
+            lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+            para: list[str] = []
+            for line in lines:
+                # Filter out header/footer boilerplate lines
+                if re.match(r"^(?:Page \d+|\d+ of \d+|Earnings Call|Transcript|BSE Limited|NSE Limited)", line, re.IGNORECASE):
+                    continue
+
+                # Detect Section Boundaries
+                if re.search(r"Question.*Answer Session|Q&A Session", line, re.IGNORECASE):
+                    if para:
+                        blocks.append(Block(kind=KIND_TEXT, text=" ".join(para), page=page_num, path=[current_section]))
+                        para = []
+                    current_section = "Question & Answer Session"
+                    blocks.append(Block(kind=KIND_HEADING, text=line, page=page_num, level=1, path=[current_section]))
+                    continue
+
+                # Detect speaker turns
+                if re.match(r"^(?:[A-Z][a-z]+ [A-Z][a-z]+|[A-Z][a-z]+|Operator|Moderator|Management|Analyst):", line):
+                    if para:
+                        blocks.append(Block(kind=KIND_TEXT, text=" ".join(para), page=page_num, path=[current_section]))
+                        para = []
+                    para.append(line)
+                else:
+                    para.append(line)
+
+            if para:
+                blocks.append(Block(kind=KIND_TEXT, text=" ".join(para), page=page_num, path=[current_section]))
+
+        document.blocks = blocks
+        document.n_source_pages = total_pages
+        document.n_pages = len({b.page for b in blocks if b.page})
+        document.meta = {
+            "fast_path": True,
+            "max_pages": int(limit) if limit else 0,
+            "seconds": round(time.monotonic() - started, 3),
         }
         self._report(document)
 

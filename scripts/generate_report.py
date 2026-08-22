@@ -12,14 +12,45 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from core.config import safe_ticker  # noqa: E402
 from reporting.engine import ReportError, generate_report  # noqa: E402
 from scripts import cli  # noqa: E402
+
+
+def resolve_symbol(ticker_or_name: str) -> str:
+    """Resolves an exchange symbol or company name to the canonical ticker symbol."""
+    raw = (ticker_or_name or "").strip()
+    if not raw:
+        return ""
+    upper = safe_ticker(raw)
+
+    # 1. Check if local directory cache already exists
+    try:
+        from core.config import OUTPUT_DIR
+        if (OUTPUT_DIR / upper / "api" / "summary.json").exists() or (OUTPUT_DIR / upper / "summary.json").exists():
+            return upper
+    except Exception:
+        pass
+
+    # 2. Lookup via stock discovery search API
+    try:
+        from api.search import find
+        hits = find(raw)
+        if hits:
+            resolved = str(hits[0].get("ticker") or hits[0].get("sid") or upper).upper()
+            if resolved != upper:
+                logging.getLogger("generate_report").info("Resolved company '%s' -> ticker '%s'", raw, resolved)
+            return safe_ticker(resolved)
+    except Exception:
+        pass
+
+    return upper
 
 
 def _parser() -> argparse.ArgumentParser:
     """Builds the argument parser."""
     p = argparse.ArgumentParser(description="Generate an institutional PDF equity report.")
-    p.add_argument("tickers", nargs="+", help="Ticker symbols, e.g. WIPRO")
+    p.add_argument("tickers", nargs="+", help="Ticker symbols or company names, e.g. WIPRO, Infosys")
     p.add_argument("--output-dir", type=Path,
                    help="Root of the per-ticker build workspace (default: output/).")
     p.add_argument("--keep-build", action="store_true",
@@ -42,8 +73,8 @@ def main() -> int:
               cli.PLAIN, stream=sys.stderr)
 
     failed = []
-    for ticker in args.tickers:
-        sym = ticker.upper()
+    for ticker_input in args.tickers:
+        sym = resolve_symbol(ticker_input)
         try:
             path = generate_report(sym, output_dir=args.output_dir,
                                    refresh=args.refresh, as_of=args.as_of,

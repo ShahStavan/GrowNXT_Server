@@ -18,12 +18,13 @@ from urllib.parse import quote
 
 import requests
 
-from core.config import safe_ticker
+from core.config import OUTPUT_DIR, safe_ticker
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL: str = "https://financial-data-collector-qrxj.vercel.app/api/v1"
-DEFAULT_CACHE_DIR: Path = Path(__file__).resolve().parent.parent / ".cache" / "api"
+DEFAULT_CACHE_DIR: Path = OUTPUT_DIR
+
 
 # Endpoint suffixes keyed by the name used throughout the report code.
 ENDPOINTS: Dict[str, str] = {
@@ -76,7 +77,11 @@ class CollectorClient:
 
     def _cache_path(self, ticker: str, name: str) -> Path:
         """Returns the cache path for one endpoint of one ticker."""
-        return self.cache_dir / safe_ticker(ticker) / (name + ".json")
+        sym = safe_ticker(ticker)
+        # If cache_dir already addresses the stock's directory (e.g. output/WIPRO)
+        if self.cache_dir.name == sym:
+            return self.cache_dir / "api" / (name + ".json")
+        return self.cache_dir / sym / "api" / (name + ".json")
 
     def _get(self, url: str) -> Optional[Any]:
         """GETs a URL and parses JSON, retrying transient failures."""
@@ -113,12 +118,28 @@ class CollectorClient:
             raise KeyError("Unknown endpoint: " + name)
 
         path = self._cache_path(ticker, name)
-        if self.use_cache and not refresh and path.exists():
-            try:
-                payload = json.loads(path.read_text(encoding="utf-8"))
-                return payload.get("data", payload) if isinstance(payload, dict) else payload
-            except (OSError, ValueError) as exc:
-                logger.warning("Cache unreadable at %s: %s", path, exc)
+        if self.use_cache and not refresh:
+            # 1. Primary check: output/<TICKER>/api/<name>.json
+            if path.exists():
+                try:
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    return payload.get("data", payload) if isinstance(payload, dict) else payload
+                except (OSError, ValueError) as exc:
+                    logger.warning("Cache unreadable at %s: %s", path, exc)
+
+            # 2. Legacy fallback check: .cache/api/<TICKER>/<name>.json
+            legacy_path = Path(__file__).resolve().parent.parent / ".cache" / "api" / safe_ticker(ticker) / (name + ".json")
+            if legacy_path.exists():
+                try:
+                    payload = json.loads(legacy_path.read_text(encoding="utf-8"))
+                    try:
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(json.dumps(payload), encoding="utf-8")
+                    except Exception:
+                        pass
+                    return payload.get("data", payload) if isinstance(payload, dict) else payload
+                except (OSError, ValueError) as exc:
+                    logger.warning("Legacy cache unreadable at %s: %s", legacy_path, exc)
 
         # Percent-encode the symbol: an unescaped '&' in a ticker such as
         # 'M&M' would otherwise terminate the path and start a query string,

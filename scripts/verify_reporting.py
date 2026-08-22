@@ -42,11 +42,14 @@ from reporting.snapshot import (  # noqa: E402
     build_snapshot,
 )
 
+from core.config import OUTPUT_DIR
+
 # Tickers with a complete payload set already on disk. The harness reads the
 # cache only; it must not depend on the network to run.
 CACHED_TICKERS: Tuple[str, ...] = ("WIPRO", "RELIANCE", "TCS", "HDFCBANK")
 
-CACHE_ROOT: Path = Path(__file__).resolve().parent.parent / ".cache" / "api"
+CACHE_ROOT: Path = OUTPUT_DIR
+
 
 
 def _absent(value, label: str) -> None:
@@ -231,7 +234,8 @@ def check_composites_carry_components() -> str:
     """A score must never be reachable without the parts that produced it."""
     reports = 0
     for ticker in CACHED_TICKERS:
-        if not (CACHE_ROOT / ticker / "summary.json").exists():
+        has_cache = (CACHE_ROOT / ticker / "api" / "summary.json").exists() or (CACHE_ROOT / ticker / "summary.json").exists()
+        if not has_cache:
             continue
         snap = _cached_snapshot(ticker)
         derived = analytics.compute(snap)
@@ -278,7 +282,8 @@ def check_cached_reports_verify() -> str:
     """Every cached company's own self-check must close."""
     lines: List[str] = []
     for ticker in CACHED_TICKERS:
-        if not (CACHE_ROOT / ticker / "summary.json").exists():
+        has_cache = (CACHE_ROOT / ticker / "api" / "summary.json").exists() or (CACHE_ROOT / ticker / "summary.json").exists()
+        if not has_cache:
             lines.append("%s skipped, not cached" % ticker)
             continue
         snap = _cached_snapshot(ticker)
@@ -298,13 +303,12 @@ def check_cached_reports_verify() -> str:
 
 def _cached_snapshot(ticker: str) -> CompanySnapshot:
     """Builds a snapshot from the on-disk cache without touching the network."""
-    client = CollectorClient(base_url="http://cache.invalid", use_cache=True)
+    client = CollectorClient(base_url="http://cache.invalid", cache_dir=CACHE_ROOT, use_cache=True)
     payloads = {}
     for name in ("summary", "peers", "income_q", "income_a", "growth_q",
                  "growth_a", "balance", "balance_growth", "cashflow", "dupont",
                  "solvency", "liquidity", "capital_efficiency", "cagr"):
-        path = CACHE_ROOT / ticker / (name + ".json")
-        payloads[name] = client.fetch(ticker, name) if path.exists() else None
+        payloads[name] = client.fetch(ticker, name)
     return build_snapshot(ticker, payloads)
 
 
