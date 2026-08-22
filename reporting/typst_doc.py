@@ -24,14 +24,20 @@ Structural conventions, taken from how sell-side research is actually set:
 
 from dataclasses import dataclass, field
 from datetime import date
+import json
+import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+import re
+from typing import Any, Dict, List, Optional, Sequence
 
+from core.config import OUTPUT_DIR, safe_ticker
 from reporting import fmt, tokens
 from reporting.analytics import DerivedAnalytics
 from reporting.composites import Composites
 from reporting.selfcheck import SelfCheck
 from reporting.snapshot import CompanySnapshot
+
+logger = logging.getLogger(__name__)
 
 # Typst literals for the token palette.
 C_INK = 'rgb("%s")' % tokens.INK
@@ -106,6 +112,7 @@ class Doc:
     check: SelfCheck
     charts: Dict[str, Path]
     ex: Exhibits = field(default_factory=Exhibits)
+    findings: Optional[Dict[str, Any]] = None
 
     def chart(self, key: str) -> Optional[Path]:
         """Returns a chart path, or None when that chart was not rendered."""
@@ -1618,6 +1625,63 @@ def preamble(snap: CompanySnapshot, as_of: str) -> str:
     ]) + "\n"
 
 
+def institutional_qualitative_findings(d: Doc) -> str:
+    """Renders grounded institutional qualitative research findings from corporate filings."""
+    findings_data = d.findings
+    if not findings_data:
+        findings_path = OUTPUT_DIR / safe_ticker(d.snap.ticker) / "findings" / "findings.json"
+        if findings_path.exists():
+            try:
+                findings_data = json.loads(findings_path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                logger.warning("[%s] Could not read qualitative findings: %s", d.snap.ticker, exc)
+
+    if not findings_data:
+        return ""
+
+    pillars = findings_data.get("pillars") or {}
+    if not pillars:
+        return ""
+
+    out = [_section(
+        "Qualitative research findings & filing disclosures",
+        "Strategic growth roadmaps, operating margin levers, and concall guidance synthesized from corporate filings.",
+    )]
+
+    for pillar_key, pdata in pillars.items():
+        title = pdata.get("title", pillar_key.replace("_", " ").title())
+        bullets = pdata.get("bullet_points") or []
+        takeaway = pdata.get("takeaway", "")
+
+        out.append(d.ex.caption(title))
+
+        block_lines = [
+            "#block(above: 3pt, below: 6pt)[",
+        ]
+        for b in bullets:
+            esc_b = fmt.escape_typst(b)
+            # Style bold categories in Typst bold
+            esc_b = re.sub(r"\*\*(.*?)\*\*", r"#text(weight: \"semibold\")[\1]", esc_b)
+            # Style short source citations (e.g. (Investor Presentation, p. 5)) with muted color
+            esc_b = re.sub(r"(\([A-Za-z0-9\s,\.\-]+\,\s*p\.\s*\d+\))", rf"#text(fill: {C_MUTED}, size: {tokens.SIZE_FOOTNOTE})[\1]", esc_b)
+            block_lines.append(f"  #list.item[{esc_b}]")
+
+        if takeaway and takeaway != "Information not explicitly disclosed in available corporate filings.":
+            esc_t = fmt.escape_typst(takeaway)
+            esc_t = re.sub(r"\*\*(.*?)\*\*", r"#text(weight: \"semibold\")[\1]", esc_t)
+            block_lines.append(
+                f"\n  #v(2pt)\n  #block(fill: {C_SUNKEN}, stroke: 0.5pt + {C_RULE}, inset: (x: 6pt, y: 4pt), radius: 2.5pt)[\n"
+                f"    #text(size: {tokens.SIZE_FOOTNOTE}, fill: {C_INK})[#text(weight: \"semibold\")[Strategic Note:] {esc_t}]\n"
+                f"  ]"
+            )
+
+        block_lines.append("]\n")
+        out.append("\n".join(block_lines))
+        out.append(d.ex.source("Corporate Filings (Annual Report, Transcripts, Investor Presentations); GrowNXT Institutional RAG Synthesis."))
+
+    return "".join(out)
+
+
 def build_document(
     snap: CompanySnapshot,
     derived: DerivedAnalytics,
@@ -1625,6 +1689,7 @@ def build_document(
     check: SelfCheck,
     charts: Dict[str, Path],
     as_of: Optional[str] = None,
+    findings: Optional[Dict[str, Any]] = None,
 ) -> str:
     """Assembles the complete Typst source for one report.
 
@@ -1636,8 +1701,9 @@ def build_document(
     where that cash went and whether the reinvested share earned its keep;
     the composite scores then pass two standard frameworks over everything
     established so far, which is why they cannot come earlier. Valuation
-    prices the result, ownership says who holds it, and verification shows
-    the arithmetic.
+    prices the result, ownership says who holds it, qualitative research
+    findings extract management and strategic filing disclosures, and verification
+    shows the arithmetic.
 
     Args:
         snap: Populated company snapshot.
@@ -1647,12 +1713,13 @@ def build_document(
         charts: Mapping of chart key to SVG path. Missing keys are laid out
             around rather than left as gaps.
         as_of: Display date. Defaults to today.
+        findings: Optional pre-loaded institutional qualitative findings.
 
     Returns:
         Typst source ready to compile.
     """
     stamp = as_of or date.today().strftime("%d %b %Y")
-    doc = Doc(snap, derived, comp, check, charts)
+    doc = Doc(snap, derived, comp, check, charts, findings=findings)
     sections = (
         earnings_power,
         near_term,
@@ -1663,6 +1730,7 @@ def build_document(
         composite_scores,
         valuation,
         shareholder_returns,
+        institutional_qualitative_findings,
         verification,
     )
     parts = [preamble(snap, stamp), cover(snap, derived, comp, stamp)]

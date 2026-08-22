@@ -110,9 +110,21 @@ def generate_report(
     logger.info("[%s] rendering charts", symbol)
     produced = charts_module.render_all(snapshot, derived, composites, work_dir)
 
+    # Load qualitative research findings if generated
+    findings_path = work_dir / "findings" / "findings.json"
+    findings_data = None
+    if findings_path.exists():
+        try:
+            import json
+            findings_data = json.loads(findings_path.read_text(encoding="utf-8"))
+            logger.info("[%s] loaded qualitative research findings from %s", symbol, findings_path)
+        except Exception as exc:
+            logger.warning("[%s] could not load qualitative findings: %s", symbol, exc)
+
     stamp = as_of or date.today().strftime("%d %b %Y")
     source = typst_doc.build_document(
-        snapshot, derived, composites, check, produced, as_of=stamp)
+        snapshot, derived, composites, check, produced, as_of=stamp, findings=findings_data
+    )
 
     source_path = work_dir / (folded + "_report.typ")
     source_path.write_text(source, encoding="utf-8")
