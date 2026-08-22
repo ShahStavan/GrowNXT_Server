@@ -319,10 +319,28 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             """)
 
 # ---------------------------------------------------------------------------
-# 4. Mount Gradio onto FastAPI App
+# 4. Launch Gradio & Mount REST API Endpoints
 # ---------------------------------------------------------------------------
-app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+try:
+    if hasattr(demo, "app") and demo.app is not None:
+        demo.app.mount("/api", wsgi_handler)
+        demo.app.mount("/v1", wsgi_handler)
+except Exception:
+    pass
 
 if __name__ == "__main__":
-    logger.info("Launching GrowNXT Unified Server (FastAPI + Flask WSGI + Gradio) on 0.0.0.0:%d...", HF_PORT)
-    uvicorn.run(app, host="0.0.0.0", port=HF_PORT, log_level="info")
+    logger.info("Launching GrowNXT Platform on 0.0.0.0:%d...", HF_PORT)
+    server_app, local_url, share_url = demo.launch(
+        server_name="0.0.0.0",
+        server_port=HF_PORT,
+        prevent_thread_lock=True,
+    )
+    if server_app is not None:
+        try:
+            server_app.mount("/api", wsgi_handler)
+            server_app.mount("/v1", wsgi_handler)
+        except Exception:
+            pass
+
+    demo.block_thread()
+
