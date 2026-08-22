@@ -372,11 +372,13 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             """)
 
 # ---------------------------------------------------------------------------
-# 4. Mount Gradio onto FastAPI App
+# 4. Launch Gradio Platform
 # ---------------------------------------------------------------------------
-app = gr.mount_gradio_app(fastapi_app, demo, path="/")
-
 if __name__ == "__main__":
-    logger.info("Launching GrowNXT Unified Platform on 0.0.0.0:%d...", HF_PORT)
-    uvicorn.run(app, host="0.0.0.0", port=HF_PORT, log_level="info")
+    logger.info("Launching GrowNXT Native Gradio Platform on 0.0.0.0:%d...", HF_PORT)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=HF_PORT,
+    )
+
 
