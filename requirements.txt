@@ -17,4 +17,6 @@ qdrant-client
 sentence-transformers
 huggingface-hub>=0.26.0
 gunicorn
+fastapi>=0.110.0
+uvicorn>=0.28.0
 gradio>=5.16.0

@@ -120,11 +120,13 @@ def create_app() -> Flask:
     })
 
     @app.get("/api/search")
+    @app.get("/search")
     def search() -> Json:
         """Companies matching `q`; a query under three characters matches none."""
         return jsonify(find(request.args.get("q", ""))), 200
 
     @app.get("/api/stocks/<symbol>/report")
+    @app.get("/stocks/<symbol>/report")
     def report(symbol: str) -> Json:
         """The Drive link to this symbol's report."""
         sym, refresh = _sym(symbol), _flag("refresh")
@@ -145,6 +147,7 @@ def create_app() -> Flask:
                             preview_link=up.preview_link)), 200
 
     @app.get("/api/stocks/<symbol>/report/file")
+    @app.get("/stocks/<symbol>/report/file")
     def report_file(symbol: str) -> Response:
         """The PDF itself. `?download=1` sends it as an attachment."""
         pdf, _ = _pdf(_sym(symbol), _flag("refresh"))
@@ -154,6 +157,7 @@ def create_app() -> Flask:
     # --- OpenAI-Compatible Reverse Proxy Endpoints (Client / Frontend Safe) ---
     @app.get("/v1/models")
     @app.get("/api/llm/v1/models")
+    @app.get("/models")
     def list_models() -> Json:
         """Lists supported SLM / LLM chat, embed, and rerank models."""
         model_names = [m.strip() for m in DEFAULT_CHAT_MODELS.split(",") if m.strip()]
@@ -175,6 +179,7 @@ def create_app() -> Flask:
 
     @app.post("/v1/chat/completions")
     @app.post("/api/llm/v1/chat/completions")
+    @app.post("/chat/completions")
     def chat_completions() -> Response:
         """Secure reverse proxy for OpenAI-compatible chat completions with unbuffered streaming."""
         payload = request.get_json(force=True, silent=True) or {}

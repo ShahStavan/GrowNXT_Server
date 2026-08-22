@@ -1,11 +1,9 @@
 """GrowNXT Institutional Equity Research Platform -- Hugging Face Spaces & Local Entrypoint.
 
-Runs the GrowNXT Flask API backend in a background worker and exposes an interactive
-Gradio UI on port 7860 with multi-tab support:
-  1. Institutional Report Generator (Typst PDF + Google Drive Delivery)
-  2. Listed Stock Search
-  3. Real-Time SLM Financial Analyst Chat (Direct Streaming via Qwen / Gemma)
-  4. REST API Documentation & Reverse Proxy Status
+Combines FastAPI, Flask WSGI Middleware, and Gradio 5 into a single production server:
+  1. REST API Endpoints on /api/* and /v1/* (Flask via WSGIMiddleware)
+  2. Interactive Gradio UI on / (Report Generator, Stock Search, Live SLM Chat)
+  3. Direct in-process execution for zero internal latency.
 
 Google Python Style Guide Compliant.
 """
@@ -15,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import threading
 import time
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
@@ -23,8 +20,12 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 os.environ["GRADIO_SSR_MODE"] = "False"
 
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.wsgi import WSGIMiddleware
 import gradio as gr
 import requests
+import uvicorn
 
 # Patch gradio_client bug with Pydantic v2 boolean additionalProperties schemas
 try:
@@ -47,6 +48,8 @@ except Exception:
     pass
 
 from api.app import create_app
+from api.search import find
+from core.config import OUTPUT_DIR, report_path, safe_ticker
 from core.llm_config import (
     ACTIVE_MODEL,
     DEFAULT_BASE_URL,
@@ -55,6 +58,8 @@ from core.llm_config import (
     clean_thinking_tokens,
     stream_llm_response,
 )
+from reporting.engine import generate_report
+from storage import gdrive
 
 load_dotenv()
 
@@ -64,53 +69,43 @@ logging.basicConfig(
 )
 logger = logging.getLogger("grownxt.spaces")
 
-INTERNAL_PORT = int(os.getenv("INTERNAL_PORT", "5000"))
 HF_PORT = int(os.getenv("PORT", "7860"))
 
 # ---------------------------------------------------------------------------
-# 1. Background Flask Backend Daemon
+# 1. Initialize Backend Applications
 # ---------------------------------------------------------------------------
 flask_app = create_app()
+fastapi_app = FastAPI(title="GrowNXT API & Reverse Proxy", docs_url=None, redoc_url=None)
 
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def start_flask_worker() -> None:
-    """Launches the internal Flask API server in a background thread."""
-    logger.info("Starting internal GrowNXT Flask API backend on port %d...", INTERNAL_PORT)
-    flask_app.run(
-        host="127.0.0.1",
-        port=INTERNAL_PORT,
-        debug=False,
-        use_reloader=False,
-        threaded=True,
-    )
-
-
-# Start Flask as daemon thread before launching Gradio
-flask_thread = threading.Thread(target=start_flask_worker, daemon=True, name="Flask-Worker")
-flask_thread.start()
-time.sleep(1.0)  # Brief grace period for socket binding
+# Mount Flask WSGI App on /api and /v1 for direct external REST access
+wsgi_handler = WSGIMiddleware(flask_app)
+fastapi_app.mount("/api", wsgi_handler)
+fastapi_app.mount("/v1", wsgi_handler)
 
 
 # ---------------------------------------------------------------------------
-# 2. Gradio Business Logic & Handlers
+# 2. Gradio Direct In-Process Handlers (Zero Latency)
 # ---------------------------------------------------------------------------
 def handle_stock_search(query: str) -> str:
-    """Queries the internal search API for matching listed stocks."""
+    """Performs direct in-process search for listed stocks."""
     if not query or len(query.strip()) < 2:
         return "⚠️ *Please enter at least 2 characters to search.*"
 
     try:
-        url = f"http://127.0.0.1:{INTERNAL_PORT}/api/search?q={query.strip()}"
-        resp = requests.get(url, timeout=10)
-        if resp.status_code != 200:
-            return f"❌ Search error ({resp.status_code}): {resp.text}"
-
-        data = resp.json()
-        if not data:
+        results = find(query.strip())
+        if not results:
             return f"No listed companies found matching **'{query}'**."
 
         lines = ["| Symbol | Company Name | Industry |", "| :--- | :--- | :--- |"]
-        for item in data[:15]:
+        for item in results[:15]:
             sym = item.get("symbol", "-")
             name = item.get("name", "-")
             ind = item.get("industry", "N/A")
@@ -119,7 +114,7 @@ def handle_stock_search(query: str) -> str:
         return "\n".join(lines)
     except Exception as exc:
         logger.error("Search failed: %s", exc)
-        return f"❌ Internal search error: {exc}"
+        return f"❌ Search error: {exc}"
 
 
 def handle_generate_report(
@@ -127,54 +122,41 @@ def handle_generate_report(
     refresh: bool,
     progress=gr.Progress(),
 ) -> Tuple[Optional[str], str, str]:
-    """Generates the institutional equity report and returns the compiled PDF."""
+    """Generates the institutional equity report in-process and returns the compiled PDF."""
     if not symbol or not symbol.strip():
         return None, "⚠️ *Please specify a stock ticker (e.g. INFY, WIPRO, TCS, M&M).*", ""
 
-    sym = symbol.strip().upper()
+    sym = safe_ticker(symbol.strip().upper())
     progress(0.1, desc=f"Initializing report pipeline for {sym}...")
 
-    api_url = f"http://127.0.0.1:{INTERNAL_PORT}/api/stocks/{sym}/report"
-    if refresh:
-        api_url += "?refresh=1"
-
-    progress(0.3, desc=f"Executing quantitative checks and RAG extraction for {sym}...")
     try:
         t0 = time.perf_counter()
-        resp = requests.get(api_url, timeout=400)
+        progress(0.3, desc=f"Executing quantitative checks and RAG extraction for {sym}...")
+        
+        pdf_path = generate_report(sym, output_dir=OUTPUT_DIR, refresh=refresh)
         elapsed = time.perf_counter() - t0
 
-        if resp.status_code != 200:
-            err_msg = f"❌ Report generation failed ({resp.status_code}):\n```json\n{resp.text}\n```"
-            return None, err_msg, ""
-
-        data = resp.json()
-        drive_link = data.get("view_link") or data.get("drive_status") or "Drive not configured"
-        was_built = data.get("generated", False)
-
-        progress(0.85, desc=f"Fetching compiled PDF file bytes...")
-        file_resp = requests.get(
-            f"http://127.0.0.1:{INTERNAL_PORT}/api/stocks/{sym}/report/file",
-            timeout=60,
-        )
-        if file_resp.status_code != 200:
-            return None, f"❌ Failed to retrieve PDF bytes ({file_resp.status_code})", drive_link
-
-        temp_pdf = os.path.join(os.path.expanduser("~"), f"{sym}_institutional_report.pdf")
-        with open(temp_pdf, "wb") as f:
-            f.write(file_resp.content)
+        progress(0.85, desc="Checking Google Drive mirror...")
+        drive_link = "Drive not configured"
+        try:
+            if gdrive.credentials_present():
+                up = gdrive.ensure_uploaded(pdf_path, sym, force=refresh)
+                drive_link = up.view_link or "Uploaded"
+        except Exception as drive_exc:
+            logger.warning("Drive upload error: %s", drive_exc)
 
         progress(1.0, desc="Report ready!")
 
+        file_size_kb = pdf_path.stat().st_size / 1024 if pdf_path.exists() else 0
+
         status_text = (
             f"✅ **Institutional Report Successfully Generated for `{sym}`!**\n\n"
-            f"- **Execution Time**: `{elapsed:.2f}s` (Status: {'Compiled New' if was_built else 'Served from Cache'})\n"
-            f"- **PDF File Size**: `{len(file_resp.content) / 1024:.1f} KB`\n"
+            f"- **Execution Time**: `{elapsed:.2f}s`\n"
+            f"- **PDF File Size**: `{file_size_kb:.1f} KB`\n"
             f"- **Google Drive Mirror**: {f'[{drive_link}]({drive_link})' if drive_link.startswith('http') else drive_link}"
         )
 
-        drive_info = f"Google Drive: {drive_link}"
-        return temp_pdf, status_text, drive_info
+        return str(pdf_path), status_text, drive_link
     except Exception as exc:
         logger.error("Report generation handler failed for %s: %s", sym, exc)
         return None, f"❌ Exception during generation: {exc}", ""
@@ -334,15 +316,10 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             """)
 
 # ---------------------------------------------------------------------------
-# 4. Main Launch Entrypoint
+# 4. Mount Gradio onto FastAPI App
 # ---------------------------------------------------------------------------
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+
 if __name__ == "__main__":
-    logger.info("Launching GrowNXT Gradio Platform on 0.0.0.0:%d...", HF_PORT)
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=HF_PORT,
-        show_api=False,
-        share=False,
-    )
-
-
+    logger.info("Launching GrowNXT Unified Server (FastAPI + Flask WSGI + Gradio) on 0.0.0.0:%d...", HF_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=HF_PORT, log_level="info")
