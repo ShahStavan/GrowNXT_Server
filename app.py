@@ -102,8 +102,8 @@ def handle_stock_search(query: str) -> str:
 def handle_generate_report(
     symbol: str,
     refresh: bool,
-    progress: gr.Progress = gr.Progress(track_tqdm=True),
-) -> Tuple[str | None, str, str]:
+    progress=gr.Progress(),
+) -> Tuple[Optional[str], str, str]:
     """Generates the institutional equity report and returns the compiled PDF."""
     if not symbol or not symbol.strip():
         return None, "⚠️ *Please specify a stock ticker (e.g. INFY, WIPRO, TCS, M&M).*", ""
@@ -311,4 +311,11 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     logger.info("Launching GrowNXT Gradio Platform on 0.0.0.0:%d...", HF_PORT)
-    demo.launch(server_name="0.0.0.0", server_port=HF_PORT, share=False)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=HF_PORT,
+        ssr=False,
+        show_api=False,
+        share=False,
+    )
+
