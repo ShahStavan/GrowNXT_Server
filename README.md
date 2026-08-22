@@ -1,3 +1,14 @@
+---
+title: GrowNXT Server
+emoji: 📈
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 4.44.1
+app_file: app.py
+pinned: false
+---
+
 <div align="center">
 
 # 🚀 GrowNXT Financial AI Engine
