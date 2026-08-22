@@ -208,7 +208,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
 
     with gr.Tabs():
         # --- TAB 1: REPORT GENERATOR ---
-        with gr.TabItem("📄 Generate Equity Report"):
+        with gr.Tab("📄 Generate Equity Report"):
             with gr.Row():
                 with gr.Column(scale=4):
                     ticker_in = gr.Textbox(
@@ -238,7 +238,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             )
 
         # --- TAB 2: STOCK SEARCH ---
-        with gr.TabItem("🔍 Listed Stock Search"):
+        with gr.Tab("🔍 Listed Stock Search"):
             with gr.Row():
                 with gr.Column(scale=8):
                     search_in = gr.Textbox(
@@ -261,7 +261,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             )
 
         # --- TAB 3: SLM CHAT (DIRECT STREAMING) ---
-        with gr.TabItem("🤖 SLM Financial Assistant"):
+        with gr.Tab("🤖 SLM Financial Assistant"):
             with gr.Row():
                 model_dropdown = gr.Dropdown(
                     label="Active SLM Model",
@@ -269,7 +269,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                     value=available_models[0] if available_models else "qwen-3.8-27b",
                     interactive=True,
                 )
-            chatbot = gr.Chatbot(label="Chat with SLM (Unbuffered Streaming)", height=450)
+            chatbot = gr.Chatbot(label="Chat with SLM (Unbuffered Streaming)", height=450, type="tuples")
             msg_in = gr.Textbox(
                 label="Ask a financial research query...",
                 placeholder="e.g. What are the key margin drivers and capex outlook for Indian IT services?",
@@ -291,7 +291,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             ).then(lambda: "", None, msg_in)
 
         # --- TAB 4: API & PROXY INFO ---
-        with gr.TabItem("🔌 REST API & Reverse Proxy"):
+        with gr.Tab("🔌 REST API & Reverse Proxy"):
             gr.Markdown(f"""
             ### Available REST Endpoints on this Deployment:
             * `GET /api/search?q=<query>` — Search listed stocks
