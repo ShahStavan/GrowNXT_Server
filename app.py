@@ -234,7 +234,7 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                 fn=handle_generate_report,
                 inputs=[ticker_in, refresh_in],
                 outputs=[pdf_file_out, status_out, drive_out],
-                show_api=False,
+                api_name="generate_report",
             )
 
         # --- TAB 2: STOCK SEARCH ---
@@ -253,13 +253,13 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                 fn=handle_stock_search,
                 inputs=[search_in],
                 outputs=[search_results_out],
-                show_api=False,
+                api_name="search",
             )
             search_in.submit(
                 fn=handle_stock_search,
                 inputs=[search_in],
                 outputs=[search_results_out],
-                show_api=False,
+                api_name=False,
             )
 
         # --- TAB 3: SLM CHAT (DIRECT STREAMING) ---
@@ -284,15 +284,15 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                 fn=handle_slm_chat,
                 inputs=[msg_in, chatbot, model_dropdown],
                 outputs=[chatbot],
-                show_api=False,
-            ).then(lambda: "", None, msg_in, show_api=False)
+                api_name="chat",
+            ).then(lambda: "", None, msg_in, api_name=False)
 
             msg_in.submit(
                 fn=handle_slm_chat,
                 inputs=[msg_in, chatbot, model_dropdown],
                 outputs=[chatbot],
-                show_api=False,
-            ).then(lambda: "", None, msg_in, show_api=False)
+                api_name=False,
+            ).then(lambda: "", None, msg_in, api_name=False)
 
         # --- TAB 4: API & PROXY INFO ---
         with gr.Tab("🔌 REST API & Reverse Proxy"):
