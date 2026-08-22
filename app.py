@@ -1,6 +1,6 @@
 """GrowNXT Institutional Equity Research Platform -- Hugging Face Spaces & Local Entrypoint.
 
-Combines FastAPI, Flask WSGI Middleware, and Gradio 5 into a single production server:
+Combines FastAPI, Flask WSGI Middleware (a2wsgi), and Gradio 5 into a single production server:
   1. REST API Endpoints on /api/* and /v1/* (Flask via WSGIMiddleware)
   2. Interactive Gradio UI on / (Report Generator, Stock Search, Live SLM Chat)
   3. Direct in-process execution for zero internal latency.
@@ -16,16 +16,14 @@ import os
 import time
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
-# Completely disable experimental Node.js SSR in Gradio 5
+# Completely disable experimental SSR and telemetry
 os.environ["GRADIO_SSR_MODE"] = "False"
+os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-try:
-    from a2wsgi import WSGIMiddleware
-except ImportError:
-    from starlette.middleware.wsgi import WSGIMiddleware
+from a2wsgi import WSGIMiddleware
 import gradio as gr
 import requests
 import uvicorn
@@ -87,6 +85,10 @@ fastapi_app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@fastapi_app.get("/health")
+def health() -> Dict[str, str]:
+    return {"status": "ok", "app": "grownxt-server"}
 
 # Mount Flask WSGI App on /api and /v1 for direct external REST access
 wsgi_handler = WSGIMiddleware(flask_app)
@@ -319,28 +321,10 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             """)
 
 # ---------------------------------------------------------------------------
-# 4. Launch Gradio & Mount REST API Endpoints
+# 4. Mount Gradio onto FastAPI and Serve with Uvicorn
 # ---------------------------------------------------------------------------
-try:
-    if hasattr(demo, "app") and demo.app is not None:
-        demo.app.mount("/api", wsgi_handler)
-        demo.app.mount("/v1", wsgi_handler)
-except Exception:
-    pass
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 if __name__ == "__main__":
-    logger.info("Launching GrowNXT Platform on 0.0.0.0:%d...", HF_PORT)
-    server_app, local_url, share_url = demo.launch(
-        server_name="0.0.0.0",
-        server_port=HF_PORT,
-        prevent_thread_lock=True,
-    )
-    if server_app is not None:
-        try:
-            server_app.mount("/api", wsgi_handler)
-            server_app.mount("/v1", wsgi_handler)
-        except Exception:
-            pass
-
-    demo.block_thread()
-
+    logger.info("Launching GrowNXT Unified Platform (FastAPI + Flask WSGI + Gradio) on 0.0.0.0:%d...", HF_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=HF_PORT, log_level="info")
