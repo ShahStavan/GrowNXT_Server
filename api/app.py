@@ -10,23 +10,35 @@ Domain failures are raised, not branched on. The handlers registered in
 route down to the happy path.
 """
 
+import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Generator, Tuple
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, request, send_file
+from flask import Flask, Response, jsonify, request, send_file, stream_with_context
 from flask_cors import CORS
+import requests
 
 from api.search import find
 from core.config import OUTPUT_DIR, REQUIRED_ENV_VARS, report_path
+from core.llm_config import (
+    ACTIVE_MODEL,
+    API_URL,
+    DEFAULT_CHAT_MODELS,
+    DEFAULT_EMBED_MODEL,
+    DEFAULT_RERANK_MODEL,
+    REQUEST_TIMEOUT,
+    _headers as llm_headers,
+    clean_thinking_tokens,
+)
 from reporting.engine import ReportError, generate_report
 from storage import gdrive
 
 log = logging.getLogger(__name__)
 
-ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
 PDF_MIME = "application/pdf"
 TRUTHY = ("1", "true", "yes")
 NO_DRIVE = (
@@ -102,11 +114,10 @@ def _failed(exc: Exception) -> Json:
 def create_app() -> Flask:
     """Builds the configured application."""
     app = Flask(__name__)
-    CORS(app, resources={r"/api/*": {
-        "origins": ORIGINS,
-        "methods": ["GET", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-    }})
+    CORS(app, resources={
+        r"/api/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]},
+        r"/v1/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]},
+    })
 
     @app.get("/api/search")
     def search() -> Json:
@@ -115,12 +126,7 @@ def create_app() -> Flask:
 
     @app.get("/api/stocks/<symbol>/report")
     def report(symbol: str) -> Json:
-        """The Drive link to this symbol's report.
-
-        Compiled and uploaded on first request, then answered from the recorded
-        links. `?refresh=1` rebuilds it and replaces the Drive file in place, so
-        a link already shared keeps resolving to the current report.
-        """
+        """The Drive link to this symbol's report."""
         sym, refresh = _sym(symbol), _flag("refresh")
         pdf, built = _pdf(sym, refresh)
         body = {
@@ -131,8 +137,6 @@ def create_app() -> Flask:
         }
 
         if not gdrive.credentials_present():
-            # Local runs without credentials still serve the PDF; say why there
-            # is no link rather than returning a bare null.
             return jsonify(dict(body, drive=None, drive_status=NO_DRIVE)), 200
 
         up = gdrive.ensure_uploaded(pdf, sym, force=refresh)
@@ -146,6 +150,144 @@ def create_app() -> Flask:
         pdf, _ = _pdf(_sym(symbol), _flag("refresh"))
         return send_file(pdf, mimetype=PDF_MIME, as_attachment=_flag("download"),
                          download_name=pdf.name, max_age=0)
+
+    # --- OpenAI-Compatible Reverse Proxy Endpoints (Client / Frontend Safe) ---
+    @app.get("/v1/models")
+    @app.get("/api/llm/v1/models")
+    def list_models() -> Json:
+        """Lists supported SLM / LLM chat, embed, and rerank models."""
+        model_names = [m.strip() for m in DEFAULT_CHAT_MODELS.split(",") if m.strip()]
+        if DEFAULT_EMBED_MODEL:
+            model_names.append(DEFAULT_EMBED_MODEL)
+        if DEFAULT_RERANK_MODEL:
+            model_names.append(DEFAULT_RERANK_MODEL)
+
+        models_data = [
+            {
+                "id": m,
+                "object": "model",
+                "created": 1700000000,
+                "owned_by": "grownxt-slm",
+            }
+            for m in model_names
+        ]
+        return jsonify({"object": "list", "data": models_data}), 200
+
+    @app.post("/v1/chat/completions")
+    @app.post("/api/llm/v1/chat/completions")
+    def chat_completions() -> Response:
+        """Secure reverse proxy for OpenAI-compatible chat completions with unbuffered streaming."""
+        payload = request.get_json(force=True, silent=True) or {}
+        if not payload.get("model"):
+            payload["model"] = ACTIVE_MODEL
+
+        is_streaming = bool(payload.get("stream", False))
+        endpoint = f"{API_URL}/chat/completions"
+
+        if is_streaming:
+            def generate_stream() -> Generator[str, None, None]:
+                try:
+                    upstream_resp = requests.post(
+                        endpoint,
+                        json=payload,
+                        headers=llm_headers(),
+                        timeout=REQUEST_TIMEOUT,
+                        stream=True,
+                    )
+                    upstream_resp.raise_for_status()
+
+                    inside_thinking = False
+                    buffer = ""
+
+                    for line in upstream_resp.iter_lines():
+                        if not line:
+                            yield "\n"
+                            continue
+                        line_str = line.decode("utf-8") if isinstance(line, bytes) else line
+                        if not line_str.startswith("data:"):
+                            yield f"{line_str}\n"
+                            continue
+                        data_content = line_str[5:].strip()
+                        if data_content == "[DONE]":
+                            yield "data: [DONE]\n\n"
+                            break
+
+                        try:
+                            chunk = json.loads(data_content)
+                            choices = chunk.get("choices") or []
+                            if not choices:
+                                yield f"{line_str}\n\n"
+                                continue
+
+                            delta = choices[0].get("delta") or {}
+                            token = delta.get("content") or ""
+
+                            # Stream token filtering: suppress internal thinking tags
+                            buffer += token
+                            if "<think>" in buffer:
+                                inside_thinking = True
+                                buffer = buffer.split("<think>", 1)[0]
+                                if buffer:
+                                    choices[0]["delta"]["content"] = buffer
+                                    yield f"data: {json.dumps(chunk)}\n\n"
+                                    buffer = ""
+
+                            if inside_thinking:
+                                if "</think>" in token:
+                                    inside_thinking = False
+                                    after_think = token.split("</think>", 1)[1]
+                                    if after_think:
+                                        choices[0]["delta"]["content"] = after_think
+                                        yield f"data: {json.dumps(chunk)}\n\n"
+                                continue
+
+                            choices[0]["delta"]["content"] = token
+                            yield f"data: {json.dumps(chunk)}\n\n"
+                            buffer = ""
+                        except Exception:
+                            yield f"{line_str}\n\n"
+
+                except Exception as exc:
+                    err_chunk = {
+                        "error": {
+                            "message": f"Proxy upstream error: {exc}",
+                            "type": "proxy_error",
+                            "code": 502,
+                        }
+                    }
+                    yield f"data: {json.dumps(err_chunk)}\n\n"
+
+            headers = {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",  # Disables proxy buffering
+            }
+            return Response(stream_with_context(generate_stream()), headers=headers)
+
+        # Non-streaming execution
+        try:
+            upstream_resp = requests.post(
+                endpoint,
+                json=payload,
+                headers=llm_headers(),
+                timeout=REQUEST_TIMEOUT,
+            )
+            upstream_resp.raise_for_status()
+            data = upstream_resp.json()
+
+            # Sanitize thinking tokens from output
+            choices = data.get("choices") or []
+            if choices and isinstance(choices[0], dict):
+                msg = choices[0].get("message") or {}
+                if msg.get("content"):
+                    msg["content"] = clean_thinking_tokens(str(msg["content"]))
+
+            return jsonify(data), upstream_resp.status_code
+        except requests.RequestException as exc:
+            return jsonify({"error": {"message": f"SLM upstream call failed: {exc}", "type": "upstream_error"}}), 502
+        except Exception as exc:
+            return jsonify({"error": {"message": str(exc), "type": "proxy_error"}}), 500
 
     for kind, _ in STATUSES:
         app.register_error_handler(kind, _failed)

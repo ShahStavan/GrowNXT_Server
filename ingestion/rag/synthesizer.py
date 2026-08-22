@@ -17,7 +17,7 @@ import time
 from typing import Any, Dict, List, Optional, Sequence
 
 from core.config import safe_ticker
-from core.llm_config import LLMError, generate_llm_response
+from core.llm_config import LLMError, clean_thinking_tokens, generate_llm_response
 from ingestion.rag.probes import PILLAR_TITLES, ThematicProbe
 from ingestion.rag.retriever import EvidenceChunk
 
@@ -245,9 +245,12 @@ OUTPUT FORMAT:
                 chunks_used=[c.to_dict() for c in evidence[:3]],
             )
 
+        # Clean any remaining thinking tokens before parsing bullets
+        clean_text = clean_thinking_tokens(raw_response)
+
         # Parse bullets from LLM response
         bullets: list[str] = []
-        for line in raw_response.strip().split("\n"):
+        for line in clean_text.strip().split("\n"):
             line_str = line.strip()
             if not line_str:
                 continue
@@ -256,8 +259,8 @@ OUTPUT FORMAT:
                 if clean_bullet:
                     bullets.append(clean_bullet)
 
-        if not bullets and raw_response:
-            bullets = [raw_response.strip()]
+        if not bullets and clean_text:
+            bullets = [clean_text.strip()]
 
         return ThematicFinding(
             pillar=pillar,

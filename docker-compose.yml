@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  grownxt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: grownxt-server
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PORT=7860
+      - INTERNAL_PORT=5000
+      - APP_MODE=gradio # Use 'gradio' for UI + Flask or 'caddy' for Caddy + Gunicorn
+      - GROWNXT_OUTPUT_DIR=/app/output
+    ports:
+      - "7860:7860" # Gradio UI & Caddy Ingress
+      - "5000:5000" # Internal Flask API (Optional)
+    volumes:
+      - grownxt_output:/app/output
+      - grownxt_cache:/home/user/.cache
+
+volumes:
+  grownxt_output:
+  grownxt_cache:

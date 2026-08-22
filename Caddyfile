@@ -1,0 +1,79 @@
+# GrowNXT Reverse Proxy Configuration (Caddy)
+# Masks upstream SLM endpoint (https://llm.maqsoftware.net/v1) and streams tokens without buffering.
+
+{
+    admin off
+}
+
+# Bind to PORT or default to 7860 (Hugging Face Spaces / Local default)
+:{$PORT:7860} {
+    # Automatic Gzip and Zstandard compression
+    encode zstd gzip
+
+    # 1. Reverse Proxy for SLM / LLM Endpoints
+    # Client requests to /v1/* or /api/llm/v1/* are forwarded to the real upstream SLM.
+    # The browser / client network tab only sees your local GrowNXT host, never the real endpoint.
+    @slm_routes {
+        path /v1/* /api/llm/v1/*
+    }
+
+    handle @slm_routes {
+        # Strip /api/llm prefix if present so upstream receives /v1/...
+        uri strip_prefix /api/llm
+
+        reverse_proxy https://llm.maqsoftware.net {
+            # Inject upstream Host header
+            header_up Host llm.maqsoftware.net
+
+            # Inject authorization bearer token from environment variable
+            header_up Authorization "Bearer {$GROWNXT_LLM_API_KEY}"
+
+            # Pass client IP information
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # CRITICAL: Disable response buffering so Server-Sent Events (SSE) stream tokens instantly
+            flush_interval -1
+
+            # Mask all upstream server identity headers from reaching client network tab
+            header_down -Server
+            header_down -Via
+            header_down -X-Powered-By
+            header_down -CF-RAY
+            header_down -alt-svc
+
+            # Transport timeouts
+            transport http {
+                response_header_timeout 300s
+                read_timeout 300s
+                tls
+            }
+        }
+    }
+
+    # 2. Reverse Proxy for GrowNXT Flask API Application
+    handle /api/* {
+        reverse_proxy 127.0.0.1:5000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # Extended timeout for long-running financial report generation & Docling parsing
+            transport http {
+                response_header_timeout 300s
+                read_timeout 300s
+            }
+        }
+    }
+
+    # 3. Static PDF Downloads
+    handle /api/stocks/*/report/file* {
+        reverse_proxy 127.0.0.1:5000
+    }
+
+    # 4. Fallback Root Health Check
+    handle {
+        respond "GrowNXT Secure Reverse Proxy & Equity Research API Active" 200
+    }
+}
