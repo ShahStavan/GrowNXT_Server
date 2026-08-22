@@ -21,9 +21,13 @@ os.environ["GRADIO_SSR_MODE"] = "False"
 os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
 
 from dotenv import load_dotenv
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from a2wsgi import WSGIMiddleware
 import gradio as gr
 import requests
+import uvicorn
 
 # Patch gradio_client bug with Pydantic v2 boolean additionalProperties schemas
 try:
@@ -80,10 +84,67 @@ logger = logging.getLogger("grownxt.spaces")
 HF_PORT = int(os.getenv("PORT", "7860"))
 
 # ---------------------------------------------------------------------------
-# 1. Initialize Flask Backend Application
+# 1. Initialize FastAPI & Flask Applications
 # ---------------------------------------------------------------------------
 flask_app = create_app()
+fastapi_app = FastAPI(title="GrowNXT Institutional Platform", docs_url=None, redoc_url=None)
+
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@fastapi_app.get("/health")
+def health() -> Dict[str, str]:
+    return {"status": "ok", "app": "grownxt-server"}
+
+@fastapi_app.get("/api/search")
+def api_search(q: str = Query(default="", description="Search query")):
+    """Fast in-process stock listing search for cURL and frontend fetch."""
+    return find(q)
+
+@fastapi_app.get("/api/stocks/{symbol}/report")
+def api_report(symbol: str, refresh: bool = False):
+    """Generates institutional report and returns metadata & Google Drive mirror link."""
+    sym = safe_ticker(symbol.strip().upper())
+    pdf_path = generate_report(sym, output_dir=OUTPUT_DIR, refresh=refresh)
+    drive_link = None
+    try:
+        if gdrive.credentials_present():
+            up = gdrive.ensure_uploaded(pdf_path, sym, force=refresh)
+            drive_link = up.view_link or "Uploaded"
+    except Exception as exc:
+        logger.warning("Drive upload error for %s: %s", sym, exc)
+
+    return {
+        "success": True,
+        "symbol": sym,
+        "pdf_endpoint": f"/api/stocks/{sym}/report/file",
+        "view_link": drive_link,
+        "drive_status": drive_link or "Drive not configured",
+    }
+
+@fastapi_app.get("/api/stocks/{symbol}/report/file")
+def api_report_file(symbol: str, download: bool = False):
+    """Direct PDF file download endpoint."""
+    sym = safe_ticker(symbol.strip().upper())
+    pdf = report_path(sym, OUTPUT_DIR)
+    if not pdf.exists():
+        pdf = generate_report(sym, output_dir=OUTPUT_DIR)
+    return FileResponse(
+        str(pdf),
+        media_type="application/pdf",
+        filename=pdf.name if download else None,
+    )
+
+# Mount Flask WSGI App on /v1 for full OpenAI-compatible reverse proxy with streaming & think sanitization
 wsgi_handler = WSGIMiddleware(flask_app)
+fastapi_app.mount("/v1", wsgi_handler)
+fastapi_app.mount("/api/llm", wsgi_handler)
+
 
 
 # ---------------------------------------------------------------------------
@@ -311,19 +372,11 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             """)
 
 # ---------------------------------------------------------------------------
-# 4. Mount REST API Endpoints onto Gradio's FastAPI App before Launch
+# 4. Mount Gradio onto FastAPI App
 # ---------------------------------------------------------------------------
-try:
-    if hasattr(demo, "app") and demo.app is not None:
-        demo.app.mount("/api", wsgi_handler)
-        demo.app.mount("/v1", wsgi_handler)
-except Exception as exc:
-    logger.warning("Could not pre-mount on demo.app: %s", exc)
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 if __name__ == "__main__":
-    logger.info("Launching GrowNXT Native Gradio Platform on 0.0.0.0:%d...", HF_PORT)
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=HF_PORT,
-        show_api=False,
-    )
+    logger.info("Launching GrowNXT Unified Platform on 0.0.0.0:%d...", HF_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=HF_PORT, log_level="info")
+
