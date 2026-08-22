@@ -51,3 +51,7 @@ output/
 
 # Google Drive OAuth grant (never commit -- it is a live credential)
 .gdrive_token.json
+
+# LLM Evaluation Framework Documentation
+RAG_EVALS_AND_ANTI_HALLUCINATION_FRAMEWORK.md
+
