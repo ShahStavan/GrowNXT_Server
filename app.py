@@ -45,6 +45,16 @@ try:
 except Exception:
     pass
 
+# ZeroGPU registration to satisfy Hugging Face ZeroGPU runtime supervisor
+try:
+    import spaces
+
+    @spaces.GPU
+    def _zero_gpu_init() -> bool:
+        return True
+except Exception:
+    pass
+
 from api.app import create_app
 from api.search import find
 from core.config import OUTPUT_DIR, report_path, safe_ticker
