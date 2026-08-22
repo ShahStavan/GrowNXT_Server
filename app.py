@@ -22,7 +22,10 @@ os.environ["GRADIO_SSR_MODE"] = "False"
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.wsgi import WSGIMiddleware
+try:
+    from a2wsgi import WSGIMiddleware
+except ImportError:
+    from starlette.middleware.wsgi import WSGIMiddleware
 import gradio as gr
 import requests
 import uvicorn
@@ -203,7 +206,7 @@ custom_css = """
 .gr-button-primary { background-color: #0f766e !important; color: white !important; }
 """
 
-with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.Soft(), css=custom_css, ssr_mode=False) as demo:
+with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.Soft(), css=custom_css) as demo:
     gr.Markdown("# 📊 GrowNXT Institutional Equity Research & SLM Server", elem_id="main-title")
     gr.Markdown(
         "Institutional Fundamental Analysis · 20 Self-Checks · DuPont & Solvency Analytics · "
