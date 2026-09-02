@@ -1,23 +1,36 @@
-# GrowNXT Server -- Python 3.12 or newer.
+﻿# ==============================================================================
+# GrowNXT Server - Production Requirements
+# ==============================================================================
 
-
-flask
-flask-cors
-requests
-python-dotenv
-pydantic
-langgraph
-chardet
-typst>=0.13
-matplotlib
-pypdf
-docling>=2.70
-numpy>=1.24
-qdrant-client
-sentence-transformers
-huggingface-hub>=0.26.0
-gunicorn
+# Web & API Framework
+flask>=3.0.0
+flask-cors>=4.0.0
 fastapi>=0.110.0
 uvicorn>=0.28.0
+gunicorn>=21.2.0
 a2wsgi>=1.10.0
 gradio>=5.16.0
+
+# HTTP & Environment
+requests>=2.31.0
+python-dotenv>=1.0.0
+chardet>=5.2.0
+
+# Data Validation & State Machine
+pydantic>=2.7.0
+langgraph>=0.2.0
+
+# Document Layout Parsing & Chunking
+pypdf>=4.0.0
+docling>=2.70.0
+llama-index-core>=0.12.0
+
+# Vector Embeddings & Indexing
+numpy>=1.24.0
+qdrant-client>=1.9.0
+sentence-transformers>=3.0.0
+huggingface-hub>=0.26.0
+
+# Quantitative Charts & PDF Typesetting
+matplotlib>=3.8.0
+typst>=0.13.0

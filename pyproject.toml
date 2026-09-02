@@ -1,0 +1,146 @@
+﻿[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grownxt-server"
+version = "0.1.0"
+description = "Autonomous financial intelligence and institutional equity research platform"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "ShahStavan", email = "shahstavan72@gmail.com" }
+]
+keywords = ["financial-analysis", "equity-research", "rag", "langgraph", "typst", "qdrant"]
+dependencies = [
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.7.0",
+    "langgraph>=0.2.0",
+    "chardet>=5.2.0",
+    "typst>=0.13.0",
+    "matplotlib>=3.8.0",
+    "pypdf>=4.0.0",
+    "docling>=2.70.0",
+    "llama-index-core>=0.12.0",
+    "numpy>=1.24.0",
+    "qdrant-client>=1.9.0",
+    "sentence-transformers>=3.0.0",
+    "huggingface-hub>=0.26.0",
+    "gunicorn>=21.2.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "a2wsgi>=1.10.0",
+    "gradio>=5.16.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+    "types-requests>=2.31.0",
+    "types-chardet>=5.0.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+indent-width = 4
+
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".vscode",
+    ".idea",
+    "build",
+    "dist",
+    "output",
+    "outputs",
+    "models",
+    "data",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "C4",     # flake8-comprehensions
+    "A",      # flake8-builtins
+    "PIE",    # flake8-pie
+    "RET",    # flake8-return
+    "RSE",    # flake8-raise
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+]
+
+ignore = [
+    "E501",
+]
+
+fixable = [
+    "ALL",
+]
+
+unfixable = [
+    "B",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [
+    "F401",
+]
+
+"scripts/*.py" = [
+    "T201",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+known-first-party = [
+    "api",
+    "core",
+    "ingestion",
+    "reporting",
+    "storage",
+    "scripts",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "scripts"]
+python_files = ["test_*.py", "verify_*.py"]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+disallow_untyped_defs = false

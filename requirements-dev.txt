@@ -1,0 +1,20 @@
+﻿# ==============================================================================
+# GrowNXT Server - Development & Testing Requirements
+# ==============================================================================
+
+# Base production requirements
+-r requirements.txt
+
+# Linting, Formatting & Code Quality
+ruff>=0.8.0
+mypy>=1.10.0
+pre-commit>=3.7.0
+
+# Testing & Coverage
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=5.0.0
+
+# Type Stubs
+types-requests>=2.31.0
+types-chardet>=5.0.0
