@@ -29,15 +29,14 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
+import json
+import logging
+import re
+import time
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-import json
-import logging
-import os
 from pathlib import Path
-import re
-import time
 from typing import Any
 
 from ingestion.documents.content import (
@@ -63,6 +62,23 @@ logger = logging.getLogger(__name__)
 # change that leaves the version alone is invisible: the cache on disk stays in
 # use and describes text this module would no longer produce.
 EXTRACT_VERSION: str = "extract/docling-v1"
+
+# Where `run` records the inputs that determined an extraction, so a later run
+# can tell whether the cache on disk is what it would produce. One dict written
+# and compared by one pair of methods, rather than a list of fields to keep in
+# step: the fast transcript path and the Docling path record different
+# diagnostics, and a field-by-field comparison silently never matched for
+# transcripts.
+CACHE_KEY_FIELD: str = "cache_key"
+
+# Suffix marking an extraction produced by TableFormer's fast mode. Settings
+# that change the *text* have to reach `pending_reason`, which compares
+# recorded versions and knows nothing about an Extractor instance; folding the
+# mode into the version is what makes flipping it re-extract rather than
+# silently leave a cache the new setting would not have produced. Device and
+# thread count are deliberately absent: the same model on a GPU and on a CPU
+# yields the same document, so they must not invalidate anything.
+FAST_TABLES_SUFFIX: str = "+fast-tables"
 
 # Docling logs one line per page per model at INFO.
 _QUIET_LOGGERS = ("docling", "docling_core", "docling_ibm_models", "PIL")
@@ -109,6 +125,34 @@ class ExtractionError(RuntimeError):
     """Raised when a filing cannot be converted at all."""
 
 
+def extract_version(accurate_tables: bool = True, page_filter: bool = False) -> str:
+    """Returns the extractor version a given set of content settings produces.
+
+    Both arguments change the extracted *text*, so both belong in the version
+    Layer 1 compares -- a filtered extraction holds a fraction of the pages an
+    unfiltered one does, and reusing one for the other would silently serve a
+    partial document. Device and thread count still have no place here: they
+    produce the same text, and including them would invalidate every cache the
+    moment a run moved machine.
+
+    Args:
+        accurate_tables: Whether TableFormer runs in accurate mode.
+        page_filter: Whether only the financial section is converted.
+
+    Returns:
+        `EXTRACT_VERSION` with a suffix per non-default setting, in a fixed
+        order so the same settings always yield the same string.
+    """
+    from ingestion.documents.sections import PAGE_FILTER_SUFFIX
+
+    version = EXTRACT_VERSION
+    if not accurate_tables:
+        version += FAST_TABLES_SUFFIX
+    if page_filter:
+        version += PAGE_FILTER_SUFFIX
+    return version
+
+
 @dataclass
 class Extractor:
     """Converts filings to `ExtractedDocument` with Docling.
@@ -128,17 +172,37 @@ class Extractor:
             exact printed figures survive rather than being re-recognised.
         image_scale: Resolution multiplier for saved figures.
         max_pages: Cap on pages converted, for smoke tests.
+        device: Where the layout and table models run -- ``cuda``, ``cpu``,
+            ``mps``, ``xpu``. None resolves from `core.hardware`, which is the
+            only place that knows whether this torch build can reach the GPU.
+        num_threads: CPU threads for model inference and PDF parsing. None
+            resolves to the machine's physical core count; Docling's own
+            default is four regardless of the machine.
     """
 
     ocr: bool = True
     figures: bool = True
     accurate_tables: bool = True
+    # Convert only an annual report's financial section. Off by default: it
+    # drops pages, and a caller has to ask for that explicitly.
+    page_filter: bool = False
     cell_matching: bool = True
     image_scale: float = DEFAULT_IMAGE_SCALE
     max_pages: int | None = None
+    device: str | None = None
+    num_threads: int | None = None
     _converter: Any = field(default=None, init=False, repr=False)
+    # What `_apply_accelerator` actually resolved, recorded on every extraction
+    # so a slow run can be diagnosed from its cache rather than from memory.
+    _resolved_device: str = field(default="", init=False, repr=False)
+    _resolved_threads: int = field(default=0, init=False, repr=False)
 
     # --- Conversion ----------------------------------------------------------
+
+    @property
+    def version(self) -> str:
+        """Returns the version string this configuration's output carries."""
+        return extract_version(self.accurate_tables, self.page_filter)
 
     @property
     def converter(self) -> Any:
@@ -169,6 +233,7 @@ class Extractor:
             logging.getLogger(name).setLevel(logging.WARNING)
 
         options = PdfPipelineOptions()
+        self._apply_accelerator(options)
         options.do_ocr = bool(self.ocr)
         options.do_table_structure = True
         options.table_structure_options.do_cell_matching = bool(self.cell_matching)
@@ -192,6 +257,129 @@ class Extractor:
             format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=options)}
         )
 
+    def _apply_accelerator(self, options: Any) -> None:
+        """Points Docling's models at the resolved device and thread count.
+
+        Left unset, Docling runs four threads on any machine and resolves
+        ``device="auto"`` through whichever torch is installed -- which on a
+        CPU-only wheel means the GPU is never tried and nothing says so. This
+        makes both explicit and logs what was chosen, once per converter.
+
+        A Docling release that renames or drops `AcceleratorOptions` costs the
+        acceleration, not the run: the conversion then proceeds on Docling's
+        own defaults.
+        """
+        from core.hardware import DOCLING_DEFAULT_THREADS, profile
+
+        resolved = profile(device=self.device, num_threads=self.num_threads)
+        self._resolved_device = resolved.device
+        self._resolved_threads = resolved.num_threads
+        try:
+            from docling.datamodel.pipeline_options import AcceleratorOptions
+        except ImportError:
+            self._resolved_device = "auto"
+            self._resolved_threads = DOCLING_DEFAULT_THREADS
+            logger.warning(
+                "Docling exposes no AcceleratorOptions; falling back to its "
+                "defaults (%d threads, device=auto).",
+                DOCLING_DEFAULT_THREADS,
+            )
+            return
+
+        try:
+            options.accelerator_options = AcceleratorOptions(
+                device=resolved.device, num_threads=resolved.num_threads
+            )
+        except Exception as exc:  # noqa: BLE001 - a rejected option is not fatal
+            logger.warning("Could not set Docling accelerator options: %s", exc)
+            self._resolved_device = "auto"
+            self._resolved_threads = DOCLING_DEFAULT_THREADS
+            return
+
+        logger.info(
+            "Docling running on %s with %d thread(s)%s.",
+            resolved.device,
+            resolved.num_threads,
+            f" [{resolved.gpu_name}]" if resolved.gpu_name else "",
+        )
+        if resolved.idle_gpu:
+            logger.warning(
+                "This machine has an NVIDIA GPU that torch %s cannot use "
+                "(CPU-only build); extraction will run on the CPU.",
+                resolved.torch_build,
+            )
+
+    def _cache_key(
+        self,
+        source: Path,
+        limit: int | None,
+        source_sha256: str = "",
+        page_range: tuple[int, int] | None = None,
+    ) -> dict[str, Any]:
+        """Returns the inputs that determine this extraction's content.
+
+        Everything here changes the extracted text; nothing here is merely
+        about how fast it was produced. `device` and `num_threads` are
+        deliberately absent -- they yield the same document, and including
+        them would invalidate every cache the moment a run moved machine,
+        which is the same reasoning `extract_version` follows for the table
+        mode. `accurate_tables` needs no entry of its own because
+        `self.version` already carries it as a suffix.
+
+        Args:
+            source: The PDF being extracted.
+            limit: Page cap in force for this call.
+            source_sha256: Digest supplied by the caller, or empty to hash the
+                file here.
+            page_range: The pages this call will convert, or None for all of
+                them. Two extractions of the same PDF over different ranges are
+                different documents, so the range keys the cache.
+
+        Returns:
+            A JSON-round-trippable dict, compared whole against what an
+            extraction on disk recorded.
+        """
+        return {
+            "extractor": self.version,
+            "source_sha256": source_sha256 or _hash_file(source),
+            "source_bytes": _file_size(source),
+            "max_pages": int(limit) if limit else 0,
+            "page_range": list(page_range) if page_range else [],
+            "ocr": bool(self.ocr),
+            "figures": bool(self.figures),
+            "cell_matching": bool(self.cell_matching),
+            "image_scale": float(self.image_scale),
+        }
+
+    def _cached(
+        self, store: DocumentStore, doc_id: str, key: dict[str, Any]
+    ) -> ExtractedDocument | None:
+        """Returns the extraction on disk when it matches `key`, else None.
+
+        An extraction with no blocks is treated as absent: an empty document
+        is how a filing that Docling could not read is recorded, and caching
+        that would make one bad pass permanent.
+        """
+        if not key.get("source_sha256"):
+            # The PDF could not be hashed, so nothing can be shown to match it.
+            return None
+        path = store.extraction(doc_id)
+        if not path.exists():
+            return None
+        document = read_extraction(path)
+        if document is None or not document.blocks:
+            return None
+        if document.meta.get(CACHE_KEY_FIELD) != key:
+            return None
+        logger.info(
+            "[%s] reusing cached extraction: %d block(s) over %d page(s), %s",
+            doc_id,
+            len(document.blocks),
+            document.n_pages,
+            document.extractor,
+        )
+        return document
+
     def run(
         self,
         pdf: Path,
@@ -202,6 +390,8 @@ class Extractor:
         label: str = "",
         max_pages: int | None = None,
         write: bool = True,
+        reuse: bool = True,
+        source_sha256: str = "",
     ) -> ExtractedDocument:
         """Extracts one filing and, by default, caches the result.
 
@@ -215,6 +405,14 @@ class Extractor:
             max_pages: Cap on pages for this call, overriding the instance's.
             write: Write the extraction JSON. False is for callers that only
                 want the object, such as the verification harness.
+            reuse: Return the cached extraction when it was produced from this
+                same PDF by this same configuration. False forces a real
+                Docling pass, which is what a verification harness wants.
+            source_sha256: Digest of `pdf`, when the caller already has one --
+                `DownloadResult` carries it for both a fresh download and a
+                reused file. Left empty, the file is hashed here; a 40 MB
+                filing is one read either way, so the point is not to repeat
+                it once per run.
 
         Returns:
             The extracted document. A filing that yields no blocks is returned
@@ -227,10 +425,32 @@ class Extractor:
         """
         source = Path(pdf)
         if not source.exists():
-            raise ExtractionError("no such file: %s" % source)
+            raise ExtractionError(f"no such file: {source}")
 
         limit = max_pages if max_pages is not None else self.max_pages
         started = time.monotonic()
+
+        # Resolved before the cache lookup, not after: the range is part of the
+        # key, so a full extraction on disk must not satisfy a filtered request
+        # (or the reverse). `financial_page_range` returns None for anything it
+        # is not confident about, which means "convert everything".
+        page_range: tuple[int, int] | None = None
+        if self.page_filter:
+            from ingestion.documents.sections import financial_page_range
+
+            page_range = financial_page_range(source)
+
+        key = self._cache_key(source, limit, source_sha256, page_range)
+
+        # A Docling pass over a dense annual report is minutes of CPU, and the
+        # result of the last one is already on disk. Reusing it is what makes a
+        # run interrupted between extraction and embedding cheap to resume: the
+        # batch's Layer 1 knows only that the document was never *embedded*, so
+        # it asks for the extraction again either way.
+        if reuse:
+            cached = self._cached(store, doc_id, key)
+            if cached is not None:
+                return cached
 
         # Fast-Path: Transcripts are pure textual dialogue; parse directly in <1s
         is_transcript = (
@@ -250,39 +470,53 @@ class Extractor:
                     limit=limit,
                     write=write,
                     started=started,
+                    key=key,
                 )
             except Exception as exc:
-                logger.warning("[%s] Fast-path transcript parser failed (%s); falling back to Docling.", doc_id, exc)
+                logger.warning(
+                    "[%s] Fast-path transcript parser failed (%s); falling back to Docling.",
+                    doc_id,
+                    exc,
+                )
 
         try:
-            result = self.converter.convert(
-                str(source),
-                max_num_pages=int(limit) if limit else MAX_PAGES,
-            )
+            convert_kwargs: dict[str, Any] = {
+                "max_num_pages": int(limit) if limit else MAX_PAGES,
+            }
+            if page_range is not None:
+                convert_kwargs["page_range"] = page_range
+            result = self.converter.convert(str(source), **convert_kwargs)
         except ExtractionError:
             raise
         except Exception as exc:  # noqa: BLE001 - one bad filing is a failed document
-            raise ExtractionError("docling could not convert %s: %s" % (source, exc)) from exc
+            raise ExtractionError(f"docling could not convert {source}: {exc}") from exc
 
         docling_doc = getattr(result, "document", None)
         if docling_doc is None:
-            raise ExtractionError("docling returned no document for %s" % source)
+            raise ExtractionError(f"docling returned no document for {source}")
 
         document = ExtractedDocument(
-            doc_id=doc_id, doc_type=doc_type, ticker=ticker, label=label,
-            extractor=EXTRACT_VERSION,
+            doc_id=doc_id,
+            doc_type=doc_type,
+            ticker=ticker,
+            label=label,
+            extractor=self.version,
         )
         document.blocks = list(self._blocks(docling_doc, store, doc_id))
         document.n_source_pages = _source_pages(docling_doc, source)
         document.n_pages = len({block.page for block in document.blocks if block.page})
         document.meta = {
+            "page_range": list(page_range) if page_range else [],
             "ocr": bool(self.ocr),
             "figures": bool(self.figures),
             "accurate_tables": bool(self.accurate_tables),
             "cell_matching": bool(self.cell_matching),
             "image_scale": float(self.image_scale),
             "max_pages": int(limit) if limit else 0,
+            "device": self._resolved_device,
+            "num_threads": self._resolved_threads,
             "seconds": round(time.monotonic() - started, 1),
+            CACHE_KEY_FIELD: key,
         }
         self._report(document)
 
@@ -301,15 +535,20 @@ class Extractor:
         limit: int | None,
         write: bool,
         started: float,
+        key: dict[str, Any],
     ) -> ExtractedDocument:
         """High-speed, structural text extractor for concall transcripts (<1s latency)."""
         from pypdf import PdfReader
+
         reader = PdfReader(str(source))
         total_pages = len(reader.pages)
         max_p = min(total_pages, int(limit)) if limit else total_pages
 
         document = ExtractedDocument(
-            doc_id=doc_id, doc_type=doc_type, ticker=ticker, label=label,
+            doc_id=doc_id,
+            doc_type=doc_type,
+            ticker=ticker,
+            label=label,
             extractor="fast_transcript/v1",
         )
         blocks: list[Block] = []
@@ -319,34 +558,72 @@ class Extractor:
             page_num = p_idx + 1
             page = reader.pages[p_idx]
             text = page.extract_text() or ""
-            lines = [l.strip() for l in text.split("\n") if l.strip()]
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
 
             para: list[str] = []
             for line in lines:
                 # Filter out header/footer boilerplate lines
-                if re.match(r"^(?:Page \d+|\d+ of \d+|Earnings Call|Transcript|BSE Limited|NSE Limited)", line, re.IGNORECASE):
+                if re.match(
+                    r"^(?:Page \d+|\d+ of \d+|Earnings Call|Transcript|BSE Limited|NSE Limited)",
+                    line,
+                    re.IGNORECASE,
+                ):
                     continue
 
                 # Detect Section Boundaries
-                if re.search(r"Question.*Answer Session|Q&A Session", line, re.IGNORECASE):
+                if re.search(
+                    r"Question.*Answer Session|Q&A Session", line, re.IGNORECASE
+                ):
                     if para:
-                        blocks.append(Block(kind=KIND_TEXT, text=" ".join(para), page=page_num, path=[current_section]))
+                        blocks.append(
+                            Block(
+                                kind=KIND_TEXT,
+                                text=" ".join(para),
+                                page=page_num,
+                                path=[current_section],
+                            )
+                        )
                         para = []
                     current_section = "Question & Answer Session"
-                    blocks.append(Block(kind=KIND_HEADING, text=line, page=page_num, level=1, path=[current_section]))
+                    blocks.append(
+                        Block(
+                            kind=KIND_HEADING,
+                            text=line,
+                            page=page_num,
+                            level=1,
+                            path=[current_section],
+                        )
+                    )
                     continue
 
                 # Detect speaker turns
-                if re.match(r"^(?:[A-Z][a-z]+ [A-Z][a-z]+|[A-Z][a-z]+|Operator|Moderator|Management|Analyst):", line):
+                if re.match(
+                    r"^(?:[A-Z][a-z]+ [A-Z][a-z]+|[A-Z][a-z]+|Operator|Moderator|Management|Analyst):",
+                    line,
+                ):
                     if para:
-                        blocks.append(Block(kind=KIND_TEXT, text=" ".join(para), page=page_num, path=[current_section]))
+                        blocks.append(
+                            Block(
+                                kind=KIND_TEXT,
+                                text=" ".join(para),
+                                page=page_num,
+                                path=[current_section],
+                            )
+                        )
                         para = []
                     para.append(line)
                 else:
                     para.append(line)
 
             if para:
-                blocks.append(Block(kind=KIND_TEXT, text=" ".join(para), page=page_num, path=[current_section]))
+                blocks.append(
+                    Block(
+                        kind=KIND_TEXT,
+                        text=" ".join(para),
+                        page=page_num,
+                        path=[current_section],
+                    )
+                )
 
         document.blocks = blocks
         document.n_source_pages = total_pages
@@ -355,6 +632,7 @@ class Extractor:
             "fast_path": True,
             "max_pages": int(limit) if limit else 0,
             "seconds": round(time.monotonic() - started, 3),
+            CACHE_KEY_FIELD: key,
         }
         self._report(document)
 
@@ -392,8 +670,13 @@ class Extractor:
             if kind == KIND_TABLE:
                 table = _table_of(item, docling_doc, page)
                 if table is not None and table.rows:
-                    yield Block(kind=KIND_TABLE, text=table.to_markdown(), page=page,
-                                path=path, table=table)
+                    yield Block(
+                        kind=KIND_TABLE,
+                        text=table.to_markdown(),
+                        page=page,
+                        path=path,
+                        table=table,
+                    )
                 continue
 
             if kind == KIND_FIGURE:
@@ -401,11 +684,21 @@ class Extractor:
                     continue
                 figures_on_page[page] += 1
                 figure = self._save_figure(
-                    item, docling_doc, store, doc_id, page, figures_on_page[page],
+                    item,
+                    docling_doc,
+                    store,
+                    doc_id,
+                    page,
+                    figures_on_page[page],
                 )
                 if figure is not None:
-                    yield Block(kind=KIND_FIGURE, text=figure.caption, page=page,
-                                path=path, figure=figure)
+                    yield Block(
+                        kind=KIND_FIGURE,
+                        text=figure.caption,
+                        page=page,
+                        path=path,
+                        figure=figure,
+                    )
                 continue
 
             text = _text_of(item)
@@ -418,8 +711,13 @@ class Extractor:
                 # level replaces its sibling rather than nesting under it.
                 trail = [entry for entry in trail if entry[0] < level]
                 trail.append((level, text))
-                yield Block(kind=KIND_HEADING, text=text, page=page, level=level,
-                            path=[name for _level, name in trail])
+                yield Block(
+                    kind=KIND_HEADING,
+                    text=text,
+                    page=page,
+                    level=level,
+                    path=[name for _level, name in trail],
+                )
                 continue
 
             yield Block(kind=kind, text=text, page=page, path=path)
@@ -442,12 +740,17 @@ class Extractor:
         try:
             image = item.get_image(docling_doc)
         except Exception as exc:  # noqa: BLE001 - a picture is not worth the document
-            logger.debug("[%s] could not render a picture on page %d: %s", doc_id, page, exc)
+            logger.debug(
+                "[%s] could not render a picture on page %d: %s", doc_id, page, exc
+            )
             image = None
         if image is None:
             return None
 
-        width, height = int(getattr(image, "width", 0)), int(getattr(image, "height", 0))
+        width, height = (
+            int(getattr(image, "width", 0)),
+            int(getattr(image, "height", 0)),
+        )
         if width < MIN_FIGURE_PIXELS or height < MIN_FIGURE_PIXELS:
             return None
 
@@ -456,7 +759,9 @@ class Extractor:
             target.parent.mkdir(parents=True, exist_ok=True)
             image.save(str(target), format="PNG")
         except Exception as exc:  # noqa: BLE001 - as above
-            logger.debug("[%s] could not save a picture on page %d: %s", doc_id, page, exc)
+            logger.debug(
+                "[%s] could not save a picture on page %d: %s", doc_id, page, exc
+            )
             return None
 
         return Figure(
@@ -480,8 +785,12 @@ class Extractor:
         counts = document.kind_counts()
         logger.info(
             "[%s] extracted %d pages, %d blocks, %d chars (%s) in %ss",
-            document.doc_id, document.n_pages, len(document.blocks), document.n_chars,
-            ", ".join("%s=%d" % pair for pair in sorted(counts.items())) or "nothing",
+            document.doc_id,
+            document.n_pages,
+            len(document.blocks),
+            document.n_chars,
+            ", ".join(f"{pair[0]}={pair[1]}" for pair in sorted(counts.items()))
+            or "nothing",
             document.meta.get("seconds", "?"),
         )
         empty = document.empty_pages()
@@ -490,7 +799,8 @@ class Extractor:
                 "[%s] %d of %d pages yielded nothing at all (e.g. %s). A scanned "
                 "insert needs OCR; without it those pages are silently absent "
                 "from the index rather than reported missing.",
-                document.doc_id, len(empty),
+                document.doc_id,
+                len(empty),
                 document.n_source_pages or document.n_pages,
                 ", ".join(str(page) for page in empty[:8]),
             )
@@ -500,7 +810,8 @@ class Extractor:
             # on disk but nothing reads them yet.
             logger.info(
                 "[%s] %d page(s) produced figures or tables but no text (e.g. %s).",
-                document.doc_id, len(text_free),
+                document.doc_id,
+                len(text_free),
                 ", ".join(str(page) for page in text_free[:8]),
             )
 
@@ -511,6 +822,7 @@ class Extractor:
 # an attribute is a one-line change here rather than a hunt through the walk
 # above. Each degrades to a harmless default instead of raising: a filing that
 # loses one caption is still a good extraction, one that raises is no extraction.
+
 
 def _iterate(docling_doc: Any) -> Iterable[tuple[Any, int]]:
     """Yields (item, depth) over a DoclingDocument in reading order."""
@@ -594,19 +906,26 @@ def _table_of(item: Any, docling_doc: Any, page: int) -> Table | None:
         rows: list[list[str]] = []
         header_rows = 0
         for index, row in enumerate(grid):
-            rows.append([" ".join(str(getattr(cell, "text", "") or "").split())
-                         for cell in row])
+            rows.append(
+                [" ".join(str(getattr(cell, "text", "") or "").split()) for cell in row]
+            )
             # Header rows are the leading run only. A "header" cell further down
             # is a spanner inside the body, and treating it as header would put
             # body figures in the column labels.
-            if row and index == header_rows and all(
-                getattr(cell, "column_header", False) for cell in row
+            if (
+                row
+                and index == header_rows
+                and all(getattr(cell, "column_header", False) for cell in row)
             ):
                 header_rows += 1
         rows = [row for row in rows if any(row)]
         if rows:
-            return Table(rows=rows, header_rows=min(header_rows, len(rows)),
-                         caption=caption, page=page)
+            return Table(
+                rows=rows,
+                header_rows=min(header_rows, len(rows)),
+                caption=caption,
+                page=page,
+            )
 
     # Fallback: no grid, so take the dataframe and treat its columns as the
     # header. Worse, but a table with an approximate header beats none.
@@ -621,8 +940,9 @@ def _table_of(item: Any, docling_doc: Any, page: int) -> Table | None:
     rows = ([header] if any(header) else []) + body
     if not rows:
         return None
-    return Table(rows=rows, header_rows=1 if any(header) else 0,
-                 caption=caption, page=page)
+    return Table(
+        rows=rows, header_rows=1 if any(header) else 0, caption=caption, page=page
+    )
 
 
 def _dataframe_of(item: Any, docling_doc: Any) -> Any:
@@ -630,8 +950,10 @@ def _dataframe_of(item: Any, docling_doc: Any) -> Any:
 
     Docling changed this signature between versions, so both are tried.
     """
-    for call in (lambda: item.export_to_dataframe(doc=docling_doc),
-                 lambda: item.export_to_dataframe()):
+    for call in (
+        lambda: item.export_to_dataframe(doc=docling_doc),
+        lambda: item.export_to_dataframe(),
+    ):
         try:
             return call()
         except TypeError:
@@ -656,6 +978,7 @@ def _source_pages(docling_doc: Any, pdf: Path) -> int:
             pass
     try:
         from pypdf import PdfReader
+
         return len(PdfReader(str(pdf)).pages)
     except Exception:  # noqa: BLE001 - the coverage check degrades, nothing else
         return 0
@@ -680,6 +1003,33 @@ def _set_if_present(target: Any, name: str, value: Any) -> None:
 
 # --- Cache --------------------------------------------------------------------
 
+
+def _hash_file(path: Path, block: int = 1 << 20) -> str:
+    """Returns a file's sha256, or an empty string when it cannot be read.
+
+    Empty on failure rather than raising: the digest feeds a cache key, and a
+    key that cannot be built must mean "extract again", never "crash".
+    """
+    import hashlib
+
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(block), b""):
+                digest.update(chunk)
+    except OSError:
+        return ""
+    return digest.hexdigest()
+
+
+def _file_size(path: Path) -> int:
+    """Returns a file's size in bytes, or 0 when it cannot be stat'd."""
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
+
+
 def write_extraction(document: ExtractedDocument, path: Path) -> None:
     """Writes an extraction to its cache file atomically.
 
@@ -690,9 +1040,10 @@ def write_extraction(document: ExtractedDocument, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(
-        json.dumps(document.to_dict(), ensure_ascii=False), encoding="utf-8",
+        json.dumps(document.to_dict(), ensure_ascii=False),
+        encoding="utf-8",
     )
-    os.replace(str(temporary), str(path))
+    temporary.replace(path)
 
 
 def read_extraction(path: Path) -> ExtractedDocument | None:

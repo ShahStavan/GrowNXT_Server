@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-
 PROTECTED_FILES = {
     ".env",
     ".env.production",

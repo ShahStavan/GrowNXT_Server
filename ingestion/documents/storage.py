@@ -23,8 +23,9 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from core.config import OUTPUT_DIR, safe_ticker
@@ -36,10 +37,20 @@ logger = logging.getLogger(__name__)
 DOCUMENTS_DIR: str = "documents"
 EXTRACTED_DIR: str = "extracted"
 FIGURES_DIR: str = "figures"
+CHUNKS_DIR: str = "chunks"
 
 PDF_SUFFIX: str = ".pdf"
 EXTRACTION_SUFFIX: str = ".json"
 FIGURE_SUFFIX: str = ".png"
+
+# `Downloader._stream` writes to a hidden ``.<doc_id>-XXXX.part`` beside its
+# destination and renames it only after the transfer validates, so a torn
+# ``.pdf`` is impossible -- but a hard kill leaves the temporary file behind and
+# nothing globs for it. Swept here rather than on download, because the sweep
+# must not race a transfer that is still running: only files older than this are
+# removed, which is why the age gate is not merely tidiness.
+PART_SUFFIX: str = ".part"
+PART_FILE_TTL_HOURS: float = 6.0
 
 
 @dataclass(frozen=True)
@@ -58,7 +69,7 @@ class DocumentStore:
     root: Path
 
     @classmethod
-    def open(cls, ticker: str, data_dir: Path | None = None) -> "DocumentStore":
+    def open(cls, ticker: str, data_dir: Path | None = None) -> DocumentStore:
         """Returns the store for one ticker, without touching the filesystem.
 
         Args:
@@ -91,11 +102,48 @@ class DocumentStore:
         """Directory holding one sub-directory of images per document."""
         return self.root / FIGURES_DIR
 
-    def ensure(self) -> "DocumentStore":
+    @property
+    def chunks(self) -> Path:
+        """Directory holding one chunk-set JSON per document."""
+        return self.root / CHUNKS_DIR
+
+    def ensure(self) -> DocumentStore:
         """Creates the directories this package writes into, and returns self."""
-        for path in (self.documents, self.extracted, self.figures):
+        for path in (self.documents, self.extracted, self.figures, self.chunks):
             path.mkdir(parents=True, exist_ok=True)
+        self.sweep_partials()
         return self
+
+    def sweep_partials(self, ttl_hours: float = PART_FILE_TTL_HOURS) -> int:
+        """Removes abandoned download temporaries, returning the bytes reclaimed.
+
+        Args:
+            ttl_hours: Minimum age before a temporary is presumed abandoned. A
+                concurrent worker may be mid-transfer on this same ticker, so a
+                fresh temporary is left alone.
+
+        Returns:
+            Bytes reclaimed. Never raises: an un-deletable temporary is a
+            wasted megabyte, not a failed run.
+        """
+        cutoff = time.time() - max(0.0, ttl_hours) * 3600.0
+        reclaimed = 0
+        for path in self.documents.glob(f"*{PART_SUFFIX}"):
+            try:
+                stat = path.stat()
+                if stat.st_mtime > cutoff:
+                    continue
+                path.unlink()
+            except OSError:
+                continue
+            reclaimed += stat.st_size
+            logger.debug(
+                "[%s] removed abandoned download temporary %s (%d bytes)",
+                self.ticker,
+                path.name,
+                stat.st_size,
+            )
+        return reclaimed
 
     # --- Files ---------------------------------------------------------------
 
@@ -111,6 +159,10 @@ class DocumentStore:
         """Returns the directory holding one filing's extracted images."""
         return self.figures / doc_id
 
+    def chunk_file(self, doc_id: str) -> Path:
+        """Returns the path of one filing's chunk-set JSON."""
+        return self.chunks / (doc_id + EXTRACTION_SUFFIX)
+
     def figure(self, doc_id: str, page: int, index: int) -> Path:
         """Returns ``figures/<doc_id>/p<page>-<index>.png`` for one figure.
 
@@ -123,7 +175,7 @@ class DocumentStore:
             The path, zero-padded so a directory listing sorts into document
             order -- what makes a figure directory reviewable by eye.
         """
-        name = "p%04d-%02d%s" % (max(0, page), max(0, index), FIGURE_SUFFIX)
+        name = f"p{max(0, page):04d}-{max(0, index):02d}{FIGURE_SUFFIX}"
         return self.figure_dir(doc_id) / name
 
     # --- Registry paths ------------------------------------------------------
@@ -139,8 +191,11 @@ class DocumentStore:
         try:
             return Path(path).resolve().relative_to(self.root.resolve()).as_posix()
         except ValueError:
-            logger.warning("[%s] path %s is outside the store; recording it whole.",
-                           self.ticker, path)
+            logger.warning(
+                "[%s] path %s is outside the store; recording it whole.",
+                self.ticker,
+                path,
+            )
             return Path(path).as_posix()
 
     def resolve(self, relative_path: str) -> Path:

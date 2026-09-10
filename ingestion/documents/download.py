@@ -31,16 +31,16 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+import contextlib
 import hashlib
 import logging
-import os
-from pathlib import Path
 import tempfile
 import threading
 import time
+from collections.abc import Iterator, Sequence
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
+from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
@@ -175,7 +175,7 @@ class DownloadBatch:
     """
 
     total: int
-    _futures: list["Future[DownloadResult]"] = field(default_factory=list, repr=False)
+    _futures: list[Future[DownloadResult]] = field(default_factory=list, repr=False)
     _pool: ThreadPoolExecutor | None = field(default=None, repr=False)
 
     def completed(self) -> Iterator[DownloadResult]:
@@ -272,14 +272,23 @@ class Downloader:
                 return failure(str(exc), attempt)
             except _Transient as exc:
                 last = str(exc)
-                logger.warning("[%s] %s (attempt %d/%d)",
-                               request.doc_id, last, attempt, self._retries + 1)
+                logger.warning(
+                    "[%s] %s (attempt %d/%d)",
+                    request.doc_id,
+                    last,
+                    attempt,
+                    self._retries + 1,
+                )
                 if attempt <= self._retries:
                     time.sleep(self._backoff(attempt, exc))
                 continue
 
-            logger.info("[%s] downloaded %.1f MB, %s page(s)",
-                        request.doc_id, n_bytes / (1024.0 * 1024.0), n_pages or "?")
+            logger.info(
+                "[%s] downloaded %.1f MB, %s page(s)",
+                request.doc_id,
+                n_bytes / (1024.0 * 1024.0),
+                n_pages or "?",
+            )
             return DownloadResult(
                 doc_id=request.doc_id,
                 ok=True,
@@ -316,8 +325,12 @@ class Downloader:
         workers = min(self._workers, len(pending))
         pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="download")
         futures = [pool.submit(self.fetch, request, force) for request in pending]
-        logger.info("[%s] fetching %d document(s) on %d worker(s)",
-                    self._store.ticker, len(pending), workers)
+        logger.info(
+            "[%s] fetching %d document(s) on %d worker(s)",
+            self._store.ticker,
+            len(pending),
+            workers,
+        )
         return DownloadBatch(total=len(pending), _futures=futures, _pool=pool)
 
     def fetch_all(
@@ -335,7 +348,7 @@ class Downloader:
             session.close()
             self._local.session = None
 
-    def __enter__(self) -> "Downloader":
+    def __enter__(self) -> Downloader:
         return self
 
     def __exit__(self, *_exc: object) -> None:
@@ -370,12 +383,16 @@ class Downloader:
         except OSError:
             return None
         if size < MIN_BYTES or not _has_pdf_magic(target):
-            logger.warning("[%s] file on disk is not a usable PDF; re-downloading.", doc_id)
+            logger.warning(
+                "[%s] file on disk is not a usable PDF; re-downloading.", doc_id
+            )
             return None
 
         n_pages = _page_count(target) if self._verify else 0
         if self._verify and n_pages == 0:
-            logger.warning("[%s] file on disk has no readable pages; re-downloading.", doc_id)
+            logger.warning(
+                "[%s] file on disk has no readable pages; re-downloading.", doc_id
+            )
             return None
         return DownloadResult(
             doc_id=doc_id,
@@ -411,13 +428,13 @@ class Downloader:
                 allow_redirects=True,
             )
         except requests.Timeout as exc:
-            raise _Transient("timed out: %s" % exc) from exc
+            raise _Transient(f"timed out: {exc}") from exc
         except requests.RequestException as exc:
-            raise _Transient("request failed: %s" % exc) from exc
+            raise _Transient(f"request failed: {exc}") from exc
 
         with response:
             if not response.ok:
-                message = "HTTP %d" % response.status_code
+                message = f"HTTP {response.status_code}"
                 if response.status_code in RETRY_STATUSES:
                     raise _retry_after(message, response)
                 raise _Permanent(message)
@@ -425,24 +442,31 @@ class Downloader:
             content_type = str(response.headers.get("Content-Type", ""))
             declared = _declared_length(response)
             if declared is not None and declared > MAX_BYTES:
-                raise _Permanent("server declares %d bytes, over the %d ceiling"
-                                 % (declared, MAX_BYTES))
+                raise _Permanent(
+                    f"server declares {declared} bytes, over the {MAX_BYTES} ceiling"
+                )
 
-            temporary, sha256, n_bytes = self._stream(response, request.doc_id, target.parent)
+            temporary, sha256, n_bytes = self._stream(
+                response, request.doc_id, target.parent
+            )
 
         try:
             if n_bytes < MIN_BYTES:
-                raise _Permanent("response too small (%d bytes); expected a filing" % n_bytes)
+                raise _Permanent(
+                    f"response too small ({n_bytes} bytes); expected a filing"
+                )
             if not _has_pdf_magic(temporary):
                 # How investor-relations hosts answer a moved document: an HTML
                 # error page served with a 200.
-                raise _Permanent("response is not a PDF (content-type %r)" % content_type)
+                raise _Permanent(
+                    f"response is not a PDF (content-type {content_type!r})"
+                )
             n_pages = _page_count(temporary) if self._verify else 0
             if self._verify and n_pages == 0:
                 # Began with a PDF header but has no readable page tree: a
                 # truncated transfer the magic-byte check cannot catch.
                 raise _Transient("PDF has no readable pages; transfer looks truncated")
-            os.replace(str(temporary), str(target))
+            temporary.replace(target)
         except Exception:
             _discard(temporary)
             raise
@@ -465,28 +489,32 @@ class Downloader:
             (temporary path, sha256, bytes written).
         """
         destination.mkdir(parents=True, exist_ok=True)
-        handle = tempfile.NamedTemporaryFile(
-            dir=str(destination), prefix="." + doc_id + "-", suffix=".part", delete=False,
-        )
-        temporary = Path(handle.name)
         digest = hashlib.sha256()
         written = 0
-        try:
-            with handle:
+        with tempfile.NamedTemporaryFile(
+            dir=str(destination),
+            prefix="." + doc_id + "-",
+            suffix=".part",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            try:
                 for block in response.iter_content(chunk_size=STREAM_BLOCK):
                     if not block:
                         continue
                     written += len(block)
                     if written > MAX_BYTES:
-                        raise _Permanent("response exceeds the %d byte ceiling" % MAX_BYTES)
+                        raise _Permanent(
+                            f"response exceeds the {MAX_BYTES} byte ceiling"
+                        )
                     digest.update(block)
                     handle.write(block)
-        except _Permanent:
-            _discard(temporary)
-            raise
-        except (requests.RequestException, OSError) as exc:
-            _discard(temporary)
-            raise _Transient("transfer interrupted: %s" % exc) from exc
+            except _Permanent:
+                _discard(temporary)
+                raise
+            except (requests.RequestException, OSError) as exc:
+                _discard(temporary)
+                raise _Transient(f"transfer interrupted: {exc}") from exc
         return temporary, digest.hexdigest(), written
 
     def _backoff(self, attempt: int, exc: Exception) -> float:
@@ -498,6 +526,7 @@ class Downloader:
 
 
 # --- Module helpers -----------------------------------------------------------
+
 
 def _headers_for(url: str) -> dict[str, str]:
     """Returns request headers carrying a referer from the URL's own host.
@@ -513,7 +542,7 @@ def _headers_for(url: str) -> dict[str, str]:
     except ValueError:
         return headers
     if parsed.scheme in ("http", "https") and parsed.netloc:
-        headers["Referer"] = "%s://%s/" % (parsed.scheme, parsed.netloc)
+        headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
     return headers
 
 
@@ -522,7 +551,7 @@ def _retry_after(message: str, response: requests.Response) -> _Transient:
     error = _Transient(message)
     raw = str(response.headers.get("Retry-After", "")).strip()
     if raw.isdigit():
-        setattr(error, "retry_after", float(raw))
+        error.retry_after = float(raw)
     return error
 
 
@@ -535,7 +564,7 @@ def _declared_length(response: requests.Response) -> int | None:
 def _has_pdf_magic(path: Path) -> bool:
     """Returns True when a file's opening kilobyte contains the PDF header."""
     try:
-        with open(str(path), "rb") as handle:
+        with path.open("rb") as handle:
             return PDF_MAGIC in handle.read(MAGIC_WINDOW)
     except OSError:
         return False
@@ -557,10 +586,8 @@ def _page_count(path: Path) -> int:
     try:
         reader = PdfReader(str(path))
         if reader.is_encrypted:
-            try:
+            with contextlib.suppress(Exception):  # an unreadable filing is caught below
                 reader.decrypt("")
-            except Exception:  # noqa: BLE001 - an unreadable filing is caught below
-                pass
         return len(reader.pages)
     except Exception as exc:  # noqa: BLE001 - a malformed PDF is a failed download
         logger.debug("Could not read the page count of %s: %s", path, exc)
@@ -571,7 +598,7 @@ def _hash_file(path: Path, block: int = 1 << 20) -> str:
     """Returns a file's SHA-256, reading it in blocks."""
     digest = hashlib.sha256()
     try:
-        with open(str(path), "rb") as handle:
+        with path.open("rb") as handle:
             for chunk in iter(lambda: handle.read(block), b""):
                 digest.update(chunk)
     except OSError as exc:
@@ -582,7 +609,5 @@ def _hash_file(path: Path, block: int = 1 << 20) -> str:
 
 def _discard(path: Path) -> None:
     """Removes a temporary file, ignoring an already-absent one."""
-    try:
+    with contextlib.suppress(OSError):
         path.unlink()
-    except OSError:
-        pass

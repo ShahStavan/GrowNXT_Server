@@ -1,7 +1,6 @@
 import re
 import sys
 
-
 SECRET_PATTERNS = [
     r"sk-[A-Za-z0-9_-]{20,}",
     r"-----BEGIN .* PRIVATE KEY-----",

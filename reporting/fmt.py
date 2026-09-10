@@ -17,7 +17,7 @@ Conventions applied here:
       from a real zero. A rendered 0.00 for missing data is a factual error.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 DASH: str = "—"
 
@@ -101,7 +101,7 @@ def ratio(value: Any, decimals: int = 2) -> str:
     return num(value, decimals)
 
 
-def growth(current: Any, prior: Any) -> Optional[float]:
+def growth(current: Any, prior: Any) -> float | None:
     """Computes period-on-period growth in percentage points.
 
     The collector's `_comments` growth annotations are unreliable — for a
@@ -123,7 +123,7 @@ def growth(current: Any, prior: Any) -> Optional[float]:
     return (float(current) - float(prior)) / float(prior) * 100.0
 
 
-def margin(numerator: Any, denominator: Any) -> Optional[float]:
+def margin(numerator: Any, denominator: Any) -> float | None:
     """Computes a margin in percentage points, or None if not computable."""
     if not _is_number(numerator) or not _is_number(denominator):
         return None
@@ -132,7 +132,7 @@ def margin(numerator: Any, denominator: Any) -> Optional[float]:
     return float(numerator) / float(denominator) * 100.0
 
 
-def safe_div(numerator: Any, denominator: Any) -> Optional[float]:
+def safe_div(numerator: Any, denominator: Any) -> float | None:
     """Divides two values, returning None on missing or zero denominator."""
     if not _is_number(numerator) or not _is_number(denominator):
         return None
@@ -141,7 +141,7 @@ def safe_div(numerator: Any, denominator: Any) -> Optional[float]:
     return float(numerator) / float(denominator)
 
 
-def pos_div(numerator: Any, denominator: Any) -> Optional[float]:
+def pos_div(numerator: Any, denominator: Any) -> float | None:
     """Divides only when the denominator is strictly positive.
 
     This is the house rule for any ratio whose denominator can legitimately
@@ -170,7 +170,7 @@ def pos_div(numerator: Any, denominator: Any) -> Optional[float]:
     return float(numerator) / float(denominator)
 
 
-def pos_margin(numerator: Any, denominator: Any) -> Optional[float]:
+def pos_margin(numerator: Any, denominator: Any) -> float | None:
     """Computes a percentage, only against a strictly positive base.
 
     The percentage-point counterpart of `pos_div`; see that function for

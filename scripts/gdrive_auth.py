@@ -21,10 +21,10 @@ this command becomes a once-ever step rather than a weekly chore.
 """
 
 import argparse
+import contextlib
 import http.server
 import logging
 import os
-from pathlib import Path
 import socket
 import sys
 import threading
@@ -32,6 +32,7 @@ import time
 import urllib.parse
 import urllib.request
 import webbrowser
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -114,7 +115,7 @@ def _post_form(url: str, fields: dict) -> dict:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", "replace")
-        raise SystemExit("Token exchange failed (HTTP %s): %s" % (exc.code, detail))
+        raise SystemExit(f"Token exchange failed (HTTP {exc.code}): {detail}") from exc
 
 
 def authorise(client_id: str, client_secret: str) -> str:
@@ -128,7 +129,7 @@ def authorise(client_id: str, client_secret: str) -> str:
         str: The refresh token.
     """
     port = _free_port()
-    redirect_uri = "http://127.0.0.1:%d/" % port
+    redirect_uri = f"http://127.0.0.1:{port}/"
 
     params = {
         "client_id": client_id,
@@ -139,7 +140,7 @@ def authorise(client_id: str, client_secret: str) -> str:
         "access_type": "offline",
         "prompt": "consent",
     }
-    auth_url = "%s?%s" % (AUTH_ENDPOINT, urllib.parse.urlencode(params))
+    auth_url = f"{AUTH_ENDPOINT}?{urllib.parse.urlencode(params)}"
 
     server = http.server.HTTPServer(("127.0.0.1", port), _CallbackHandler)
     server.timeout = 5
@@ -159,30 +160,33 @@ def authorise(client_id: str, client_secret: str) -> str:
     _CallbackHandler.code = None
     _CallbackHandler.error = None
     deadline = time.time() + 300
-    thread = threading.Thread(target=serve_until_answered, args=(deadline,), daemon=True)
+    thread = threading.Thread(
+        target=serve_until_answered, args=(deadline,), daemon=True
+    )
     thread.start()
 
-    print("Opening Google's consent screen. If nothing opens, visit:\n\n%s\n" % auth_url)
-    try:
+    print(f"Opening Google's consent screen. If nothing opens, visit:\n\n{auth_url}\n")
+    with contextlib.suppress(Exception):  # noqa: BLE001 - a headless box just uses the printed URL
         webbrowser.open(auth_url)
-    except Exception:  # noqa: BLE001 - a headless box just uses the printed URL
-        pass
 
     thread.join(timeout=305)
     server.server_close()
 
     if _CallbackHandler.error:
-        raise SystemExit("Google returned an error: %s" % _CallbackHandler.error)
+        raise SystemExit(f"Google returned an error: {_CallbackHandler.error}")
     if not _CallbackHandler.code:
         raise SystemExit("No authorisation code received within 5 minutes.")
 
-    payload = _post_form(TOKEN_ENDPOINT, {
-        "code": _CallbackHandler.code,
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "redirect_uri": redirect_uri,
-        "grant_type": "authorization_code",
-    })
+    payload = _post_form(
+        TOKEN_ENDPOINT,
+        {
+            "code": _CallbackHandler.code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        },
+    )
 
     refresh_token = payload.get("refresh_token")
     if not refresh_token:
@@ -205,7 +209,7 @@ def _report_missing() -> None:
         ("GDRIVE_CLIENT_SECRET", have_secret),
         ("refresh token", have_token),
     ):
-        print("  [%s] %s" % ("ok " if present else "   ", label))
+        print(f"  [{'ok ' if present else '   '}] {label}")
 
     if have_id and have_secret and not have_token:
         print(
@@ -231,15 +235,15 @@ def check() -> int:
     try:
         store.access_token()
     except DriveAuthError as exc:
-        print("GRANT REJECTED: %s" % exc)
+        print(f"GRANT REJECTED: {exc}")
         return 1
     except DriveError as exc:
-        print("could not reach Google: %s" % exc)
+        print(f"could not reach Google: {exc}")
         return 1
 
-    print("ok: the stored refresh token still works (token file: %s)" % _token_file())
+    print(f"ok: the stored refresh token still works (token file: {_token_file()})")
     if store.folder_id:
-        print("uploads target folder %s" % store.folder_id)
+        print(f"uploads target folder {store.folder_id}")
     else:
         print("uploads land in the account root (set GDRIVE_FOLDER_ID to change that)")
     return 0
@@ -248,8 +252,11 @@ def check() -> int:
 def _parser() -> argparse.ArgumentParser:
     """Builds the argument parser."""
     p = argparse.ArgumentParser(description="Authorise GrowNXT against Google Drive.")
-    p.add_argument("--check", action="store_true",
-                   help="Verify the stored refresh token instead of re-authorising.")
+    p.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify the stored refresh token instead of re-authorising.",
+    )
     p.add_argument("--client-id", help="Overrides GDRIVE_CLIENT_ID.")
     p.add_argument("--client-secret", help="Overrides GDRIVE_CLIENT_SECRET.")
     return p
@@ -271,7 +278,7 @@ def main() -> int:
         return 1
 
     path = save_refresh_token(authorise(client_id, secret))
-    print("\nRefresh token saved to %s" % path)
+    print(f"\nRefresh token saved to {path}")
     print("The server reads it from there; no restart needed for the next request.")
     return check()
 

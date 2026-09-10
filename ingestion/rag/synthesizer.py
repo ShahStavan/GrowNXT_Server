@@ -8,17 +8,17 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict, dataclass, field
 import datetime as _datetime
 import logging
 import re
 import time
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 from core.config import safe_ticker
-from core.llm_config import LLMError, clean_thinking_tokens, generate_llm_response
-from ingestion.rag.probes import PILLAR_TITLES, ThematicProbe
+from core.llm_config import clean_thinking_tokens, generate_llm_response
+from ingestion.rag.probes import ThematicProbe
 from ingestion.rag.retriever import EvidenceChunk
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def utc_now() -> str:
     """Returns current UTC ISO-8601 string."""
-    return _datetime.datetime.now(_datetime.timezone.utc).replace(microsecond=0).isoformat()
+    return _datetime.datetime.now(_datetime.UTC).replace(microsecond=0).isoformat()
 
 
 @dataclass
@@ -45,7 +45,7 @@ class ThematicFinding:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ThematicFinding":
+    def from_dict(cls, data: dict[str, Any]) -> ThematicFinding:
         return cls(
             pillar=str(data.get("pillar", "")),
             title=str(data.get("title", "")),
@@ -88,7 +88,7 @@ class ResearchDossier:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ResearchDossier":
+    def from_dict(cls, data: dict[str, Any]) -> ResearchDossier:
         raw_pillars = data.get("pillars") or {}
         pillars = {
             k: ThematicFinding.from_dict(v)
@@ -125,11 +125,17 @@ class InstitutionalSynthesizer:
     def __init__(self) -> None:
         pass
 
-    def _build_evidence_context(self, evidence: Sequence[EvidenceChunk], max_chars_per_chunk: int = 450) -> str:
+    def _build_evidence_context(
+        self, evidence: Sequence[EvidenceChunk], max_chars_per_chunk: int = 450
+    ) -> str:
         """Formats top evidence chunks into a clean, human-readable, citable block."""
         blocks: list[str] = []
         for idx, chunk in enumerate(evidence[:3], 1):
-            trail = f" | Section: {chunk.section_breadcrumb}" if chunk.section_breadcrumb else ""
+            trail = (
+                f" | Section: {chunk.section_breadcrumb}"
+                if chunk.section_breadcrumb
+                else ""
+            )
             header = f"--- [EXHIBIT EVIDENCE {idx}] {chunk.citation_tag}{trail} ---"
             # Clean markdown table pipes and dialogue lines
             lines: list[str] = []
@@ -138,14 +144,26 @@ class InstitutionalSynthesizer:
                 if not line or set(line) <= {"-", "|", ":", " "}:
                     continue
                 if "|" in line:
-                    cells = [c.strip() for c in line.split("|") if c.strip() and not set(c.strip()) <= {"-", ":"}]
+                    cells = [
+                        c.strip()
+                        for c in line.split("|")
+                        if c.strip() and not set(c.strip()) <= {"-", ":"}
+                    ]
                     if cells:
                         line = " - ".join(cells)
-                if re.match(r"^(?:moderator|operator|[A-Z][a-z]+ [A-Z][a-z]+):", line, re.IGNORECASE):
+                if re.match(
+                    r"^(?:moderator|operator|[A-Z][a-z]+ [A-Z][a-z]+):",
+                    line,
+                    re.IGNORECASE,
+                ):
                     continue
                 lines.append(line)
 
-            clean_text = " ".join(" ".join(lines).split()) if lines else " ".join(chunk.content.split())
+            clean_text = (
+                " ".join(" ".join(lines).split())
+                if lines
+                else " ".join(chunk.content.split())
+            )
             if len(clean_text) > max_chars_per_chunk:
                 clean_text = clean_text[:max_chars_per_chunk] + "..."
             blocks.append(f"{header}\n{clean_text}")
@@ -165,7 +183,9 @@ class InstitutionalSynthesizer:
             return ThematicFinding(
                 pillar=pillar,
                 title=title,
-                bullet_points=["No primary disclosures found in uploaded filings for this topic."],
+                bullet_points=[
+                    "No primary disclosures found in uploaded filings for this topic."
+                ],
                 citations=[],
             )
 
@@ -206,13 +226,20 @@ OUTPUT FORMAT:
         )
 
         raw_response = ""
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(3):
             try:
-                logger.info("[%s] Querying hosted LLM for '%s' (attempt %d/3)...", sym, pillar, attempt + 1)
+                logger.info(
+                    "[%s] Querying hosted LLM for '%s' (attempt %d/3)...",
+                    sym,
+                    pillar,
+                    attempt + 1,
+                )
                 t0 = time.perf_counter()
-                raw_response = generate_llm_response(prompt=prompt, context=context_text)
+                raw_response = generate_llm_response(
+                    prompt=prompt, context=context_text
+                )
                 lat = time.perf_counter() - t0
                 if raw_response:
                     logger.info(
@@ -225,21 +252,39 @@ OUTPUT FORMAT:
                     break
             except Exception as exc:
                 last_error = exc
-                logger.warning("[%s] LLM attempt %d failed for pillar '%s': %s", sym, attempt + 1, pillar, exc)
+                logger.warning(
+                    "[%s] LLM attempt %d failed for pillar '%s': %s",
+                    sym,
+                    attempt + 1,
+                    pillar,
+                    exc,
+                )
                 time.sleep(2.0 * (attempt + 1))
 
         if not raw_response:
-            logger.error("[%s] LLM generation permanently failed for pillar '%s': %s", sym, pillar, last_error)
+            logger.error(
+                "[%s] LLM generation permanently failed for pillar '%s': %s",
+                sym,
+                pillar,
+                last_error,
+            )
             first_c = evidence[0]
             clean_lines = [
-                line.strip() for line in first_c.content.split("\n")
-                if line.strip() and not line.strip().startswith("|") and not re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+:", line.strip())
+                line.strip()
+                for line in first_c.content.split("\n")
+                if line.strip()
+                and not line.strip().startswith("|")
+                and not re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+:", line.strip())
             ]
-            snip = " ".join(clean_lines)[:250] or " ".join(first_c.content.split())[:250]
+            snip = (
+                " ".join(clean_lines)[:250] or " ".join(first_c.content.split())[:250]
+            )
             return ThematicFinding(
                 pillar=pillar,
                 title=title,
-                bullet_points=[f"**Key Filing Disclosure**: {snip}... {first_c.citation_tag}"],
+                bullet_points=[
+                    f"**Key Filing Disclosure**: {snip}... {first_c.citation_tag}"
+                ],
                 citations=citations_list,
                 raw_synthesis=str(last_error),
                 chunks_used=[c.to_dict() for c in evidence[:3]],
@@ -254,7 +299,7 @@ OUTPUT FORMAT:
             line_str = line.strip()
             if not line_str:
                 continue
-            if line_str.startswith("-") or line_str.startswith("•") or re.match(r"^\d+\.", line_str):
+            if line_str.startswith(("-", "•")) or re.match(r"^\d+\.", line_str):
                 clean_bullet = re.sub(r"^[-•\d\.]+\s*", "", line_str).strip()
                 if clean_bullet:
                     bullets.append(clean_bullet)
@@ -277,7 +322,7 @@ OUTPUT FORMAT:
         reranked_evidence: dict[str, Sequence[EvidenceChunk]],
         probes: Sequence[ThematicProbe],
         company_name: str = "",
-        available_doc_types: Optional[Sequence[str]] = None,
+        available_doc_types: Sequence[str] | None = None,
         max_workers: int = 5,
     ) -> ResearchDossier:
         """Synthesizes findings across all research pillars concurrently.
@@ -307,7 +352,14 @@ OUTPUT FORMAT:
         if workers == 1:
             for idx, probe in enumerate(ordered_probes, 1):
                 evidence = reranked_evidence.get(probe.pillar, [])
-                logger.info("[%s] [%d/%d] Synthesizing pillar '%s' (%s)...", sym, idx, len(probes), probe.pillar, probe.title)
+                logger.info(
+                    "[%s] [%d/%d] Synthesizing pillar '%s' (%s)...",
+                    sym,
+                    idx,
+                    len(probes),
+                    probe.pillar,
+                    probe.title,
+                )
                 finding = self.synthesize_pillar(
                     ticker=sym,
                     pillar=probe.pillar,
@@ -328,7 +380,9 @@ OUTPUT FORMAT:
                 )
                 return probe.pillar, f
 
-            with ThreadPoolExecutor(max_workers=workers, thread_name_prefix=f"synth-{sym}") as executor:
+            with ThreadPoolExecutor(
+                max_workers=workers, thread_name_prefix=f"synth-{sym}"
+            ) as executor:
                 futures = {executor.submit(_worker_task, p): p for p in ordered_probes}
                 for future in as_completed(futures):
                     probe_item = futures[future]
@@ -336,7 +390,12 @@ OUTPUT FORMAT:
                         pillar_key, res_finding = future.result()
                         pillars_map[pillar_key] = res_finding
                     except Exception as exc:
-                        logger.error("[%s] Worker failed for pillar '%s': %s", sym, probe_item.pillar, exc)
+                        logger.error(
+                            "[%s] Worker failed for pillar '%s': %s",
+                            sym,
+                            probe_item.pillar,
+                            exc,
+                        )
                         pillars_map[probe_item.pillar] = ThematicFinding(
                             pillar=probe_item.pillar,
                             title=probe_item.title,
@@ -352,7 +411,11 @@ OUTPUT FORMAT:
         }
 
         elapsed = time.perf_counter() - start_time
-        success_count = sum(1 for f in ordered_pillars.values() if not f.bullet_points[0].startswith("Synthesis error"))
+        success_count = sum(
+            1
+            for f in ordered_pillars.values()
+            if not f.bullet_points[0].startswith("Synthesis error")
+        )
 
         logger.info(
             "[%s] Concurrent Synthesis Complete: %d/%d pillars generated in %.2fs (avg %.2fs/pillar, speedup %.1fx).",

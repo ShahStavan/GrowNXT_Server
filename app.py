@@ -10,24 +10,21 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from collections.abc import Generator
 
 # Completely disable experimental SSR and telemetry
 os.environ["GRADIO_SSR_MODE"] = "False"
 os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
 
+import gradio as gr
+from a2wsgi import WSGIMiddleware
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from a2wsgi import WSGIMiddleware
-import gradio as gr
-import requests
-import uvicorn
 
 # Patch gradio_client bug with Pydantic v2 boolean additionalProperties schemas
 try:
@@ -60,14 +57,12 @@ except Exception:
     pass
 
 from api.app import create_app
+from api.embeddings import router as embeddings_router
 from api.search import find
 from core.config import OUTPUT_DIR, report_path, safe_ticker
 from core.llm_config import (
     ACTIVE_MODEL,
-    DEFAULT_BASE_URL,
-    DEFAULT_CHAT_MODEL,
     DEFAULT_CHAT_MODELS,
-    clean_thinking_tokens,
     stream_llm_response,
 )
 from reporting.engine import generate_report
@@ -76,8 +71,7 @@ from storage import gdrive
 load_dotenv()
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger("grownxt.spaces")
 
@@ -87,7 +81,9 @@ HF_PORT = int(os.getenv("PORT", "7860"))
 # 1. Initialize FastAPI & Flask Applications
 # ---------------------------------------------------------------------------
 flask_app = create_app()
-fastapi_app = FastAPI(title="GrowNXT Institutional Platform", docs_url=None, redoc_url=None)
+fastapi_app = FastAPI(
+    title="GrowNXT Institutional Platform", docs_url=None, redoc_url=None
+)
 
 fastapi_app.add_middleware(
     CORSMiddleware,
@@ -97,14 +93,17 @@ fastapi_app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @fastapi_app.get("/health")
-def health() -> Dict[str, str]:
+def health() -> dict[str, str]:
     return {"status": "ok", "app": "grownxt-server"}
+
 
 @fastapi_app.get("/api/search")
 def api_search(q: str = Query(default="", description="Search query")):
     """Fast in-process stock listing search for cURL and frontend fetch."""
     return find(q)
+
 
 @fastapi_app.get("/api/stocks/{symbol}/report")
 def api_report(symbol: str, refresh: bool = False):
@@ -127,6 +126,7 @@ def api_report(symbol: str, refresh: bool = False):
         "drive_status": drive_link or "Drive not configured",
     }
 
+
 @fastapi_app.get("/api/stocks/{symbol}/report/file")
 def api_report_file(symbol: str, download: bool = False):
     """Direct PDF file download endpoint."""
@@ -140,11 +140,15 @@ def api_report_file(symbol: str, download: bool = False):
         filename=pdf.name if download else None,
     )
 
+
+# Nifty 50 batch embedding trigger + status (detached process; token-gated)
+fastapi_app.include_router(embeddings_router)
+
+
 # Mount Flask WSGI App on /v1 for full OpenAI-compatible reverse proxy with streaming & think sanitization
 wsgi_handler = WSGIMiddleware(flask_app)
 fastapi_app.mount("/v1", wsgi_handler)
 fastapi_app.mount("/api/llm", wsgi_handler)
-
 
 
 # ---------------------------------------------------------------------------
@@ -176,19 +180,25 @@ def handle_stock_search(query: str) -> str:
 def handle_generate_report(
     symbol: str,
     refresh: bool,
-    progress=gr.Progress(),
-) -> Tuple[Optional[str], str, str]:
+    progress=gr.Progress(),  # noqa: B008 - Gradio requires this literal default to inject progress tracking
+) -> tuple[str | None, str, str]:
     """Generates the institutional equity report in-process and returns the compiled PDF."""
     if not symbol or not symbol.strip():
-        return None, "⚠️ *Please specify a stock ticker (e.g. INFY, WIPRO, TCS, M&M).*", ""
+        return (
+            None,
+            "⚠️ *Please specify a stock ticker (e.g. INFY, WIPRO, TCS, M&M).*",
+            "",
+        )
 
     sym = safe_ticker(symbol.strip().upper())
     progress(0.1, desc=f"Initializing report pipeline for {sym}...")
 
     try:
         t0 = time.perf_counter()
-        progress(0.3, desc=f"Executing quantitative checks and RAG extraction for {sym}...")
-        
+        progress(
+            0.3, desc=f"Executing quantitative checks and RAG extraction for {sym}..."
+        )
+
         pdf_path = generate_report(sym, output_dir=OUTPUT_DIR, refresh=refresh)
         elapsed = time.perf_counter() - t0
 
@@ -220,9 +230,9 @@ def handle_generate_report(
 
 def handle_slm_chat(
     message: str,
-    history: List[Dict[str, str]],
+    history: list[dict[str, str]],
     model_choice: str,
-) -> Generator[List[Dict[str, str]], None, None]:
+) -> Generator[list[dict[str, str]], None, None]:
     """Streams real-time token responses from the upstream SLM with thinking tokens removed."""
     if not message or not message.strip():
         yield history
@@ -259,8 +269,14 @@ custom_css = """
 .gr-button-primary { background-color: #0f766e !important; color: white !important; }
 """
 
-with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.Soft(), css=custom_css) as demo:
-    gr.Markdown("# 📊 GrowNXT Institutional Equity Research & SLM Server", elem_id="main-title")
+with gr.Blocks(
+    title="GrowNXT Institutional Equity Platform",
+    theme=gr.themes.Soft(),
+    css=custom_css,
+) as demo:
+    gr.Markdown(
+        "# 📊 GrowNXT Institutional Equity Research & SLM Server", elem_id="main-title"
+    )
     gr.Markdown(
         "Institutional Fundamental Analysis · 20 Self-Checks · DuPont & Solvency Analytics · "
         "Multimodal Filing RAG · Typst PDF Publishing · Upstream SLM Proxy."
@@ -281,15 +297,19 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                         label="Force Ingestion Refresh (Re-download & re-parse filings)",
                         value=False,
                     )
-                    gen_btn = gr.Button("🚀 Generate Institutional PDF Report", variant="primary")
+                    gen_btn = gr.Button(
+                        "🚀 Generate Institutional PDF Report", variant="primary"
+                    )
                     gr.Markdown("""
-                    > **Note**: Cold-run reports (new ticker) execute the full 14-endpoint financial normalization, 
+                    > **Note**: Cold-run reports (new ticker) execute the full 14-endpoint financial normalization,
                     > Docling layout parsing, Snowflake Arctic vector embeddings, and LLM thematic synthesis.
                     """)
                 with gr.Column(scale=6):
                     status_out = gr.Markdown(label="Generation Status")
                     pdf_file_out = gr.File(label="Download Typeset PDF Report")
-                    drive_out = gr.Textbox(label="Cloud Storage", interactive=False, visible=False)
+                    drive_out = gr.Textbox(
+                        label="Cloud Storage", interactive=False, visible=False
+                    )
 
             gen_btn.click(
                 fn=handle_generate_report,
@@ -332,7 +352,11 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
                     value=available_models[0] if available_models else "qwen-3.8-27b",
                     interactive=True,
                 )
-            chatbot = gr.Chatbot(label="Chat with SLM (Unbuffered Streaming)", height=450, type="messages")
+            chatbot = gr.Chatbot(
+                label="Chat with SLM (Unbuffered Streaming)",
+                height=450,
+                type="messages",
+            )
             msg_in = gr.Textbox(
                 label="Ask a financial research query...",
                 placeholder="e.g. What are the key margin drivers and capex outlook for Indian IT services?",
@@ -364,6 +388,8 @@ with gr.Blocks(title="GrowNXT Institutional Equity Platform", theme=gr.themes.So
             * `GET /api/stocks/<symbol>/report/file` — Direct PDF file download
             * `POST /v1/chat/completions` — OpenAI-compatible SLM chat completions (Streaming supported)
             * `GET /v1/models` — List available SLM models
+            * `POST /api/embeddings/nifty50/run` — Start the Nifty 50 embedding batch (detached; bearer token required)
+            * `GET /api/embeddings/nifty50/status[/{{run_id}}]` — Progress of the latest / a given embedding run
 
             ### Upstream Configuration:
             * **Active Model**: `{ACTIVE_MODEL}`
@@ -380,5 +406,3 @@ if __name__ == "__main__":
         server_name="0.0.0.0",
         server_port=HF_PORT,
     )
-
-

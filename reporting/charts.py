@@ -22,16 +22,20 @@ House style, applied through `tokens.matplotlib_rc`:
 """
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
-from reporting import composites as composites_module
-from reporting import fmt, tokens
+from reporting import (
+    composites as composites_module,
+    fmt,
+    tokens,
+)
 from reporting.analytics import DerivedAnalytics
 from reporting.composites import Composites
 from reporting.snapshot import CompanySnapshot
@@ -44,8 +48,8 @@ plt.rcParams.update(tokens.matplotlib_rc())
 def _compact(value: float, _pos: int = 0) -> str:
     """Axis tick formatter that abbreviates thousands as 'k'."""
     if abs(value) >= 1000:
-        return "{:,.0f}k".format(value / 1000.0)
-    return "{:,.0f}".format(value)
+        return f"{value / 1000.0:,.0f}k"
+    return f"{value:,.0f}"
 
 
 def _canvas(
@@ -69,7 +73,7 @@ def _period_ticks(
     axis,
     positions: Sequence[int],
     labels: Sequence[str],
-    size: Optional[float] = tokens.TICK_PERIOD,
+    size: float | None = tokens.TICK_PERIOD,
     **kwargs,
 ) -> None:
     """Places the period labels on the x axis.
@@ -103,7 +107,7 @@ def _save(fig: "plt.Figure", path: Path) -> Path:
     return path
 
 
-def _bar_values(values: Sequence[Optional[float]]) -> List[float]:
+def _bar_values(values: Sequence[float | None]) -> list[float]:
     """Converts a series to bar heights, mapping absent values to NaN.
 
     matplotlib raises on a None height but skips NaN silently, which is the
@@ -113,7 +117,7 @@ def _bar_values(values: Sequence[Optional[float]]) -> List[float]:
     return [float("nan") if v is None else float(v) for v in values]
 
 
-def _present(values: Sequence[Optional[float]]) -> bool:
+def _present(values: Sequence[float | None]) -> bool:
     """Reports whether a series carries at least one usable value."""
     return any(v is not None for v in values)
 
@@ -147,7 +151,7 @@ def _seat_overlay(
 def _label_ends(
     axis: "plt.Axes",
     positions: Sequence[float],
-    values: Sequence[Optional[float]],
+    values: Sequence[float | None],
     decimals: int = 0,
 ) -> None:
     """Labels only the first and last points of a series.
@@ -156,28 +160,42 @@ def _label_ends(
     The endpoints carry the reader from "where it started" to "where it is",
     which is what the chart is for.
     """
-    usable = [(p, v) for p, v in zip(positions, values) if v is not None and v == v]
+    usable = [
+        (p, v)
+        for p, v in zip(positions, values, strict=True)
+        if v is not None and v == v
+    ]
     if not usable:
         return
     for index in {0, len(usable) - 1}:
         position, value = usable[index]
         axis.annotate(
             "{:,.{d}f}".format(value, d=decimals),
-            xy=(position, value), xytext=(0, 5), textcoords="offset points",
-            ha="center", va="bottom", fontsize=tokens.DATA_LABEL, color=tokens.INK,
-            fontweight="semibold" if index else "normal", zorder=6,
-            bbox=dict(boxstyle="square,pad=0.14", facecolor=tokens.SURFACE,
-                      edgecolor="none", alpha=0.86),
+            xy=(position, value),
+            xytext=(0, 5),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=tokens.DATA_LABEL,
+            color=tokens.INK,
+            fontweight="semibold" if index else "normal",
+            zorder=6,
+            bbox={
+                "boxstyle": "square,pad=0.14",
+                "facecolor": tokens.SURFACE,
+                "edgecolor": "none",
+                "alpha": 0.86,
+            },
         )
 
 
-def annual_revenue_profit(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
+def annual_revenue_profit(snap: CompanySnapshot, out_dir: Path) -> Path | None:
     """Annual revenue and EBIT bars with the EBIT margin overlaid.
 
     Combining the absolute and the ratio in one frame is how broker notes
     show whether growth came with or without margin.
     """
-    years = [y for y in snap.years if y.revenue is not None][-tokens.DISPLAY_YEARS:]
+    years = [y for y in snap.years if y.revenue is not None][-tokens.DISPLAY_YEARS :]
     if len(years) < 2:
         return None
 
@@ -189,10 +207,22 @@ def annual_revenue_profit(snap: CompanySnapshot, out_dir: Path) -> Optional[Path
     fig, axis, positions = _canvas(labels, width=tokens.CHART_W_FULL)
     width = 0.36
 
-    bars_rev = axis.bar([p - width / 2 for p in positions], _bar_values(revenue),
-                        width, color=tokens.SERIES[2], label="Revenue", zorder=3)
-    bars_ebit = axis.bar([p + width / 2 for p in positions], _bar_values(ebit),
-                         width, color=tokens.SERIES[4], label="EBIT", zorder=3)
+    bars_rev = axis.bar(
+        [p - width / 2 for p in positions],
+        _bar_values(revenue),
+        width,
+        color=tokens.SERIES[2],
+        label="Revenue",
+        zorder=3,
+    )
+    bars_ebit = axis.bar(
+        [p + width / 2 for p in positions],
+        _bar_values(ebit),
+        width,
+        color=tokens.SERIES[4],
+        label="EBIT",
+        zorder=3,
+    )
     _emphasise_last(bars_rev, tokens.SERIES[0])
     _emphasise_last(bars_ebit, tokens.SERIES[3])
 
@@ -205,10 +235,18 @@ def annual_revenue_profit(snap: CompanySnapshot, out_dir: Path) -> Optional[Path
         axis.set_ylim(top=top * 1.20)
 
     twin = axis.twinx()
-    twin.plot(positions, _bar_values(margins), color=tokens.ACCENT_LINE,
-              linewidth=1.3, marker="o", markersize=2.8,
-              markerfacecolor=tokens.SURFACE, markeredgewidth=1.0,
-              zorder=5, label="EBIT margin (RHS)")
+    twin.plot(
+        positions,
+        _bar_values(margins),
+        color=tokens.ACCENT_LINE,
+        linewidth=1.3,
+        marker="o",
+        markersize=2.8,
+        markerfacecolor=tokens.SURFACE,
+        markeredgewidth=1.0,
+        zorder=5,
+        label="EBIT margin (RHS)",
+    )
     twin.set_ylabel("EBIT margin %", color=tokens.ACCENT_LINE)
     twin.tick_params(axis="y", colors=tokens.ACCENT_LINE)
     twin.grid(False)
@@ -219,15 +257,18 @@ def annual_revenue_profit(snap: CompanySnapshot, out_dir: Path) -> Optional[Path
 
     handles, names = axis.get_legend_handles_labels()
     h2, n2 = twin.get_legend_handles_labels()
-    axis.legend(handles + h2, names + n2, loc="upper left",
-                bbox_to_anchor=(0.0, 1.10), ncol=3)
+    axis.legend(
+        handles + h2, names + n2, loc="upper left", bbox_to_anchor=(0.0, 1.10), ncol=3
+    )
 
     return _save(fig, out_dir / "annual_revenue_profit.svg")
 
 
-def quarterly_trend(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
+def quarterly_trend(snap: CompanySnapshot, out_dir: Path) -> Path | None:
     """Eight-quarter revenue bars with the PAT margin overlaid."""
-    quarters = [q for q in snap.quarters if q.revenue is not None][-tokens.DISPLAY_QUARTERS:]
+    quarters = [q for q in snap.quarters if q.revenue is not None][
+        -tokens.DISPLAY_QUARTERS :
+    ]
     if len(quarters) < 2:
         return None
 
@@ -236,8 +277,14 @@ def quarterly_trend(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     margins = [q.pat_margin for q in quarters]
 
     fig, axis, positions = _canvas(labels)
-    bars = axis.bar(positions, _bar_values(revenue), 0.58,
-                    color=tokens.SERIES[3], zorder=3, label="Revenue")
+    bars = axis.bar(
+        positions,
+        _bar_values(revenue),
+        0.58,
+        color=tokens.SERIES[3],
+        zorder=3,
+        label="Revenue",
+    )
     _emphasise_last(bars, tokens.SERIES[1])
 
     _period_ticks(axis, positions, labels, size=tokens.TICK_DENSE, rotation=0)
@@ -249,10 +296,18 @@ def quarterly_trend(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
         axis.set_ylim(top=top * 1.22)
 
     twin = axis.twinx()
-    twin.plot(positions, _bar_values(margins), color=tokens.ACCENT_LINE,
-              linewidth=1.3, marker="o", markersize=2.6,
-              markerfacecolor=tokens.SURFACE, markeredgewidth=0.9,
-              zorder=5, label="PAT margin (RHS)")
+    twin.plot(
+        positions,
+        _bar_values(margins),
+        color=tokens.ACCENT_LINE,
+        linewidth=1.3,
+        marker="o",
+        markersize=2.6,
+        markerfacecolor=tokens.SURFACE,
+        markeredgewidth=0.9,
+        zorder=5,
+        label="PAT margin (RHS)",
+    )
     twin.set_ylabel("PAT margin %", color=tokens.ACCENT_LINE)
     twin.tick_params(axis="y", colors=tokens.ACCENT_LINE)
     twin.grid(False)
@@ -263,13 +318,14 @@ def quarterly_trend(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
 
     handles, names = axis.get_legend_handles_labels()
     h2, n2 = twin.get_legend_handles_labels()
-    axis.legend(handles + h2, names + n2, loc="upper left",
-                bbox_to_anchor=(0.0, 1.13), ncol=2)
+    axis.legend(
+        handles + h2, names + n2, loc="upper left", bbox_to_anchor=(0.0, 1.13), ncol=2
+    )
 
     return _save(fig, out_dir / "quarterly_trend.svg")
 
 
-def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
+def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Path | None:
     """Equity, debt and cash bars with debt-to-equity overlaid.
 
     Series absent from the filing are dropped rather than drawn empty.
@@ -277,7 +333,7 @@ def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     and borrowings are separate — so the debt bars and the leverage overlay
     are simply omitted instead of implying a zero.
     """
-    rows = [b for b in snap.balance if b.equity is not None][-tokens.DISPLAY_YEARS:]
+    rows = [b for b in snap.balance if b.equity is not None][-tokens.DISPLAY_YEARS :]
     if len(rows) < 2:
         return None
 
@@ -296,8 +352,14 @@ def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     offset = -(len(series) - 1) / 2.0
 
     for index, (name, values, colour) in enumerate(series):
-        axis.bar([p + (offset + index) * width for p in positions],
-                 _bar_values(values), width, color=colour, label=name, zorder=3)
+        axis.bar(
+            [p + (offset + index) * width for p in positions],
+            _bar_values(values),
+            width,
+            color=colour,
+            label=name,
+            zorder=3,
+        )
 
     _period_ticks(axis, positions, labels)
     axis.set_ylabel("Rs cr")
@@ -311,10 +373,18 @@ def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     handles, names = axis.get_legend_handles_labels()
     if _present(ratios):
         twin = axis.twinx()
-        twin.plot(positions, _bar_values(ratios), color=tokens.ACCENT_LINE,
-                  linewidth=1.3, marker="o", markersize=2.6,
-                  markerfacecolor=tokens.SURFACE, markeredgewidth=0.9,
-                  zorder=5, label="D/E (RHS)")
+        twin.plot(
+            positions,
+            _bar_values(ratios),
+            color=tokens.ACCENT_LINE,
+            linewidth=1.3,
+            marker="o",
+            markersize=2.6,
+            markerfacecolor=tokens.SURFACE,
+            markeredgewidth=0.9,
+            zorder=5,
+            label="D/E (RHS)",
+        )
         twin.set_ylabel("Debt / equity (x)", color=tokens.ACCENT_LINE)
         twin.tick_params(axis="y", colors=tokens.ACCENT_LINE)
         twin.grid(False)
@@ -324,16 +394,18 @@ def capital_structure(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
         h2, n2 = twin.get_legend_handles_labels()
         handles, names = handles + h2, names + n2
 
-    axis.legend(handles, names, loc="upper left",
-                bbox_to_anchor=(0.0, 1.13), ncol=len(names))
+    axis.legend(
+        handles, names, loc="upper left", bbox_to_anchor=(0.0, 1.13), ncol=len(names)
+    )
 
     return _save(fig, out_dir / "capital_structure.svg")
 
 
-def cash_generation(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
+def cash_generation(snap: CompanySnapshot, out_dir: Path) -> Path | None:
     """Operating cash flow, capital expenditure and free cash flow."""
-    rows = [c for c in snap.cashflow
-            if c.cfo is not None or c.fcf is not None][-tokens.DISPLAY_YEARS:]
+    rows = [c for c in snap.cashflow if c.cfo is not None or c.fcf is not None][
+        -tokens.DISPLAY_YEARS :
+    ]
     if len(rows) < 2:
         return None
 
@@ -352,8 +424,14 @@ def cash_generation(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     offset = -(len(series) - 1) / 2.0
 
     for index, (name, values, colour) in enumerate(series):
-        axis.bar([p + (offset + index) * width for p in positions],
-                 _bar_values(values), width, color=colour, label=name, zorder=3)
+        axis.bar(
+            [p + (offset + index) * width for p in positions],
+            _bar_values(values),
+            width,
+            color=colour,
+            label=name,
+            zorder=3,
+        )
 
     _period_ticks(axis, positions, labels)
     axis.set_ylabel("Rs cr")
@@ -363,14 +441,15 @@ def cash_generation(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     values_all = [v for _, vals, _ in series for v in vals if v is not None]
     if values_all:
         span = max(values_all) - min(min(values_all), 0)
-        axis.set_ylim(min(min(values_all), 0) - span * 0.06,
-                      max(values_all) + span * 0.26)
+        axis.set_ylim(
+            min(min(values_all), 0) - span * 0.06, max(values_all) + span * 0.26
+        )
     axis.legend(loc="upper left", bbox_to_anchor=(0.0, 1.13), ncol=len(series))
 
     return _save(fig, out_dir / "cash_generation.svg")
 
 
-def shareholding(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
+def shareholding(snap: CompanySnapshot, out_dir: Path) -> Path | None:
     """Institutional holdings over time, as lines.
 
     A 0-100 stacked area was tried first and rejected: with a promoter
@@ -398,9 +477,18 @@ def shareholding(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     fig, axis, positions = _canvas(labels)
 
     for name, values, colour in series:
-        axis.plot(positions, _bar_values(values), color=colour, linewidth=1.5,
-                  marker="o", markersize=2.8, markerfacecolor=tokens.SURFACE,
-                  markeredgewidth=0.9, label=name, zorder=4)
+        axis.plot(
+            positions,
+            _bar_values(values),
+            color=colour,
+            linewidth=1.5,
+            marker="o",
+            markersize=2.8,
+            markerfacecolor=tokens.SURFACE,
+            markeredgewidth=0.9,
+            label=name,
+            zorder=4,
+        )
         _label_ends(axis, positions, values, decimals=1)
 
     _period_ticks(axis, positions, labels)
@@ -418,8 +506,8 @@ def shareholding(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
 
 def _ranked_panel(
     axis: "plt.Axes",
-    entries: List[Tuple[str, float, bool]],
-    reference: Optional[float],
+    entries: list[tuple[str, float, bool]],
+    reference: float | None,
     reference_label: str,
     xlabel: str,
 ) -> None:
@@ -447,17 +535,31 @@ def _ranked_panel(
     axis.set_xlim(0, highest * 1.17)
     label_x = highest * 1.16
 
-    for position, (ticker, value, is_subject) in zip(positions, ordered):
+    for position, (_ticker, value, is_subject) in zip(positions, ordered, strict=True):
         colour = tokens.BRAND if is_subject else tokens.SERIES[2]
-        axis.hlines(position, 0, value, color=colour,
-                    linewidth=2.6 if is_subject else 1.6,
-                    alpha=1.0 if is_subject else 0.55, zorder=3)
-        axis.plot([value], [position], marker="o",
-                  markersize=5.0 if is_subject else 3.8,
-                  color=colour, zorder=4)
+        axis.hlines(
+            position,
+            0,
+            value,
+            color=colour,
+            linewidth=2.6 if is_subject else 1.6,
+            alpha=1.0 if is_subject else 0.55,
+            zorder=3,
+        )
+        axis.plot(
+            [value],
+            [position],
+            marker="o",
+            markersize=5.0 if is_subject else 3.8,
+            color=colour,
+            zorder=4,
+        )
         axis.annotate(
-            "{:,.1f}".format(value),
-            xy=(label_x, position), va="center", ha="right", fontsize=tokens.TICK_RANKED,
+            f"{value:,.1f}",
+            xy=(label_x, position),
+            va="center",
+            ha="right",
+            fontsize=tokens.TICK_RANKED,
             color=tokens.INK if is_subject else tokens.MUTED,
             fontweight="semibold" if is_subject else "normal",
             annotation_clip=False,
@@ -465,7 +567,7 @@ def _ranked_panel(
 
     axis.set_yticks(positions)
     axis.set_yticklabels([t for t, _, _ in ordered], fontsize=tokens.TICK_RANKED)
-    for label, (_, _, is_subject) in zip(axis.get_yticklabels(), ordered):
+    for label, (_, _, is_subject) in zip(axis.get_yticklabels(), ordered, strict=True):
         if is_subject:
             label.set_color(tokens.BRAND)
             label.set_fontweight("semibold")
@@ -478,54 +580,76 @@ def _ranked_panel(
     axis.margins(y=0.14)
 
     if reference is not None:
-        axis.axvline(reference, color=tokens.ACCENT_LINE, linewidth=0.9,
-                     linestyle=(0, (3, 2)), zorder=2)
+        axis.axvline(
+            reference,
+            color=tokens.ACCENT_LINE,
+            linewidth=0.9,
+            linestyle=(0, (3, 2)),
+            zorder=2,
+        )
         axis.annotate(
-            reference_label + " {:,.1f}".format(reference),
-            xy=(reference, axis.get_ylim()[1]), xytext=(3, -6),
-            textcoords="offset points", fontsize=tokens.DATA_LABEL_TIGHT,
-            color=tokens.ACCENT_LINE, va="top", ha="left",
+            reference_label + f" {reference:,.1f}",
+            xy=(reference, axis.get_ylim()[1]),
+            xytext=(3, -6),
+            textcoords="offset points",
+            fontsize=tokens.DATA_LABEL_TIGHT,
+            color=tokens.ACCENT_LINE,
+            va="top",
+            ha="left",
         )
 
 
-def peer_valuation(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
+def peer_valuation(snap: CompanySnapshot, out_dir: Path) -> Path | None:
     """Two ranked panels comparing peer P/E and P/B against the industry.
 
     Replaces an earlier bubble scatter, which collided labels whenever two
     peers traded on similar multiples.
     """
-    pe_entries = [(p.ticker, p.pe, p.is_subject)
-                  for p in snap.peers if p.pe is not None and p.ticker]
-    pb_entries = [(p.ticker, p.pb, p.is_subject)
-                  for p in snap.peers if p.pb is not None and p.ticker]
+    pe_entries = [
+        (p.ticker, p.pe, p.is_subject)
+        for p in snap.peers
+        if p.pe is not None and p.ticker
+    ]
+    pb_entries = [
+        (p.ticker, p.pb, p.is_subject)
+        for p in snap.peers
+        if p.pb is not None and p.ticker
+    ]
     if len(pe_entries) < 2 and len(pb_entries) < 2:
         return None
 
-    panels = [entry for entry in (
-        (pe_entries, snap.key_ratios.get("indpe"), "Industry", "Trailing P/E (x)"),
-        (pb_entries, snap.key_ratios.get("indpb"), "Industry", "Price / book (x)"),
-    ) if len(entry[0]) >= 2]
+    panels = [
+        entry
+        for entry in (
+            (pe_entries, snap.key_ratios.get("indpe"), "Industry", "Trailing P/E (x)"),
+            (pb_entries, snap.key_ratios.get("indpb"), "Industry", "Price / book (x)"),
+        )
+        if len(entry[0]) >= 2
+    ]
 
     fig, axes = plt.subplots(
-        1, len(panels),
+        1,
+        len(panels),
         figsize=(tokens.CHART_W_FULL, tokens.CHART_H_STD),
     )
     axis_list = list(axes) if len(panels) > 1 else [axes]
 
-    for axis, (entries, reference, ref_label, xlabel) in zip(axis_list, panels):
+    for axis, (entries, reference, ref_label, xlabel) in zip(
+        axis_list, panels, strict=True
+    ):
         _ranked_panel(axis, entries, reference, ref_label, xlabel)
 
     return _save(fig, out_dir / "peer_valuation.svg")
 
 
-def margin_bridge(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
+def margin_bridge(snap: CompanySnapshot, out_dir: Path) -> Path | None:
     """Quarterly EBIT and PAT margins as paired lines.
 
     Gives the report a pure-ratio chart. The absolute charts answer "how
     big"; this one answers "how profitable", which is the question a
     margin-driven business is actually judged on.
     """
-    quarters = [q for q in snap.quarters if q.revenue][-tokens.DISPLAY_QUARTERS:]
+    quarters = [q for q in snap.quarters if q.revenue][-tokens.DISPLAY_QUARTERS :]
     if len(quarters) < 3:
         return None
 
@@ -541,9 +665,18 @@ def margin_bridge(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
         (ebit_margin, "EBIT margin", tokens.SERIES[1]),
         (pat_margin, "PAT margin", tokens.SERIES[3]),
     ):
-        axis.plot(positions, _bar_values(values), color=colour, linewidth=1.5,
-                  marker="o", markersize=2.8, markerfacecolor=tokens.SURFACE,
-                  markeredgewidth=0.9, label=name, zorder=4)
+        axis.plot(
+            positions,
+            _bar_values(values),
+            color=colour,
+            linewidth=1.5,
+            marker="o",
+            markersize=2.8,
+            markerfacecolor=tokens.SURFACE,
+            markeredgewidth=0.9,
+            label=name,
+            zorder=4,
+        )
         _label_ends(axis, positions, values, decimals=1)
 
     _period_ticks(axis, positions, labels, size=tokens.TICK_DENSE)
@@ -558,13 +691,15 @@ def margin_bridge(snap: CompanySnapshot, out_dir: Path) -> Optional[Path]:
     return _save(fig, out_dir / "margin_bridge.svg")
 
 
-def rolling_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
+def rolling_trend(derived: DerivedAnalytics, out_dir: Path) -> Path | None:
     """Trailing-four-quarter revenue with the trailing EBIT margin.
 
     A single TTM figure is one dot; rolling the window strips seasonality
     out and shows whether the trailing trend is still improving.
     """
-    points = [p for p in derived.rolling if p.revenue is not None][-tokens.DISPLAY_QUARTERS:]
+    points = [p for p in derived.rolling if p.revenue is not None][
+        -tokens.DISPLAY_QUARTERS :
+    ]
     if len(points) < 3:
         return None
 
@@ -573,8 +708,14 @@ def rolling_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
     margins = [p.ebit_margin for p in points]
 
     fig, axis, positions = _canvas(labels)
-    bars = axis.bar(positions, _bar_values(revenue), 0.58,
-                    color=tokens.SERIES[3], zorder=3, label="Trailing revenue")
+    bars = axis.bar(
+        positions,
+        _bar_values(revenue),
+        0.58,
+        color=tokens.SERIES[3],
+        zorder=3,
+        label="Trailing revenue",
+    )
     _emphasise_last(bars, tokens.SERIES[1])
 
     _period_ticks(axis, positions, labels, size=tokens.TICK_DENSE)
@@ -586,10 +727,18 @@ def rolling_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
         axis.set_ylim(top=top * 1.22)
 
     twin = axis.twinx()
-    twin.plot(positions, _bar_values(margins), color=tokens.ACCENT_LINE,
-              linewidth=1.3, marker="o", markersize=2.6,
-              markerfacecolor=tokens.SURFACE, markeredgewidth=0.9,
-              zorder=5, label="Trailing EBIT margin (RHS)")
+    twin.plot(
+        positions,
+        _bar_values(margins),
+        color=tokens.ACCENT_LINE,
+        linewidth=1.3,
+        marker="o",
+        markersize=2.6,
+        markerfacecolor=tokens.SURFACE,
+        markeredgewidth=0.9,
+        zorder=5,
+        label="Trailing EBIT margin (RHS)",
+    )
     twin.set_ylabel("EBIT margin %", color=tokens.ACCENT_LINE)
     twin.tick_params(axis="y", colors=tokens.ACCENT_LINE)
     twin.grid(False)
@@ -600,13 +749,14 @@ def rolling_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
 
     handles, names = axis.get_legend_handles_labels()
     h2, n2 = twin.get_legend_handles_labels()
-    axis.legend(handles + h2, names + n2, loc="upper left",
-                bbox_to_anchor=(0.0, 1.13), ncol=2)
+    axis.legend(
+        handles + h2, names + n2, loc="upper left", bbox_to_anchor=(0.0, 1.13), ncol=2
+    )
 
     return _save(fig, out_dir / "rolling_trend.svg")
 
 
-def returns_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
+def returns_trend(derived: DerivedAnalytics, out_dir: Path) -> Path | None:
     """Return on equity, capital employed and invested capital over time.
 
     Plotted together because they answer one question from three angles:
@@ -614,8 +764,9 @@ def returns_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
     itself the signal — ROE rising while ROIC falls means leverage, not
     operating improvement.
     """
-    rows = [r for r in derived.annual
-            if r.period.strip().upper() != "TTM"][-tokens.DISPLAY_YEARS:]
+    rows = [r for r in derived.annual if r.period.strip().upper() != "TTM"][
+        -tokens.DISPLAY_YEARS :
+    ]
     if len(rows) < 3:
         return None
 
@@ -631,9 +782,18 @@ def returns_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
 
     fig, axis, positions = _canvas(labels)
     for name, values, colour in series:
-        axis.plot(positions, _bar_values(values), color=colour, linewidth=1.5,
-                  marker="o", markersize=2.8, markerfacecolor=tokens.SURFACE,
-                  markeredgewidth=0.9, label=name, zorder=4)
+        axis.plot(
+            positions,
+            _bar_values(values),
+            color=colour,
+            linewidth=1.5,
+            marker="o",
+            markersize=2.8,
+            markerfacecolor=tokens.SURFACE,
+            markeredgewidth=0.9,
+            label=name,
+            zorder=4,
+        )
         _label_ends(axis, positions, values, decimals=1)
 
     _period_ticks(axis, positions, labels)
@@ -648,16 +808,18 @@ def returns_trend(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
     return _save(fig, out_dir / "returns_trend.svg")
 
 
-def working_capital(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
+def working_capital(derived: DerivedAnalytics, out_dir: Path) -> Path | None:
     """Receivable, inventory and payable days with the resulting cycle.
 
     Rendered only where the provider's cost base supports a day count. For
     a services business the inventory and payable legs are withheld
     upstream, so this chart is skipped rather than drawn half-empty.
     """
-    rows = [r for r in derived.annual
-            if r.cash_conversion_cycle is not None
-            and r.period.strip().upper() != "TTM"][-tokens.DISPLAY_YEARS:]
+    rows = [
+        r
+        for r in derived.annual
+        if r.cash_conversion_cycle is not None and r.period.strip().upper() != "TTM"
+    ][-tokens.DISPLAY_YEARS :]
     if len(rows) < 3:
         return None
 
@@ -665,13 +827,21 @@ def working_capital(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
     fig, axis, positions = _canvas(labels)
     width = 0.26
 
-    for index, (name, values, colour) in enumerate([
-        ("DSO", [r.dso for r in rows], tokens.SERIES[1]),
-        ("DIO", [r.dio for r in rows], tokens.SERIES[3]),
-        ("DPO", [r.dpo for r in rows], tokens.SERIES[4]),
-    ]):
-        axis.bar([p + (index - 1) * width for p in positions],
-                 _bar_values(values), width, color=colour, label=name, zorder=3)
+    for index, (name, values, colour) in enumerate(
+        [
+            ("DSO", [r.dso for r in rows], tokens.SERIES[1]),
+            ("DIO", [r.dio for r in rows], tokens.SERIES[3]),
+            ("DPO", [r.dpo for r in rows], tokens.SERIES[4]),
+        ]
+    ):
+        axis.bar(
+            [p + (index - 1) * width for p in positions],
+            _bar_values(values),
+            width,
+            color=colour,
+            label=name,
+            zorder=3,
+        )
 
     _period_ticks(axis, positions, labels)
     axis.set_ylabel("Days")
@@ -682,10 +852,18 @@ def working_capital(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
 
     twin = axis.twinx()
     cycle = [r.cash_conversion_cycle for r in rows]
-    twin.plot(positions, _bar_values(cycle), color=tokens.ACCENT_LINE,
-              linewidth=1.4, marker="o", markersize=2.8,
-              markerfacecolor=tokens.SURFACE, markeredgewidth=0.9,
-              zorder=5, label="Cash cycle (RHS)")
+    twin.plot(
+        positions,
+        _bar_values(cycle),
+        color=tokens.ACCENT_LINE,
+        linewidth=1.4,
+        marker="o",
+        markersize=2.8,
+        markerfacecolor=tokens.SURFACE,
+        markeredgewidth=0.9,
+        zorder=5,
+        label="Cash cycle (RHS)",
+    )
     twin.axhline(0, color=tokens.RULE, linewidth=0.6)
     twin.set_ylabel("Cash cycle, days", color=tokens.ACCENT_LINE)
     twin.tick_params(axis="y", colors=tokens.ACCENT_LINE)
@@ -696,13 +874,14 @@ def working_capital(derived: DerivedAnalytics, out_dir: Path) -> Optional[Path]:
 
     handles, names = axis.get_legend_handles_labels()
     h2, n2 = twin.get_legend_handles_labels()
-    axis.legend(handles + h2, names + n2, loc="upper left",
-                bbox_to_anchor=(0.0, 1.15), ncol=4)
+    axis.legend(
+        handles + h2, names + n2, loc="upper left", bbox_to_anchor=(0.0, 1.15), ncol=4
+    )
 
     return _save(fig, out_dir / "working_capital.svg")
 
 
-def piotroski_trend(comp: Composites, out_dir: Path) -> Optional[Path]:
+def piotroski_trend(comp: Composites, out_dir: Path) -> Path | None:
     """The F-Score as a series, against the ceiling it is scored out of.
 
     Bars rather than a line: the score is a count of signals passed, and a
@@ -711,8 +890,9 @@ def piotroski_trend(comp: Composites, out_dir: Path) -> Optional[Path]:
     out of nine and six out of seven are different statements, and for a
     financial two signals are withheld, so the ceiling itself moves.
     """
-    points = [p for p in comp.piotroski_trend
-              if p.score is not None][-tokens.DISPLAY_YEARS:]
+    points = [p for p in comp.piotroski_trend if p.score is not None][
+        -tokens.DISPLAY_YEARS :
+    ]
     if len(points) < 3:
         return None
 
@@ -721,8 +901,9 @@ def piotroski_trend(comp: Composites, out_dir: Path) -> Optional[Path]:
     ceiling = max(p.computable for p in points)
 
     fig, axis, positions = _canvas(labels)
-    bars = axis.bar(positions, _bar_values(scores), 0.62,
-                    color=tokens.SERIES[2], zorder=3)
+    bars = axis.bar(
+        positions, _bar_values(scores), 0.62, color=tokens.SERIES[2], zorder=3
+    )
     _emphasise_last(bars, tokens.SERIES[0])
 
     # Piotroski reads eight and above as strong and two and below as weak.
@@ -731,18 +912,34 @@ def piotroski_trend(comp: Composites, out_dir: Path) -> Optional[Path]:
     if ceiling >= 8:
         axis.axhspan(8, ceiling, color=tokens.POSITIVE, alpha=0.07, zorder=1)
     axis.axhspan(0, 2, color=tokens.NEGATIVE, alpha=0.07, zorder=1)
-    axis.axhline(ceiling, color=tokens.FAINT, linewidth=0.7,
-                 linestyle=(0, (2.5, 2)), zorder=2)
-    axis.annotate("%d signals evaluated" % ceiling,
-                  xy=(len(positions) - 0.5, ceiling), xytext=(0, 2),
-                  textcoords="offset points", ha="right", va="bottom",
-                  fontsize=tokens.ANNOTATION, color=tokens.MUTED, zorder=6)
+    axis.axhline(
+        ceiling, color=tokens.FAINT, linewidth=0.7, linestyle=(0, (2.5, 2)), zorder=2
+    )
+    axis.annotate(
+        f"{ceiling} signals evaluated",
+        xy=(len(positions) - 0.5, ceiling),
+        xytext=(0, 2),
+        textcoords="offset points",
+        ha="right",
+        va="bottom",
+        fontsize=tokens.ANNOTATION,
+        color=tokens.MUTED,
+        zorder=6,
+    )
 
-    for position, score in zip(positions, scores):
-        axis.annotate("%d" % score, xy=(position, score), xytext=(0, 2.5),
-                      textcoords="offset points", ha="center", va="bottom",
-                      fontsize=tokens.SCORE_VALUE, color=tokens.INK, fontweight="semibold",
-                      zorder=6)
+    for position, score in zip(positions, scores, strict=True):
+        axis.annotate(
+            f"{score}",
+            xy=(position, score),
+            xytext=(0, 2.5),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=tokens.SCORE_VALUE,
+            color=tokens.INK,
+            fontweight="semibold",
+            zorder=6,
+        )
 
     _period_ticks(axis, positions, labels)
     axis.set_ylabel("Signals passed")
@@ -753,7 +950,7 @@ def piotroski_trend(comp: Composites, out_dir: Path) -> Optional[Path]:
     return _save(fig, out_dir / "piotroski_trend.svg")
 
 
-def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
+def altman_zones(comp: Composites, out_dir: Path) -> Path | None:
     """The Z-prime series against Altman's own distress and safe bands.
 
     This is the one place in the report where a chart carries information a
@@ -761,8 +958,9 @@ def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
     threshold is a position on an axis. Shading the three zones puts every
     year in its band at a glance, which a column of numbers cannot do.
     """
-    points = [p for p in comp.altman_trend
-              if p.score is not None][-tokens.DISPLAY_YEARS:]
+    points = [p for p in comp.altman_trend if p.score is not None][
+        -tokens.DISPLAY_YEARS :
+    ]
     if len(points) < 3:
         return None
 
@@ -780,8 +978,13 @@ def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
     axis.axhspan(safe, high, color=tokens.POSITIVE, alpha=0.08, zorder=1)
 
     for boundary in (distress, safe):
-        axis.axhline(boundary, color=tokens.FAINT, linewidth=0.6,
-                     linestyle=(0, (2.5, 2)), zorder=2)
+        axis.axhline(
+            boundary,
+            color=tokens.FAINT,
+            linewidth=0.6,
+            linestyle=(0, (2.5, 2)),
+            zorder=2,
+        )
 
     # Band names sit in the vertical middle of their own band, against the
     # right edge, because the series enters from the left. An earlier version
@@ -797,13 +1000,29 @@ def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
     # Anchored left, not right: the right edge already carries the closing
     # value label, and at TCS the 'Safe' band name landed on top of it.
     for centre, name in bands:
-        axis.text(0.015, centre, name, transform=axis.get_yaxis_transform(),
-                  ha="left", va="center", fontsize=tokens.ANNOTATION, color=tokens.MUTED,
-                  zorder=6)
+        axis.text(
+            0.015,
+            centre,
+            name,
+            transform=axis.get_yaxis_transform(),
+            ha="left",
+            va="center",
+            fontsize=tokens.ANNOTATION,
+            color=tokens.MUTED,
+            zorder=6,
+        )
 
-    axis.plot(positions, _bar_values(scores), color=tokens.SERIES[0],
-              linewidth=1.5, marker="o", markersize=2.8,
-              markerfacecolor=tokens.SURFACE, markeredgewidth=0.9, zorder=4)
+    axis.plot(
+        positions,
+        _bar_values(scores),
+        color=tokens.SERIES[0],
+        linewidth=1.5,
+        marker="o",
+        markersize=2.8,
+        markerfacecolor=tokens.SURFACE,
+        markeredgewidth=0.9,
+        zorder=4,
+    )
     _label_ends(axis, positions, scores, decimals=2)
 
     _period_ticks(axis, positions, labels)
@@ -815,7 +1034,7 @@ def altman_zones(comp: Composites, out_dir: Path) -> Optional[Path]:
     return _save(fig, out_dir / "altman_zones.svg")
 
 
-def sources_and_uses(comp: Composites, out_dir: Path) -> Optional[Path]:
+def sources_and_uses(comp: Composites, out_dir: Path) -> Path | None:
     """Where the cash came from and where it went, as matched compositions.
 
     Two bars of identical length, because sources equal uses by construction.
@@ -848,14 +1067,21 @@ def sources_and_uses(comp: Composites, out_dir: Path) -> Optional[Path]:
             caption = _segment_caption(item.label, share)
             if caption:
                 axis.annotate(
-                    caption, xy=(left + share / 2.0, row),
-                    ha="center", va="center", fontsize=tokens.SEGMENT_CAPTION, color=ink,
-                    linespacing=1.15, zorder=6)
+                    caption,
+                    xy=(left + share / 2.0, row),
+                    ha="center",
+                    va="center",
+                    fontsize=tokens.SEGMENT_CAPTION,
+                    color=ink,
+                    linespacing=1.15,
+                    zorder=6,
+                )
             left += share
 
     axis.set_yticks([0, 1])
-    axis.set_yticklabels(["Uses", "Sources"], fontsize=tokens.TICK_CATEGORY,
-                         fontweight="semibold")
+    axis.set_yticklabels(
+        ["Uses", "Sources"], fontsize=tokens.TICK_CATEGORY, fontweight="semibold"
+    )
     axis.set_xlim(0, 100)
     axis.set_xlabel("Share of total cash flows over the window (%)")
     axis.set_ylim(-0.5, 1.5)
@@ -887,7 +1113,7 @@ def _segment_caption(label: str, share: float) -> str:
     """
     if share < SEGMENT_MIN_PCT:
         return ""
-    percentage = "%.0f%%" % share
+    percentage = f"{share:.0f}%"
     if share < SEGMENT_NAMED_PCT:
         return percentage
     name = _wrap_label(label, width=20, max_lines=2)
@@ -904,7 +1130,7 @@ def _wrap_label(label: str, width: int = 18, max_lines: int = 3) -> str:
     which is not an abbreviation of the label but a different statement.
     """
     words = label.split()
-    lines: List[str] = []
+    lines: list[str] = []
     current = ""
     for word in words:
         candidate = (current + " " + word).strip()
@@ -921,7 +1147,7 @@ def _wrap_label(label: str, width: int = 18, max_lines: int = 3) -> str:
     return "\n".join(lines)
 
 
-def reinvestment_identity(comp: Composites, out_dir: Path) -> Optional[Path]:
+def reinvestment_identity(comp: Composites, out_dir: Path) -> Path | None:
     """Growth the reinvestment implies, against the growth delivered.
 
     The bars are what the identity predicts from capital actually put in;
@@ -931,8 +1157,11 @@ def reinvestment_identity(comp: Composites, out_dir: Path) -> Optional[Path]:
     reinvestment = comp.reinvestment
     if reinvestment.withheld_reason:
         return None
-    rows = [y for y in reinvestment.years
-            if y.implied_growth is not None or y.revenue_growth is not None]
+    rows = [
+        y
+        for y in reinvestment.years
+        if y.implied_growth is not None or y.revenue_growth is not None
+    ]
     if len(rows) < 3:
         return None
 
@@ -941,12 +1170,26 @@ def reinvestment_identity(comp: Composites, out_dir: Path) -> Optional[Path]:
     actual = [y.revenue_growth for y in rows]
 
     fig, axis, positions = _canvas(labels)
-    axis.bar(positions, _bar_values(implied), 0.58, color=tokens.SERIES[3],
-             label="Implied by reinvestment", zorder=3)
-    axis.plot(positions, _bar_values(actual), color=tokens.ACCENT_LINE,
-              linewidth=1.4, marker="o", markersize=2.6,
-              markerfacecolor=tokens.SURFACE, markeredgewidth=0.9,
-              label="Revenue growth delivered", zorder=5)
+    axis.bar(
+        positions,
+        _bar_values(implied),
+        0.58,
+        color=tokens.SERIES[3],
+        label="Implied by reinvestment",
+        zorder=3,
+    )
+    axis.plot(
+        positions,
+        _bar_values(actual),
+        color=tokens.ACCENT_LINE,
+        linewidth=1.4,
+        marker="o",
+        markersize=2.6,
+        markerfacecolor=tokens.SURFACE,
+        markeredgewidth=0.9,
+        label="Revenue growth delivered",
+        zorder=5,
+    )
 
     axis.axhline(0, color=tokens.RULE, linewidth=0.6, zorder=2)
     _period_ticks(axis, positions, labels)
@@ -955,14 +1198,13 @@ def reinvestment_identity(comp: Composites, out_dir: Path) -> Optional[Path]:
     values = [v for v in implied + actual if v is not None]
     if values:
         span = (max(values) - min(min(values), 0.0)) or 1.0
-        axis.set_ylim(min(min(values), 0.0) - span * 0.10,
-                      max(values) + span * 0.30)
+        axis.set_ylim(min(min(values), 0.0) - span * 0.10, max(values) + span * 0.30)
     axis.legend(loc="upper left", bbox_to_anchor=(0.0, 1.16), ncol=2)
 
     return _save(fig, out_dir / "reinvestment_identity.svg")
 
 
-def dupont_indexed(comp: Composites, out_dir: Path) -> Optional[Path]:
+def dupont_indexed(comp: Composites, out_dir: Path) -> Path | None:
     """The five DuPont factors indexed to their starting level.
 
     The factors cannot share a raw axis: a burden ratio sits near 0.8, an
@@ -972,8 +1214,9 @@ def dupont_indexed(comp: Composites, out_dir: Path) -> Optional[Path]:
     decomposition exists to answer - which factor moved, and by how much -
     and the table beside it carries the levels.
     """
-    rows = [r for r in comp.dupont.years
-            if r.period.strip().upper() != "TTM"][-tokens.DISPLAY_YEARS:]
+    rows = [r for r in comp.dupont.years if r.period.strip().upper() != "TTM"][
+        -tokens.DISPLAY_YEARS :
+    ]
     if len(rows) < 3:
         return None
 
@@ -996,9 +1239,18 @@ def dupont_indexed(comp: Composites, out_dir: Path) -> Optional[Path]:
         if not _present(indexed):
             continue
         plotted += 1
-        axis.plot(positions, _bar_values(indexed), color=colour, linewidth=1.4,
-                  marker="o", markersize=2.2, markerfacecolor=tokens.SURFACE,
-                  markeredgewidth=0.7, label=name, zorder=4)
+        axis.plot(
+            positions,
+            _bar_values(indexed),
+            color=colour,
+            linewidth=1.4,
+            marker="o",
+            markersize=2.2,
+            markerfacecolor=tokens.SURFACE,
+            markeredgewidth=0.7,
+            label=name,
+            zorder=4,
+        )
 
     if plotted < 2:
         plt.close(fig)
@@ -1006,7 +1258,7 @@ def dupont_indexed(comp: Composites, out_dir: Path) -> Optional[Path]:
 
     axis.axhline(100.0, color=tokens.RULE, linewidth=0.7, zorder=2)
     _period_ticks(axis, positions, labels)
-    axis.set_ylabel("Indexed, %s = 100" % labels[0])
+    axis.set_ylabel(f"Indexed, {labels[0]} = 100")
     axis.set_axisbelow(True)
     axis.legend(loc="upper left", bbox_to_anchor=(0.0, 1.30), ncol=3)
 
@@ -1053,9 +1305,9 @@ def render_all(
         "dupont": dupont_indexed,
     }
     sources = {}
-    sources.update({key: snap for key in snapshot_builders})
-    sources.update({key: derived for key in derived_builders})
-    sources.update({key: comp for key in composite_builders})
+    sources.update(dict.fromkeys(snapshot_builders, snap))
+    sources.update(dict.fromkeys(derived_builders, derived))
+    sources.update(dict.fromkeys(composite_builders, comp))
     builders = {}
     builders.update(snapshot_builders)
     builders.update(derived_builders)

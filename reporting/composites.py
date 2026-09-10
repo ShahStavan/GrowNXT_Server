@@ -44,23 +44,36 @@ rather than buried here:
       with no meaning attached to it.
 """
 
-from dataclasses import dataclass, field
 import logging
 import operator
-from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from reporting import fmt, tokens
 from reporting.analytics import AnnualMetrics, DerivedAnalytics
-from reporting.snapshot import BalancePeriod, CashflowPeriod, CompanySnapshot, IncomePeriod
+from reporting.snapshot import (
+    BalancePeriod,
+    CashflowPeriod,
+    CompanySnapshot,
+    IncomePeriod,
+)
 
 logger = logging.getLogger(__name__)
 
 # Sector strings that mark a lender or insurer. Matched case-insensitively
 # as substrings against the provider's sector label, which arrives as free
 # text such as 'Private Banks' or 'Insurance'.
-FINANCIAL_SECTOR_MARKERS: Tuple[str, ...] = (
-    "bank", "financ", "nbfc", "insur", "capital market",
-    "asset management", "broker", "lending", "housing finance",
+FINANCIAL_SECTOR_MARKERS: tuple[str, ...] = (
+    "bank",
+    "financ",
+    "nbfc",
+    "insur",
+    "capital market",
+    "asset management",
+    "broker",
+    "lending",
+    "housing finance",
 )
 
 # Piotroski's share-issuance signal asks whether the company raised equity.
@@ -70,7 +83,7 @@ FINANCIAL_SECTOR_MARKERS: Tuple[str, ...] = (
 SHARE_ISSUE_TOLERANCE_PCT: float = 0.5
 
 # Altman (1968) coefficients and cut-offs, the listed-company model.
-ALTMAN_PUBLIC_WEIGHTS: Dict[str, float] = {
+ALTMAN_PUBLIC_WEIGHTS: dict[str, float] = {
     "working_capital": 1.2,
     "retained_earnings": 1.4,
     "ebit": 3.3,
@@ -84,7 +97,7 @@ ALTMAN_PUBLIC_DISTRESS: float = 1.81
 # historical series because no share price is available for past years and
 # the equity term therefore has to be taken at book. Its coefficients are
 # not interchangeable with the listed model's.
-ALTMAN_PRIVATE_WEIGHTS: Dict[str, float] = {
+ALTMAN_PRIVATE_WEIGHTS: dict[str, float] = {
     "working_capital": 0.717,
     "retained_earnings": 0.847,
     "ebit": 3.107,
@@ -115,14 +128,14 @@ class ScoreTest:
     number: int
     name: str
     definition: str
-    value: Optional[float] = None
-    comparator: Optional[float] = None
+    value: float | None = None
+    comparator: float | None = None
     unit: str = "pct"
-    passed: Optional[bool] = None
+    passed: bool | None = None
     unavailable_reason: str = ""
 
     @property
-    def points(self) -> Optional[int]:
+    def points(self) -> int | None:
         """One when the test passed, zero when it failed, None if untested."""
         if self.passed is None:
             return None
@@ -140,12 +153,12 @@ class Piotroski:
 
     period: str = ""
     prior_period: str = ""
-    tests: List[ScoreTest] = field(default_factory=list)
-    substitutions: List[str] = field(default_factory=list)
-    withheld: List[str] = field(default_factory=list)
+    tests: list[ScoreTest] = field(default_factory=list)
+    substitutions: list[str] = field(default_factory=list)
+    withheld: list[str] = field(default_factory=list)
 
     @property
-    def score(self) -> Optional[int]:
+    def score(self) -> int | None:
         """Points awarded across the sub-tests that reached a verdict."""
         awarded = [t.points for t in self.tests if t.points is not None]
         return sum(awarded) if awarded else None
@@ -165,17 +178,17 @@ class Piotroski:
         return self.computable == 9
 
     @property
-    def profitability_points(self) -> Optional[int]:
+    def profitability_points(self) -> int | None:
         """Points from signals 1-4, the profitability group."""
         return _group_points(self.tests, 1, 4)
 
     @property
-    def leverage_points(self) -> Optional[int]:
+    def leverage_points(self) -> int | None:
         """Points from signals 5-7, the leverage and liquidity group."""
         return _group_points(self.tests, 5, 7)
 
     @property
-    def efficiency_points(self) -> Optional[int]:
+    def efficiency_points(self) -> int | None:
         """Points from signals 8-9, the operating-efficiency group."""
         return _group_points(self.tests, 8, 9)
 
@@ -185,7 +198,7 @@ class PiotroskiPoint:
     """One period of the F-Score series."""
 
     period: str
-    score: Optional[int] = None
+    score: int | None = None
     computable: int = 0
 
 
@@ -196,11 +209,11 @@ class AltmanComponent:
     key: str
     name: str
     definition: str
-    ratio: Optional[float] = None
+    ratio: float | None = None
     weight: float = 0.0
 
     @property
-    def contribution(self) -> Optional[float]:
+    def contribution(self) -> float | None:
         """The term's contribution to the score."""
         return None if self.ratio is None else self.ratio * self.weight
 
@@ -212,13 +225,13 @@ class Altman:
     period: str = ""
     model: str = ""
     equity_basis: str = ""
-    components: List[AltmanComponent] = field(default_factory=list)
+    components: list[AltmanComponent] = field(default_factory=list)
     safe_above: float = ALTMAN_PUBLIC_SAFE
     distress_below: float = ALTMAN_PUBLIC_DISTRESS
     withheld_reason: str = ""
 
     @property
-    def score(self) -> Optional[float]:
+    def score(self) -> float | None:
         """Sum of the weighted terms, or None if any term is missing.
 
         A Z-Score built from four of five terms is not a low Z-Score, it is
@@ -245,7 +258,7 @@ class Altman:
         return "Grey"
 
     @property
-    def dominant(self) -> Optional[AltmanComponent]:
+    def dominant(self) -> AltmanComponent | None:
         """The term supplying more than half the score, if one does.
 
         Altman fitted this model on manufacturers, and the equity term
@@ -266,7 +279,7 @@ class Altman:
         return None
 
     @property
-    def concentration_pct(self) -> Optional[float]:
+    def concentration_pct(self) -> float | None:
         """Share of the score contributed by its largest single term."""
         component = self.dominant
         if component is None:
@@ -279,7 +292,7 @@ class AltmanPoint:
     """One period of the Z-prime series."""
 
     period: str
-    score: Optional[float] = None
+    score: float | None = None
     zone: str = ""
 
 
@@ -288,11 +301,11 @@ class FlowItem:
     """One line of a sources-and-uses statement."""
 
     label: str
-    amount: Optional[float] = None
+    amount: float | None = None
     definition: str = ""
 
     @property
-    def magnitude(self) -> Optional[float]:
+    def magnitude(self) -> float | None:
         """Absolute size, which is how a sources-and-uses table reads."""
         return None if self.amount is None else abs(self.amount)
 
@@ -312,31 +325,31 @@ class SourcesAndUses:
     from_period: str = ""
     to_period: str = ""
     years: int = 0
-    sources: List[FlowItem] = field(default_factory=list)
-    uses: List[FlowItem] = field(default_factory=list)
-    debt_change: Optional[float] = None
-    share_change_pct: Optional[float] = None
-    notes: List[str] = field(default_factory=list)
+    sources: list[FlowItem] = field(default_factory=list)
+    uses: list[FlowItem] = field(default_factory=list)
+    debt_change: float | None = None
+    share_change_pct: float | None = None
+    notes: list[str] = field(default_factory=list)
 
     @property
-    def total_sources(self) -> Optional[float]:
+    def total_sources(self) -> float | None:
         """Sum of the sources column."""
         return _sum_magnitudes(self.sources)
 
     @property
-    def total_uses(self) -> Optional[float]:
+    def total_uses(self) -> float | None:
         """Sum of the uses column."""
         return _sum_magnitudes(self.uses)
 
     @property
-    def residual(self) -> Optional[float]:
+    def residual(self) -> float | None:
         """Sources less uses. Must be zero; `selfcheck` asserts that."""
         sources, uses = self.total_sources, self.total_uses
         if sources is None or uses is None:
             return None
         return sources - uses
 
-    def share(self, item: FlowItem, of_uses: bool) -> Optional[float]:
+    def share(self, item: FlowItem, of_uses: bool) -> float | None:
         """Returns an item's percentage of its column total."""
         total = self.total_uses if of_uses else self.total_sources
         return fmt.pos_margin(item.magnitude, total)
@@ -347,16 +360,16 @@ class ReinvestmentYear:
     """The reinvestment identity for one fiscal year."""
 
     period: str
-    nopat: Optional[float] = None
-    capex: Optional[float] = None
-    depreciation: Optional[float] = None
-    net_capex: Optional[float] = None
-    delta_working_capital: Optional[float] = None
-    reinvestment: Optional[float] = None
-    reinvestment_rate: Optional[float] = None
-    roic: Optional[float] = None
-    implied_growth: Optional[float] = None
-    revenue_growth: Optional[float] = None
+    nopat: float | None = None
+    capex: float | None = None
+    depreciation: float | None = None
+    net_capex: float | None = None
+    delta_working_capital: float | None = None
+    reinvestment: float | None = None
+    reinvestment_rate: float | None = None
+    roic: float | None = None
+    implied_growth: float | None = None
+    revenue_growth: float | None = None
 
 
 @dataclass
@@ -370,21 +383,21 @@ class Reinvestment:
     from somewhere the accounts do not show.
     """
 
-    years: List[ReinvestmentYear] = field(default_factory=list)
+    years: list[ReinvestmentYear] = field(default_factory=list)
     window_from: str = ""
     window_to: str = ""
-    total_reinvestment: Optional[float] = None
-    total_nopat: Optional[float] = None
-    aggregate_reinvestment_rate: Optional[float] = None
-    average_roic: Optional[float] = None
-    implied_growth: Optional[float] = None
-    actual_revenue_cagr: Optional[float] = None
-    actual_ebit_cagr: Optional[float] = None
+    total_reinvestment: float | None = None
+    total_nopat: float | None = None
+    aggregate_reinvestment_rate: float | None = None
+    average_roic: float | None = None
+    implied_growth: float | None = None
+    actual_revenue_cagr: float | None = None
+    actual_ebit_cagr: float | None = None
     withheld_reason: str = ""
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     @property
-    def growth_gap(self) -> Optional[float]:
+    def growth_gap(self) -> float | None:
         """Delivered revenue growth less the growth reinvestment implies."""
         if self.actual_revenue_cagr is None or self.implied_growth is None:
             return None
@@ -396,22 +409,26 @@ class DupontYear:
     """The five-factor decomposition for one period, with its own check."""
 
     period: str
-    tax_burden: Optional[float] = None
-    interest_burden: Optional[float] = None
-    operating_margin: Optional[float] = None
-    asset_turnover: Optional[float] = None
-    equity_multiplier: Optional[float] = None
-    roe_direct: Optional[float] = None
+    tax_burden: float | None = None
+    interest_burden: float | None = None
+    operating_margin: float | None = None
+    asset_turnover: float | None = None
+    equity_multiplier: float | None = None
+    roe_direct: float | None = None
 
     @property
-    def factors(self) -> List[Optional[float]]:
+    def factors(self) -> list[float | None]:
         """The five factors in multiplication order."""
-        return [self.tax_burden, self.interest_burden,
-                self.operating_margin, self.asset_turnover,
-                self.equity_multiplier]
+        return [
+            self.tax_burden,
+            self.interest_burden,
+            self.operating_margin,
+            self.asset_turnover,
+            self.equity_multiplier,
+        ]
 
     @property
-    def roe_product(self) -> Optional[float]:
+    def roe_product(self) -> float | None:
         """ROE rebuilt by multiplying the five factors, in percent."""
         values = self.factors
         if any(v is None for v in values):
@@ -424,7 +441,7 @@ class DupontYear:
         return product
 
     @property
-    def residual(self) -> Optional[float]:
+    def residual(self) -> float | None:
         """Factor product less directly computed ROE, in percentage points.
 
         This is the decomposition auditing itself. A non-trivial residual
@@ -441,19 +458,19 @@ class DupontYear:
 class Dupont:
     """The DuPont decomposition across every reported period."""
 
-    years: List[DupontYear] = field(default_factory=list)
+    years: list[DupontYear] = field(default_factory=list)
     provider_period: str = ""
-    provider_roe: Optional[float] = None
-    provider_factors: Dict[str, Optional[float]] = field(default_factory=dict)
-    reconciliation_delta: Optional[float] = None
+    provider_roe: float | None = None
+    provider_factors: dict[str, float | None] = field(default_factory=dict)
+    reconciliation_delta: float | None = None
 
     @property
-    def first(self) -> Optional[DupontYear]:
+    def first(self) -> DupontYear | None:
         """Earliest period shown, the base for an indexed comparison."""
         return self.years[0] if self.years else None
 
     @property
-    def latest(self) -> Optional[DupontYear]:
+    def latest(self) -> DupontYear | None:
         """Most recent period."""
         return self.years[-1] if self.years else None
 
@@ -463,34 +480,34 @@ class Composites:
     """Every Tier 2 composite for one company."""
 
     piotroski: Piotroski
-    piotroski_trend: List[PiotroskiPoint]
+    piotroski_trend: list[PiotroskiPoint]
     altman: Altman
-    altman_trend: List[AltmanPoint]
+    altman_trend: list[AltmanPoint]
     sources_uses: SourcesAndUses
     reinvestment: Reinvestment
     dupont: Dupont
     is_financial: bool = False
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 # --- helpers --------------------------------------------------------------
 
 
-def _group_points(tests: Sequence[ScoreTest], low: int, high: int) -> Optional[int]:
+def _group_points(tests: Sequence[ScoreTest], low: int, high: int) -> int | None:
     """Sums the points of the sub-tests numbered `low` through `high`."""
-    awarded = [t.points for t in tests
-               if low <= t.number <= high and t.points is not None]
+    awarded = [
+        t.points for t in tests if low <= t.number <= high and t.points is not None
+    ]
     return sum(awarded) if awarded else None
 
 
-def _sum_magnitudes(items: Sequence[FlowItem]) -> Optional[float]:
+def _sum_magnitudes(items: Sequence[FlowItem]) -> float | None:
     """Totals a flow column, returning None if nothing is present."""
     values = [i.magnitude for i in items if i.magnitude is not None]
     return sum(values) if values else None
 
 
-def _cagr(start: Optional[float], end: Optional[float],
-          periods: int) -> Optional[float]:
+def _cagr(start: float | None, end: float | None, periods: int) -> float | None:
     """Compound annual growth between two levels, in percentage points.
 
     Withheld unless both ends are strictly positive: a root taken through
@@ -503,7 +520,7 @@ def _cagr(start: Optional[float], end: Optional[float],
     return ((end / start) ** (1.0 / periods) - 1.0) * 100.0
 
 
-def _mean(values: Sequence[Optional[float]]) -> Optional[float]:
+def _mean(values: Sequence[float | None]) -> float | None:
     """Arithmetic mean of the present values, or None if there are none."""
     usable = [v for v in values if v is not None]
     return sum(usable) / len(usable) if usable else None
@@ -521,12 +538,10 @@ def is_financial(snap: CompanySnapshot) -> bool:
     if any(marker in sector for marker in FINANCIAL_SECTOR_MARKERS):
         return True
     balances = [b for b in snap.balance if b.total_assets]
-    if balances and all(b.debt is None for b in balances):
-        return True
-    return False
+    return bool(balances) and all(b.debt is None for b in balances)
 
 
-def _non_cash_working_capital(balance: BalancePeriod) -> Optional[float]:
+def _non_cash_working_capital(balance: BalancePeriod) -> float | None:
     """Operating working capital, excluding cash and short-term debt.
 
     Both exclusions are deliberate. Cash and short-term borrowing are
@@ -549,9 +564,9 @@ def _non_cash_working_capital(balance: BalancePeriod) -> Optional[float]:
     return assets - liabilities
 
 
-def _aligned(snap: CompanySnapshot) -> List[Tuple[IncomePeriod,
-                                                  Optional[BalancePeriod],
-                                                  Optional[CashflowPeriod]]]:
+def _aligned(
+    snap: CompanySnapshot,
+) -> list[tuple[IncomePeriod, BalancePeriod | None, CashflowPeriod | None]]:
     """Pairs each fiscal year's income, balance and cash-flow rows.
 
     Matched on the period label rather than by position, because the three
@@ -562,7 +577,11 @@ def _aligned(snap: CompanySnapshot) -> List[Tuple[IncomePeriod,
     balance_by_period = {b.period: b for b in snap.balance}
     cash_by_period = {c.period: c for c in snap.cashflow}
     return [
-        (income, balance_by_period.get(income.period), cash_by_period.get(income.period))
+        (
+            income,
+            balance_by_period.get(income.period),
+            cash_by_period.get(income.period),
+        )
         for income in snap.years
     ]
 
@@ -580,11 +599,11 @@ def _signal(
     name: str,
     definition: str,
     unit: str,
-    value: Optional[float],
-    comparator: Optional[float],
+    value: float | None,
+    comparator: float | None,
     better,
     reason: str,
-    limit: Optional[float] = None,
+    limit: float | None = None,
 ) -> ScoreTest:
     """Builds one F-Score signal, deriving availability and verdict once.
 
@@ -611,15 +630,19 @@ def _signal(
     """
     known = value is not None and comparator is not None
     return ScoreTest(
-        number=number, name=name, definition=definition,
-        value=value, comparator=comparator, unit=unit,
+        number=number,
+        name=name,
+        definition=definition,
+        value=value,
+        comparator=comparator,
+        unit=unit,
         passed=better(value, comparator if limit is None else limit) if known else None,
         unavailable_reason="" if known else reason,
     )
 
 
 def _piotroski_at(
-    rows: Sequence[Tuple[IncomePeriod, Optional[BalancePeriod], Optional[CashflowPeriod]]],
+    rows: Sequence[tuple[IncomePeriod, BalancePeriod | None, CashflowPeriod | None]],
     position: int,
     financial: bool,
 ) -> Piotroski:
@@ -653,8 +676,9 @@ def _piotroski_at(
     # Opening assets: last year's closing balance sheet for this year's
     # ratios, the one before it for last year's.
     opening = prior_balance.total_assets if prior_balance else None
-    opening_prior = (opening_prior_balance.total_assets
-                     if opening_prior_balance else None)
+    opening_prior = (
+        opening_prior_balance.total_assets if opening_prior_balance else None
+    )
 
     roa = fmt.pos_margin(income.pat, opening)
     prior_roa = fmt.pos_margin(prior_income.pat, opening_prior)
@@ -662,92 +686,187 @@ def _piotroski_at(
     turnover = fmt.pos_div(income.revenue, opening)
     prior_turnover = fmt.pos_div(prior_income.revenue, opening_prior)
 
-    tests: List[ScoreTest] = []
+    tests: list[ScoreTest] = []
 
     # --- profitability, signals 1 to 4 ---
-    tests.append(_signal(
-        1, "Return on assets positive", "PAT / opening total assets, versus nil",
-        "pct", roa, 0.0, UP, "profit or opening total assets not reported"))
-    tests.append(_signal(
-        2, "Operating cash flow positive", "Cash from operations, versus nil",
-        "cr", cfo, 0.0, UP, "cash flow statement not reported for this period"))
-    tests.append(_signal(
-        3, "Return on assets improving",
-        "This year's return on assets, versus last year's",
-        "pct", roa, prior_roa, UP,
-        "two consecutive years of opening assets not available"))
-    tests.append(_signal(
-        4, "Cash flow exceeds profit",
-        "Cash from operations, versus PAT for the same year",
-        "cr", cfo, income.pat, UP, "cash flow or profit not reported"))
+    tests.append(
+        _signal(
+            1,
+            "Return on assets positive",
+            "PAT / opening total assets, versus nil",
+            "pct",
+            roa,
+            0.0,
+            UP,
+            "profit or opening total assets not reported",
+        )
+    )
+    tests.append(
+        _signal(
+            2,
+            "Operating cash flow positive",
+            "Cash from operations, versus nil",
+            "cr",
+            cfo,
+            0.0,
+            UP,
+            "cash flow statement not reported for this period",
+        )
+    )
+    tests.append(
+        _signal(
+            3,
+            "Return on assets improving",
+            "This year's return on assets, versus last year's",
+            "pct",
+            roa,
+            prior_roa,
+            UP,
+            "two consecutive years of opening assets not available",
+        )
+    )
+    tests.append(
+        _signal(
+            4,
+            "Cash flow exceeds profit",
+            "Cash from operations, versus PAT for the same year",
+            "cr",
+            cfo,
+            income.pat,
+            UP,
+            "cash flow or profit not reported",
+        )
+    )
 
     # --- leverage and liquidity, signals 5 to 7 ---
     if financial:
-        reason = ("not meaningful for a financial: borrowings fund the asset "
-                  "book rather than the operations, and customer deposits sit "
-                  "in current liabilities")
-        tests.append(_signal(
-            5, "Leverage falling",
-            "Long-term debt / average total assets, versus last year",
-            "pct", None, None, DOWN, reason))
-        tests.append(_signal(
-            6, "Liquidity improving", "Current ratio, versus last year",
-            "x", None, None, UP, reason))
+        reason = (
+            "not meaningful for a financial: borrowings fund the asset "
+            "book rather than the operations, and customer deposits sit "
+            "in current liabilities"
+        )
+        tests.append(
+            _signal(
+                5,
+                "Leverage falling",
+                "Long-term debt / average total assets, versus last year",
+                "pct",
+                None,
+                None,
+                DOWN,
+                reason,
+            )
+        )
+        tests.append(
+            _signal(
+                6,
+                "Liquidity improving",
+                "Current ratio, versus last year",
+                "x",
+                None,
+                None,
+                UP,
+                reason,
+            )
+        )
         result.withheld.append(
-            "Signals 5 and 6, on leverage and liquidity, are withheld: %s." % reason
+            f"Signals 5 and 6, on leverage and liquidity, are withheld: {reason}."
         )
     else:
-        average_assets = _average(
-            balance.total_assets if balance else None, opening)
+        average_assets = _average(balance.total_assets if balance else None, opening)
         prior_average_assets = _average(opening, opening_prior)
         leverage = fmt.pos_margin(
-            balance.long_term_debt if balance else None, average_assets)
+            balance.long_term_debt if balance else None, average_assets
+        )
         prior_leverage = fmt.pos_margin(
             prior_balance.long_term_debt if prior_balance else None,
-            prior_average_assets)
-        tests.append(_signal(
-            5, "Leverage falling",
-            "Long-term debt / average total assets, versus last year",
-            "pct", leverage, prior_leverage, DOWN,
-            "long-term debt not reported for both years"))
+            prior_average_assets,
+        )
+        tests.append(
+            _signal(
+                5,
+                "Leverage falling",
+                "Long-term debt / average total assets, versus last year",
+                "pct",
+                leverage,
+                prior_leverage,
+                DOWN,
+                "long-term debt not reported for both years",
+            )
+        )
 
         current_ratio = fmt.pos_div(
             balance.current_assets if balance else None,
-            balance.current_liabilities if balance else None)
+            balance.current_liabilities if balance else None,
+        )
         prior_current_ratio = fmt.pos_div(
             prior_balance.current_assets if prior_balance else None,
-            prior_balance.current_liabilities if prior_balance else None)
-        tests.append(_signal(
-            6, "Liquidity improving", "Current ratio, versus last year",
-            "x", current_ratio, prior_current_ratio, UP,
-            "current assets or current liabilities not reported"))
+            prior_balance.current_liabilities if prior_balance else None,
+        )
+        tests.append(
+            _signal(
+                6,
+                "Liquidity improving",
+                "Current ratio, versus last year",
+                "x",
+                current_ratio,
+                prior_current_ratio,
+                UP,
+                "current assets or current liabilities not reported",
+            )
+        )
 
     shares = balance.shares_cr if balance else None
     prior_shares = prior_balance.shares_cr if prior_balance else None
-    ceiling = (None if prior_shares is None
-               else prior_shares * (1.0 + SHARE_ISSUE_TOLERANCE_PCT / 100.0))
-    tests.append(_signal(
-        7, "No equity raised",
-        "Shares in issue, versus last year plus %.1f%% for option vesting"
-        % SHARE_ISSUE_TOLERANCE_PCT,
-        "cr", shares, prior_shares, AT_MOST,
-        "share count not reported for both years", limit=ceiling))
+    ceiling = (
+        None
+        if prior_shares is None
+        else prior_shares * (1.0 + SHARE_ISSUE_TOLERANCE_PCT / 100.0)
+    )
+    tests.append(
+        _signal(
+            7,
+            "No equity raised",
+            f"Shares in issue, versus last year plus {SHARE_ISSUE_TOLERANCE_PCT:.1f}% "
+            "for option vesting",
+            "cr",
+            shares,
+            prior_shares,
+            AT_MOST,
+            "share count not reported for both years",
+            limit=ceiling,
+        )
+    )
 
     # --- operating efficiency, signals 8 and 9 ---
     # Signal 8 substitutes EBITDA margin for the paper's gross margin. See
     # the module docstring: this provider publishes no usable gross profit.
     margin_now = income.ebitda_margin
     margin_prior = prior_income.ebitda_margin
-    tests.append(_signal(
-        8, "Margin improving",
-        "EBITDA margin, versus last year (paper uses gross margin)",
-        "pct", margin_now, margin_prior, UP,
-        "EBITDA or revenue not reported for both years"))
-    tests.append(_signal(
-        9, "Asset turnover improving",
-        "Revenue / opening total assets, versus last year",
-        "x", turnover, prior_turnover, UP,
-        "two consecutive years of opening assets not available"))
+    tests.append(
+        _signal(
+            8,
+            "Margin improving",
+            "EBITDA margin, versus last year (paper uses gross margin)",
+            "pct",
+            margin_now,
+            margin_prior,
+            UP,
+            "EBITDA or revenue not reported for both years",
+        )
+    )
+    tests.append(
+        _signal(
+            9,
+            "Asset turnover improving",
+            "Revenue / opening total assets, versus last year",
+            "x",
+            turnover,
+            prior_turnover,
+            UP,
+            "two consecutive years of opening assets not available",
+        )
+    )
 
     result.tests = tests
     result.substitutions.append(
@@ -766,14 +885,14 @@ def _piotroski_at(
     return result
 
 
-def _average(current: Optional[float], prior: Optional[float]) -> Optional[float]:
+def _average(current: float | None, prior: float | None) -> float | None:
     """Two-point average, or None unless both points are present."""
     if current is None or prior is None:
         return None
     return (current + prior) / 2.0
 
 
-def _less(value: Optional[float], subtracted: Optional[float]) -> Optional[float]:
+def _less(value: float | None, subtracted: float | None) -> float | None:
     """Difference of two figures, or None unless both are present."""
     if value is None or subtracted is None:
         return None
@@ -781,18 +900,20 @@ def _less(value: Optional[float], subtracted: Optional[float]) -> Optional[float
 
 
 def _piotroski_series(
-    rows: Sequence[Tuple[IncomePeriod, Optional[BalancePeriod], Optional[CashflowPeriod]]],
+    rows: Sequence[tuple[IncomePeriod, BalancePeriod | None, CashflowPeriod | None]],
     financial: bool,
-) -> List[PiotroskiPoint]:
+) -> list[PiotroskiPoint]:
     """Scores every year that has the three balance sheets it needs."""
-    out: List[PiotroskiPoint] = []
+    out: list[PiotroskiPoint] = []
     for position in range(2, len(rows)):
         scored = _piotroski_at(rows, position, financial)
-        out.append(PiotroskiPoint(
-            period=scored.period,
-            score=scored.score,
-            computable=scored.computable,
-        ))
+        out.append(
+            PiotroskiPoint(
+                period=scored.period,
+                score=scored.score,
+                computable=scored.computable,
+            )
+        )
     return out
 
 
@@ -802,10 +923,10 @@ def _piotroski_series(
 def _altman_components(
     income: IncomePeriod,
     balance: BalancePeriod,
-    equity_value: Optional[float],
+    equity_value: float | None,
     equity_label: str,
-    weights: Dict[str, float],
-) -> List[AltmanComponent]:
+    weights: dict[str, float],
+) -> list[AltmanComponent]:
     """Builds the five weighted terms of a Z-Score.
 
     Total assets and total liabilities are the denominators throughout, and
@@ -816,31 +937,36 @@ def _altman_components(
     liabilities = balance.total_liabilities
     return [
         AltmanComponent(
-            key="working_capital", name="Working capital / assets",
+            key="working_capital",
+            name="Working capital / assets",
             definition="(Current assets less current liabilities) / total assets",
             ratio=fmt.pos_div(balance.working_capital, assets),
             weight=weights["working_capital"],
         ),
         AltmanComponent(
-            key="retained_earnings", name="Retained earnings / assets",
+            key="retained_earnings",
+            name="Retained earnings / assets",
             definition="Accumulated retained earnings / total assets",
             ratio=fmt.pos_div(balance.retained_earnings, assets),
             weight=weights["retained_earnings"],
         ),
         AltmanComponent(
-            key="ebit", name="EBIT / assets",
+            key="ebit",
+            name="EBIT / assets",
             definition="Operating profit / total assets",
             ratio=fmt.pos_div(income.ebit, assets),
             weight=weights["ebit"],
         ),
         AltmanComponent(
-            key="equity_value", name="%s / liabilities" % equity_label,
-            definition="%s / total liabilities" % equity_label,
+            key="equity_value",
+            name=f"{equity_label} / liabilities",
+            definition=f"{equity_label} / total liabilities",
             ratio=fmt.pos_div(equity_value, liabilities),
             weight=weights["equity_value"],
         ),
         AltmanComponent(
-            key="sales", name="Revenue / assets",
+            key="sales",
+            name="Revenue / assets",
             definition="Revenue / total assets",
             ratio=fmt.pos_div(income.revenue, assets),
             weight=weights["sales"],
@@ -858,38 +984,47 @@ def _altman(snap: CompanySnapshot, financial: bool) -> Altman:
     live prices, and the equity basis is labelled so a reader can see it.
     """
     if financial:
-        return Altman(withheld_reason=(
-            "The Z-Score is withheld for financials. Altman's model was fitted "
-            "on manufacturers and two of its five terms do not describe a "
-            "lender: working capital is not a meaningful concept where customer "
-            "deposits sit in current liabilities, and revenue over assets "
-            "measures balance-sheet turnover rather than operating efficiency. "
-            "A number can be produced; it would not mean anything."
-        ))
+        return Altman(
+            withheld_reason=(
+                "The Z-Score is withheld for financials. Altman's model was fitted "
+                "on manufacturers and two of its five terms do not describe a "
+                "lender: working capital is not a meaningful concept where customer "
+                "deposits sit in current liabilities, and revenue over assets "
+                "measures balance-sheet turnover rather than operating efficiency. "
+                "A number can be produced; it would not mean anything."
+            )
+        )
 
     balance = snap.latest_balance
     if balance is None:
         return Altman(withheld_reason="No balance sheet reported.")
     income = next((y for y in reversed(snap.years) if y.period == balance.period), None)
     if income is None:
-        return Altman(withheld_reason=(
-            "No income statement matches the latest balance-sheet period."))
+        return Altman(
+            withheld_reason=(
+                "No income statement matches the latest balance-sheet period."
+            )
+        )
 
     equity_value = snap.market_cap_cr or snap.implied_market_cap_cr
-    basis = ("Market capitalisation" if snap.market_cap_cr
-             else "Implied market capitalisation")
+    basis = (
+        "Market capitalisation"
+        if snap.market_cap_cr
+        else "Implied market capitalisation"
+    )
     return Altman(
         period=balance.period,
         model="Altman Z (1968), listed-company model",
         equity_basis=basis,
         components=_altman_components(
-            income, balance, equity_value, basis, ALTMAN_PUBLIC_WEIGHTS),
+            income, balance, equity_value, basis, ALTMAN_PUBLIC_WEIGHTS
+        ),
         safe_above=ALTMAN_PUBLIC_SAFE,
         distress_below=ALTMAN_PUBLIC_DISTRESS,
     )
 
 
-def _altman_series(snap: CompanySnapshot, financial: bool) -> List[AltmanPoint]:
+def _altman_series(snap: CompanySnapshot, financial: bool) -> list[AltmanPoint]:
     """Builds the Z-prime series across every reported year.
 
     The historical series has to use Z-prime, the 1983 revision, because no
@@ -902,7 +1037,7 @@ def _altman_series(snap: CompanySnapshot, financial: bool) -> List[AltmanPoint]:
     if financial:
         return []
     balance_by_period = {b.period: b for b in snap.balance}
-    out: List[AltmanPoint] = []
+    out: list[AltmanPoint] = []
     for income in snap.years:
         balance = balance_by_period.get(income.period)
         if balance is None:
@@ -910,13 +1045,14 @@ def _altman_series(snap: CompanySnapshot, financial: bool) -> List[AltmanPoint]:
         score = Altman(
             period=income.period,
             components=_altman_components(
-                income, balance, balance.equity, "Book equity",
-                ALTMAN_PRIVATE_WEIGHTS),
+                income, balance, balance.equity, "Book equity", ALTMAN_PRIVATE_WEIGHTS
+            ),
             safe_above=ALTMAN_PRIVATE_SAFE,
             distress_below=ALTMAN_PRIVATE_DISTRESS,
         )
-        out.append(AltmanPoint(
-            period=income.period, score=score.score, zone=score.zone))
+        out.append(
+            AltmanPoint(period=income.period, score=score.score, zone=score.zone)
+        )
     return out
 
 
@@ -950,8 +1086,11 @@ def _cash_totals(years: Sequence[CashflowPeriod]) -> CashTotals:
     investing = sum(c.cash_from_investing for c in years)
     financing = sum(c.cash_from_financing for c in years)
     return CashTotals(
-        cfo=cfo, capex=capex, dividends=dividends,
-        investing=investing, financing=financing,
+        cfo=cfo,
+        capex=capex,
+        dividends=dividends,
+        investing=investing,
+        financing=financing,
         # Adding a positive magnitude back to its signed section total
         # leaves everything else in that section.
         other_investing=investing + capex,
@@ -960,7 +1099,7 @@ def _cash_totals(years: Sequence[CashflowPeriod]) -> CashTotals:
     )
 
 
-def _flow_rows(totals: CashTotals) -> List[Tuple[float, str, str, str]]:
+def _flow_rows(totals: CashTotals) -> list[tuple[float, str, str, str]]:
     """The six net flows, each with the label it takes in either column.
 
     Held as data rather than as a run of calls so that the wording sits in one
@@ -968,52 +1107,70 @@ def _flow_rows(totals: CashTotals) -> List[Tuple[float, str, str, str]]:
     definition printed beneath the exhibit.
     """
     return [
-        (totals.cfo,
-         "Operating cash flow", "Operating cash outflow",
-         "Cash generated by operations, before capital expenditure"),
-        (-totals.capex,
-         "Capital expenditure recovered", "Capital expenditure",
-         "Purchases of property, plant, equipment and intangibles"),
-        (totals.other_investing,
-         "Net disposals and investment maturities",
-         "Net acquisitions and investments",
-         "Investing cash flow other than capital expenditure; a residual"),
-        (-totals.dividends,
-         "Dividends received", "Dividends paid",
-         "Cash dividends paid to shareholders"),
+        (
+            totals.cfo,
+            "Operating cash flow",
+            "Operating cash outflow",
+            "Cash generated by operations, before capital expenditure",
+        ),
+        (
+            -totals.capex,
+            "Capital expenditure recovered",
+            "Capital expenditure",
+            "Purchases of property, plant, equipment and intangibles",
+        ),
+        (
+            totals.other_investing,
+            "Net disposals and investment maturities",
+            "Net acquisitions and investments",
+            "Investing cash flow other than capital expenditure; a residual",
+        ),
+        (
+            -totals.dividends,
+            "Dividends received",
+            "Dividends paid",
+            "Cash dividends paid to shareholders",
+        ),
         # Deliberately neutral about what the residual contains. Calling the
         # outflow "net debt repaid" would have been wrong for one large IT
         # company, where the line was 44,374 crore of outflow while total debt
         # ROSE by 10,567: the money went to buybacks and lease payments, not
         # to retiring debt. The statement does not separate them, so the label
         # must not pretend it does.
-        (totals.other_financing,
-         "Net financing raised, other than dividends",
-         "Net financing returned, other than dividends",
-         "Financing cash flow other than dividends; a residual covering debt "
-         "drawn and repaid, buybacks and lease payments together"),
-        (-totals.net_cash_change,
-         "Cash and equivalents drawn down",
-         "Cash and equivalents built up",
-         "The closing balance the other lines leave behind"),
+        (
+            totals.other_financing,
+            "Net financing raised, other than dividends",
+            "Net financing returned, other than dividends",
+            "Financing cash flow other than dividends; a residual covering debt "
+            "drawn and repaid, buybacks and lease payments together",
+        ),
+        (
+            -totals.net_cash_change,
+            "Cash and equivalents drawn down",
+            "Cash and equivalents built up",
+            "The closing balance the other lines leave behind",
+        ),
     ]
 
 
 def _split_flows(
-    rows: Sequence[Tuple[float, str, str, str]],
-) -> Tuple[List[FlowItem], List[FlowItem]]:
+    rows: Sequence[tuple[float, str, str, str]],
+) -> tuple[list[FlowItem], list[FlowItem]]:
     """Files each net flow into whichever column its sign belongs to.
 
     A nil flow is dropped rather than printed as a zero row: the exhibit is a
     statement of what happened, and nothing happening is not a line.
     """
-    sources: List[FlowItem] = []
-    uses: List[FlowItem] = []
+    sources: list[FlowItem] = []
+    uses: list[FlowItem] = []
     for amount, source_label, use_label, definition in rows:
         if amount == 0:
             continue
-        item = FlowItem(label=source_label if amount > 0 else use_label,
-                        amount=amount, definition=definition)
+        item = FlowItem(
+            label=source_label if amount > 0 else use_label,
+            amount=amount,
+            definition=definition,
+        )
         (sources if amount > 0 else uses).append(item)
     return sources, uses
 
@@ -1021,7 +1178,7 @@ def _split_flows(
 def _balance_corroboration(
     snap: CompanySnapshot,
     years: Sequence[CashflowPeriod],
-) -> Tuple[Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None]:
     """Movement in debt and share count across the same window.
 
     The cash-flow residuals cannot say whether financing went to debt or to
@@ -1037,11 +1194,14 @@ def _balance_corroboration(
         return None, None
 
     first, last = balances[0], balances[-1]
-    debt_change = (None if (first.debt is None or last.debt is None)
-                   else last.debt - first.debt)
+    debt_change = (
+        None if (first.debt is None or last.debt is None) else last.debt - first.debt
+    )
     share_change = (
         fmt.pos_margin(last.shares_cr - first.shares_cr, first.shares_cr)
-        if (first.shares_cr and last.shares_cr) else None)
+        if (first.shares_cr and last.shares_cr)
+        else None
+    )
     return debt_change, share_change
 
 
@@ -1071,14 +1231,25 @@ def _sources_and_uses(snap: CompanySnapshot, window: int) -> SourcesAndUses:
         window actually used is recorded on the result.
     """
     usable = [
-        c for c in snap.cashflow
-        if None not in (c.cfo, c.capex, c.fcf, c.dividends_paid,
-                        c.cash_from_investing, c.cash_from_financing)
+        c
+        for c in snap.cashflow
+        if None
+        not in (
+            c.cfo,
+            c.capex,
+            c.fcf,
+            c.dividends_paid,
+            c.cash_from_investing,
+            c.cash_from_financing,
+        )
     ][-window:]
     if not usable:
-        return SourcesAndUses(notes=[
-            "The provider reports no cash flow statement for this company, so "
-            "capital allocation cannot be traced."])
+        return SourcesAndUses(
+            notes=[
+                "The provider reports no cash flow statement for this company, so "
+                "capital allocation cannot be traced."
+            ]
+        )
 
     result = SourcesAndUses(
         from_period=usable[0].period,
@@ -1090,9 +1261,9 @@ def _sources_and_uses(snap: CompanySnapshot, window: int) -> SourcesAndUses:
 
     if len(usable) < min(window, len(snap.cashflow)):
         result.notes.append(
-            "Accumulated over the %d years with a complete cash flow "
+            f"Accumulated over the {len(usable)} years with a complete cash flow "
             "statement; earlier years are missing one or more lines."
-            % len(usable))
+        )
     return result
 
 
@@ -1114,11 +1285,15 @@ def _reinvestment_year(
     what wore out. Depreciation stands in for maintenance capital, which is
     the standard simplification and is stated on the page.
     """
-    delta_working_capital = _less(_non_cash_working_capital(balance),
-                                  _non_cash_working_capital(prior_balance))
+    delta_working_capital = _less(
+        _non_cash_working_capital(balance), _non_cash_working_capital(prior_balance)
+    )
     net_capex = _less(cash.capex, income.depreciation)
-    reinvestment = (None if (net_capex is None or delta_working_capital is None)
-                    else net_capex + delta_working_capital)
+    reinvestment = (
+        None
+        if (net_capex is None or delta_working_capital is None)
+        else net_capex + delta_working_capital
+    )
     rate = fmt.pos_margin(reinvestment, metrics.nopat)
 
     return ReinvestmentYear(
@@ -1131,8 +1306,11 @@ def _reinvestment_year(
         reinvestment=reinvestment,
         reinvestment_rate=rate,
         roic=metrics.roic,
-        implied_growth=(None if (rate is None or metrics.roic is None)
-                        else rate / 100.0 * metrics.roic),
+        implied_growth=(
+            None
+            if (rate is None or metrics.roic is None)
+            else rate / 100.0 * metrics.roic
+        ),
         revenue_growth=fmt.growth(income.revenue, prior.revenue),
     )
 
@@ -1140,18 +1318,18 @@ def _reinvestment_year(
 def _reinvestment_years(
     snap: CompanySnapshot,
     derived: DerivedAnalytics,
-) -> List[ReinvestmentYear]:
+) -> list[ReinvestmentYear]:
     """Measures every year that has the statements the identity needs.
 
     A year is skipped rather than part-measured: the working-capital movement
     needs the prior balance sheet, so the first year of any series cannot be
     measured at all.
     """
-    metrics_by_period: Dict[str, AnnualMetrics] = {m.period: m for m in derived.annual}
+    metrics_by_period: dict[str, AnnualMetrics] = {m.period: m for m in derived.annual}
     balance_by_period = {b.period: b for b in snap.balance}
     cash_by_period = {c.period: c for c in snap.cashflow}
 
-    years: List[ReinvestmentYear] = []
+    years: list[ReinvestmentYear] = []
     for position, income in enumerate(snap.years):
         if position == 0:
             continue
@@ -1162,14 +1340,15 @@ def _reinvestment_years(
         metrics = metrics_by_period.get(income.period)
         if balance is None or prior_balance is None or cash is None or metrics is None:
             continue
-        years.append(_reinvestment_year(
-            income, prior, balance, prior_balance, cash, metrics))
+        years.append(
+            _reinvestment_year(income, prior, balance, prior_balance, cash, metrics)
+        )
     return years
 
 
 def _reinvestment_window(
     years: Sequence[ReinvestmentYear],
-) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None, float | None]:
     """Totals the window: reinvestment, NOPAT, and the rate between them.
 
     The rate is aggregated, not averaged. A mean of annual rates lets one
@@ -1188,14 +1367,17 @@ def _reinvestment_window(
     if not reinvestments or len(reinvestments) != len(nopats):
         return None, None, None
     total_reinvestment, total_nopat = sum(reinvestments), sum(nopats)
-    return (total_reinvestment, total_nopat,
-            fmt.pos_margin(total_reinvestment, total_nopat))
+    return (
+        total_reinvestment,
+        total_nopat,
+        fmt.pos_margin(total_reinvestment, total_nopat),
+    )
 
 
 def _delivered_growth(
     snap: CompanySnapshot,
     years: Sequence[ReinvestmentYear],
-) -> Tuple[Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None]:
     """Revenue and EBIT CAGR across the same window the identity covers.
 
     Measured over the identity's own window so that the two sides of the
@@ -1206,29 +1388,36 @@ def _delivered_growth(
     if len(income) < 2:
         return None, None
     spans = len(income) - 1
-    return (_cagr(income[0].revenue, income[-1].revenue, spans),
-            _cagr(income[0].ebit, income[-1].ebit, spans))
+    return (
+        _cagr(income[0].revenue, income[-1].revenue, spans),
+        _cagr(income[0].ebit, income[-1].ebit, spans),
+    )
 
 
 def _reinvestment_notes(
     result: Reinvestment,
     years: Sequence[ReinvestmentYear],
-) -> List[str]:
+) -> list[str]:
     """The caveats that keep the exhibit readable as evidence.
 
     Two of the three explain a gap the reader would otherwise take as a
     contradiction, which is the difference between an exhibit that informs
     and one that looks broken.
     """
-    notes: List[str] = []
+    notes: list[str] = []
 
-    withheld = [y.period for y in years
-                if y.reinvestment is not None and y.reinvestment_rate is None]
+    withheld = [
+        y.period
+        for y in years
+        if y.reinvestment is not None and y.reinvestment_rate is None
+    ]
     if withheld:
         notes.append(
-            "The reinvestment rate is withheld for %s: net operating profit "
+            "The reinvestment rate is withheld for "
+            f"{', '.join(fmt.period_label(p) for p in withheld)}: net operating profit "
             "after tax was nil or negative, and a rate against that base "
-            "carries no meaning." % ", ".join(fmt.period_label(p) for p in withheld))
+            "carries no meaning."
+        )
 
     # The identity only sees investment that lands on the balance sheet. A
     # business that grows by hiring, or by spending on research and brand,
@@ -1250,11 +1439,12 @@ def _reinvestment_notes(
     elif result.growth_gap is not None and abs(result.growth_gap) > 5.0:
         notes.append(
             "Delivered revenue growth differs from the growth reinvestment "
-            "implies by %s. A positive gap points to growth from sources this "
+            f"implies by {fmt.signed_pct(result.growth_gap)}. A positive gap points to "
+            "growth from sources this "
             "identity does not capture, such as pricing, acquisitions "
             "accounted for outside capital expenditure, or expensed "
             "investment; a negative gap means capital went in without "
-            "commensurate growth coming out." % fmt.signed_pct(result.growth_gap)
+            "commensurate growth coming out."
         )
     return notes
 
@@ -1278,19 +1468,24 @@ def _reinvestment(
     the standard simplification and is stated on the page.
     """
     if financial:
-        return Reinvestment(withheld_reason=(
-            "The reinvestment identity is withheld for financials. It measures "
-            "growth bought with fixed assets and working capital, and a lender "
-            "grows by deploying its balance sheet instead: capital expenditure "
-            "is incidental to the business and working capital is not a "
-            "meaningful concept where deposits are a current liability."
-        ))
+        return Reinvestment(
+            withheld_reason=(
+                "The reinvestment identity is withheld for financials. It measures "
+                "growth bought with fixed assets and working capital, and a lender "
+                "grows by deploying its balance sheet instead: capital expenditure "
+                "is incidental to the business and working capital is not a "
+                "meaningful concept where deposits are a current liability."
+            )
+        )
 
     years = _reinvestment_years(snap, derived)[-window:]
     if not years:
-        return Reinvestment(withheld_reason=(
-            "Two consecutive years of balance sheet and cash flow are needed "
-            "to measure reinvestment, and the provider reports fewer."))
+        return Reinvestment(
+            withheld_reason=(
+                "Two consecutive years of balance sheet and cash flow are needed "
+                "to measure reinvestment, and the provider reports fewer."
+            )
+        )
 
     result = Reinvestment(
         years=years,
@@ -1299,11 +1494,18 @@ def _reinvestment(
         average_roic=_mean([y.roic for y in years]),
     )
 
-    (result.total_reinvestment, result.total_nopat,
-     result.aggregate_reinvestment_rate) = _reinvestment_window(years)
-    if result.aggregate_reinvestment_rate is not None and result.average_roic is not None:
+    (
+        result.total_reinvestment,
+        result.total_nopat,
+        result.aggregate_reinvestment_rate,
+    ) = _reinvestment_window(years)
+    if (
+        result.aggregate_reinvestment_rate is not None
+        and result.average_roic is not None
+    ):
         result.implied_growth = (
-            result.aggregate_reinvestment_rate / 100.0 * result.average_roic)
+            result.aggregate_reinvestment_rate / 100.0 * result.average_roic
+        )
 
     result.actual_revenue_cagr, result.actual_ebit_cagr = _delivered_growth(snap, years)
     result.notes.extend(_reinvestment_notes(result, years))
@@ -1328,7 +1530,7 @@ def _dupont(snap: CompanySnapshot) -> Dupont:
     balance_by_period = {b.period: b for b in snap.balance}
     periods = list(snap.years) + ([snap.ttm] if snap.ttm else [])
 
-    rows: List[DupontYear] = []
+    rows: list[DupontYear] = []
     for income in periods:
         balance = balance_by_period.get(income.period)
         # The trailing row has no balance sheet of its own; the latest
@@ -1337,15 +1539,17 @@ def _dupont(snap: CompanySnapshot) -> Dupont:
             balance = snap.balance[-1]
         if balance is None:
             continue
-        rows.append(DupontYear(
-            period=income.period,
-            tax_burden=fmt.pos_div(income.pat, income.pbt),
-            interest_burden=fmt.pos_div(income.pbt, income.ebit),
-            operating_margin=fmt.pos_margin(income.ebit, income.revenue),
-            asset_turnover=fmt.pos_div(income.revenue, balance.total_assets),
-            equity_multiplier=fmt.pos_div(balance.total_assets, balance.equity),
-            roe_direct=fmt.pos_margin(income.pat, balance.equity),
-        ))
+        rows.append(
+            DupontYear(
+                period=income.period,
+                tax_burden=fmt.pos_div(income.pat, income.pbt),
+                interest_burden=fmt.pos_div(income.pbt, income.ebit),
+                operating_margin=fmt.pos_margin(income.ebit, income.revenue),
+                asset_turnover=fmt.pos_div(income.revenue, balance.total_assets),
+                equity_multiplier=fmt.pos_div(balance.total_assets, balance.equity),
+                roe_direct=fmt.pos_margin(income.pat, balance.equity),
+            )
+        )
 
     result = Dupont(years=rows)
 
@@ -1360,11 +1564,19 @@ def _dupont(snap: CompanySnapshot) -> Dupont:
             "asset_turnover": provider.get("asset_turnover_x"),
             "equity_multiplier": provider.get("equity_multiplier_x"),
         }
-        match = next((r for r in rows
-                      if r.period.strip().upper()
-                      == result.provider_period.strip().upper()), None)
-        if match is not None and match.roe_product is not None \
-                and result.provider_roe is not None:
+        match = next(
+            (
+                r
+                for r in rows
+                if r.period.strip().upper() == result.provider_period.strip().upper()
+            ),
+            None,
+        )
+        if (
+            match is not None
+            and match.roe_product is not None
+            and result.provider_roe is not None
+        ):
             result.reconciliation_delta = match.roe_product - result.provider_roe
     return result
 
@@ -1399,10 +1611,13 @@ def compute(
         piotroski = _piotroski_at(rows, len(rows) - 1, financial)
         trend = _piotroski_series(rows, financial)
     else:
-        piotroski = Piotroski(withheld=[
-            "The F-Score needs three consecutive years of statements, because "
-            "its change tests are scaled by opening assets. The provider "
-            "reports %d." % len(rows)])
+        piotroski = Piotroski(
+            withheld=[
+                "The F-Score needs three consecutive years of statements, because "
+                "its change tests are scaled by opening assets. The provider "
+                f"reports {len(rows)}."
+            ]
+        )
         trend = []
 
     composites = Composites(
@@ -1424,8 +1639,8 @@ def compute(
         )
     if piotroski.tests and not piotroski.comparable:
         composites.notes.append(
-            "The F-Score is reported out of %d evaluated signals rather than "
+            f"The F-Score is reported out of {piotroski.computable} evaluated signals "
+            "rather than "
             "nine and is therefore not comparable with a standard F-Score."
-            % piotroski.computable
         )
     return composites

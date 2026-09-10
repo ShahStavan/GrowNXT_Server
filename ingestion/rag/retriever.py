@@ -8,18 +8,23 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict, dataclass, field
 import json
 import logging
-from pathlib import Path
 import time
-from typing import Any, Dict, List, Optional, Sequence, Set
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 from core.config import safe_ticker
-from ingestion.indexer import IndexerConfig, QdrantVectorIndexer
+from ingestion.indexer import (
+    LOCAL_PAYLOADS_FILENAME,
+    LOCAL_VECTORS_FILENAME,
+    IndexerConfig,
+    QdrantVectorIndexer,
+)
 from ingestion.rag.probes import ThematicProbe
 
 logger = logging.getLogger(__name__)
@@ -66,7 +71,7 @@ class EvidenceChunk:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EvidenceChunk":
+    def from_dict(cls, data: dict[str, Any]) -> EvidenceChunk:
         return cls(
             chunk_id=str(data.get("chunk_id", "")),
             doc_id=str(data.get("doc_id", "")),
@@ -96,8 +101,14 @@ def _load_probe_cache() -> None:
         return
     if PROBE_CACHE_FILE.exists():
         try:
-            _PROBE_EMBEDDING_CACHE = json.loads(PROBE_CACHE_FILE.read_text(encoding="utf-8"))
-            logger.info("Loaded %d pre-computed probe embeddings from disk cache (%s).", len(_PROBE_EMBEDDING_CACHE), PROBE_CACHE_FILE.name)
+            _PROBE_EMBEDDING_CACHE = json.loads(
+                PROBE_CACHE_FILE.read_text(encoding="utf-8")
+            )
+            logger.info(
+                "Loaded %d pre-computed probe embeddings from disk cache (%s).",
+                len(_PROBE_EMBEDDING_CACHE),
+                PROBE_CACHE_FILE.name,
+            )
         except Exception as exc:
             logger.warning("Could not load probe vector cache from disk: %s", exc)
 
@@ -107,8 +118,14 @@ def _save_probe_cache() -> None:
     if not _PROBE_EMBEDDING_CACHE:
         return
     try:
-        PROBE_CACHE_FILE.write_text(json.dumps(_PROBE_EMBEDDING_CACHE), encoding="utf-8")
-        logger.info("Persisted %d probe embeddings to disk cache (%s).", len(_PROBE_EMBEDDING_CACHE), PROBE_CACHE_FILE.name)
+        PROBE_CACHE_FILE.write_text(
+            json.dumps(_PROBE_EMBEDDING_CACHE), encoding="utf-8"
+        )
+        logger.info(
+            "Persisted %d probe embeddings to disk cache (%s).",
+            len(_PROBE_EMBEDDING_CACHE),
+            PROBE_CACHE_FILE.name,
+        )
     except Exception as exc:
         logger.warning("Could not persist probe vector cache to disk: %s", exc)
 
@@ -118,8 +135,8 @@ class ParallelVectorRetriever:
 
     def __init__(
         self,
-        indexer: Optional[QdrantVectorIndexer] = None,
-        config: Optional[IndexerConfig] = None,
+        indexer: QdrantVectorIndexer | None = None,
+        config: IndexerConfig | None = None,
     ) -> None:
         self.indexer = indexer or QdrantVectorIndexer(config=config)
 
@@ -127,8 +144,8 @@ class ParallelVectorRetriever:
         self,
         ticker: str,
         query: str,
-        doc_types: Optional[Sequence[str]] = None,
-        element_types: Optional[Sequence[str]] = None,
+        doc_types: Sequence[str] | None = None,
+        element_types: Sequence[str] | None = None,
         limit: int = DEFAULT_RETRIEVAL_TOP_K,
     ) -> list[EvidenceChunk]:
         """Executes a single semantic query against Qdrant with payload filtering."""
@@ -138,7 +155,8 @@ class ParallelVectorRetriever:
             hits = self.indexer.search(
                 query=query,
                 ticker=sym,
-                limit=limit * 2,  # Fetch slightly wider candidate pool for subsequent filtering
+                limit=limit
+                * 2,  # Fetch slightly wider candidate pool for subsequent filtering
             )
         except Exception as exc:
             logger.error("[%s] Search failed for query '%s': %s", sym, query, exc)
@@ -146,7 +164,9 @@ class ParallelVectorRetriever:
 
         results: list[EvidenceChunk] = []
         doc_type_filter = {d.strip().lower() for d in doc_types} if doc_types else None
-        elem_type_filter = {e.strip().lower() for e in element_types} if element_types else None
+        elem_type_filter = (
+            {e.strip().lower() for e in element_types} if element_types else None
+        )
 
         for hit in hits:
             payload = hit.get("payload") or {}
@@ -185,8 +205,8 @@ class ParallelVectorRetriever:
         ticker: str,
         query: str,
         query_vector: list[float],
-        doc_types: Optional[Sequence[str]] = None,
-        element_types: Optional[Sequence[str]] = None,
+        doc_types: Sequence[str] | None = None,
+        element_types: Sequence[str] | None = None,
         limit: int = DEFAULT_RETRIEVAL_TOP_K,
     ) -> list[EvidenceChunk]:
         """Executes a search against Qdrant using a pre-computed embedding vector."""
@@ -198,12 +218,16 @@ class ParallelVectorRetriever:
                 limit=limit * 2,
             )
         except Exception as exc:
-            logger.error("[%s] Search by vector failed for query '%s': %s", sym, query, exc)
+            logger.error(
+                "[%s] Search by vector failed for query '%s': %s", sym, query, exc
+            )
             return []
 
         results: list[EvidenceChunk] = []
         doc_type_filter = {d.strip().lower() for d in doc_types} if doc_types else None
-        elem_type_filter = {e.strip().lower() for e in element_types} if element_types else None
+        elem_type_filter = (
+            {e.strip().lower() for e in element_types} if element_types else None
+        )
 
         for hit in hits:
             payload = hit.get("payload") or {}
@@ -242,7 +266,6 @@ class ParallelVectorRetriever:
         ticker: str,
         probes: Sequence[ThematicProbe],
         top_k_per_query: int = DEFAULT_RETRIEVAL_TOP_K,
-        max_workers: int = DEFAULT_PARALLEL_WORKERS,
     ) -> dict[str, list[EvidenceChunk]]:
         """Executes high-throughput batch-embedded single-flight vector searches across all probes."""
         total_start = time.perf_counter()
@@ -261,12 +284,18 @@ class ParallelVectorRetriever:
         t_embed_start = time.perf_counter()
         uncached_queries = [q for q in all_queries if q not in _PROBE_EMBEDDING_CACHE]
         if uncached_queries:
-            computed_vectors = self.indexer.embed_texts(uncached_queries, task="retrieval.query", is_query=True)
-            for q, vec in zip(uncached_queries, computed_vectors):
+            computed_vectors = self.indexer.embed_texts(
+                uncached_queries, task="retrieval.query", is_query=True
+            )
+            for q, vec in zip(uncached_queries, computed_vectors, strict=True):
                 _PROBE_EMBEDDING_CACHE[q] = vec
             _save_probe_cache()
 
-        query_vec_map = {q: _PROBE_EMBEDDING_CACHE[q] for q in all_queries if q in _PROBE_EMBEDDING_CACHE}
+        query_vec_map = {
+            q: _PROBE_EMBEDDING_CACHE[q]
+            for q in all_queries
+            if q in _PROBE_EMBEDDING_CACHE
+        }
         embed_elapsed = time.perf_counter() - t_embed_start
 
         logger.info(
@@ -279,8 +308,9 @@ class ParallelVectorRetriever:
         )
 
         # Tier-1: Ultra-Fast Sub-Millisecond Local Vector Matrix Dot-Product
-        local_vec_file = Path(f"output/{sym}/vectors.npz")
-        local_payload_file = Path(f"output/{sym}/payloads.json")
+        ticker_dir = self.indexer.config.output_dir / sym
+        local_vec_file = ticker_dir / LOCAL_VECTORS_FILENAME
+        local_payload_file = ticker_dir / LOCAL_PAYLOADS_FILENAME
 
         if local_vec_file.exists() and local_payload_file.exists():
             try:
@@ -301,13 +331,19 @@ class ParallelVectorRetriever:
                 if q_list and len(doc_vectors) > 0:
                     q_mat = np.array(q_list, dtype=np.float32)
                     q_mat /= np.linalg.norm(q_mat, axis=1, keepdims=True)
-                    doc_norm = doc_vectors / np.linalg.norm(doc_vectors, axis=1, keepdims=True)
+                    doc_norm = doc_vectors / np.linalg.norm(
+                        doc_vectors, axis=1, keepdims=True
+                    )
 
                     sim_matrix = np.dot(q_mat, doc_norm.T)
 
                     seen_per_pillar = {p.pillar: set() for p in probes}
                     for idx, (pillar, query, doc_types) in enumerate(slot_map):
-                        doc_filter = {d.strip().lower() for d in doc_types} if doc_types else None
+                        doc_filter = (
+                            {d.strip().lower() for d in doc_types}
+                            if doc_types
+                            else None
+                        )
                         row_scores = sim_matrix[idx]
                         top_idxs = np.argsort(-row_scores)
                         count = 0
@@ -330,7 +366,9 @@ class ParallelVectorRetriever:
                                     element_type=str(pl.get("element_type", "text")),
                                     page_start=int(pl.get("page_start", 0)),
                                     page_end=int(pl.get("page_end", 0)),
-                                    section_breadcrumb=str(pl.get("section_breadcrumb", "")),
+                                    section_breadcrumb=str(
+                                        pl.get("section_breadcrumb", "")
+                                    ),
                                     content=str(pl.get("content", "")),
                                     score=float(row_scores[didx]),
                                     query_matched=query,
@@ -355,7 +393,9 @@ class ParallelVectorRetriever:
                     )
                     return results
             except Exception as exc:
-                logger.warning("[%s] Local vector search fallback to Qdrant Cloud: %s", sym, exc)
+                logger.warning(
+                    "[%s] Local vector search fallback to Qdrant Cloud: %s", sym, exc
+                )
 
         # Tier-2: Single-Flight Batch Search to Qdrant Cloud
         t_search_start = time.perf_counter()
@@ -378,14 +418,27 @@ class ParallelVectorRetriever:
                 )
 
         # Execute single HTTP flight with high-efficiency field projection (stripped heavy metadata)
-        with_payload = ["content", "label", "page_start", "page_end", "doc_type", "section_breadcrumb", "chunk_id", "ticker"]
+        with_payload = [
+            "content",
+            "label",
+            "page_start",
+            "page_end",
+            "doc_type",
+            "section_breadcrumb",
+            "chunk_id",
+            "ticker",
+        ]
         try:
             batch_hits = self.indexer.search_batch_by_vectors(
                 requests=batch_search_requests,
                 with_payload=with_payload,
             )
         except Exception as exc:
-            logger.error("[%s] Batch vector search failed: %s, falling back to parallel searches.", sym, exc)
+            logger.error(
+                "[%s] Batch vector search failed: %s, falling back to parallel searches.",
+                sym,
+                exc,
+            )
             batch_hits = []
 
         search_elapsed = time.perf_counter() - t_search_start
@@ -393,8 +446,12 @@ class ParallelVectorRetriever:
         # 4. Map results back to respective pillars
         if batch_hits and len(batch_hits) == len(query_slot_map):
             seen_per_pillar: dict[str, set[str]] = {p.pillar: set() for p in probes}
-            for (pillar, query, doc_types), hits in zip(query_slot_map, batch_hits):
-                doc_type_filter = {d.strip().lower() for d in doc_types} if doc_types else None
+            for (pillar, query, doc_types), hits in zip(
+                query_slot_map, batch_hits, strict=True
+            ):
+                doc_type_filter = (
+                    {d.strip().lower() for d in doc_types} if doc_types else None
+                )
                 for hit in hits:
                     payload = hit.get("payload") or {}
                     hit_doc_type = str(payload.get("doc_type", "")).lower()
@@ -416,7 +473,9 @@ class ParallelVectorRetriever:
                             element_type=str(payload.get("element_type", "text")),
                             page_start=int(payload.get("page_start", 0)),
                             page_end=int(payload.get("page_end", 0)),
-                            section_breadcrumb=str(payload.get("section_breadcrumb", "")),
+                            section_breadcrumb=str(
+                                payload.get("section_breadcrumb", "")
+                            ),
                             content=str(payload.get("content", "")),
                             score=float(hit.get("score", 0.0)),
                             query_matched=query,

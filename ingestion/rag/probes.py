@@ -8,10 +8,9 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Set
-
-from core.config import safe_ticker
+from typing import Any
 
 PILLAR_STRATEGY_GROWTH: str = "strategy_growth"
 PILLAR_SEGMENT_DYNAMICS: str = "segment_dynamics"
@@ -20,7 +19,7 @@ PILLAR_CAPITAL_ALLOCATION: str = "capital_allocation"
 PILLAR_CONCALL_HIGHLIGHTS: str = "concall_highlights"
 PILLAR_KEY_RISKS_AUDIT: str = "key_risks_audit"
 
-PILLAR_TITLES: Dict[str, str] = {
+PILLAR_TITLES: dict[str, str] = {
     PILLAR_STRATEGY_GROWTH: "Strategic Growth Pillars & Multi-Year Roadmap",
     PILLAR_SEGMENT_DYNAMICS: "Core Business Segments & Revenue Drivers",
     PILLAR_MARGIN_COST: "Operating Margins, Pricing Power & Cost Pressures",
@@ -115,7 +114,7 @@ def get_default_probes() -> list[ThematicProbe]:
 
 
 def build_adaptive_probes(
-    ticker: str,
+    ticker: str,  # noqa: ARG001 - kept for call-site/interface compatibility
     available_doc_types: Sequence[str],
 ) -> list[ThematicProbe]:
     """Builds adaptive research probes based on document availability for a stock.
@@ -136,7 +135,6 @@ def build_adaptive_probes(
     adaptive_probes: list[ThematicProbe] = []
 
     has_transcript = any(t in avail_set for t in ("concall_transcript", "transcript"))
-    has_presentation = any(t in avail_set for t in ("concall_presentation", "presentation"))
     has_annual = "annual_report" in avail_set or len(avail_set) == 0
 
     for probe in master_probes:
@@ -165,13 +163,17 @@ def build_adaptive_probes(
                     pillar=probe.pillar,
                     title="Management Discussion & Strategic Outlook (Annual Report MD&A)",
                     queries=adapted_queries,
-                    target_doc_types=["annual_report"] if has_annual else list(avail_set),
+                    target_doc_types=["annual_report"]
+                    if has_annual
+                    else list(avail_set),
                     priority=probe.priority,
                 )
             )
         else:
             # General fallback to available doc types
-            fallback = [dt for dt in probe.fallback_doc_types if dt in avail_set] or list(avail_set)
+            fallback = [
+                dt for dt in probe.fallback_doc_types if dt in avail_set
+            ] or list(avail_set)
             adaptive_probes.append(
                 ThematicProbe(
                     pillar=probe.pillar,

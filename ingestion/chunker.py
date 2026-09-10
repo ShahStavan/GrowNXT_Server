@@ -11,14 +11,14 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
-from collections import Counter
-from dataclasses import dataclass, field
 import hashlib
 import json
 import logging
-import os
+from collections import Counter
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import (
@@ -121,7 +121,7 @@ class Chunk:
         )
 
     @classmethod
-    def from_node(cls, node: BaseNode) -> "Chunk":
+    def from_node(cls, node: BaseNode) -> Chunk:
         """Builds a Chunk from a LlamaIndex Node."""
         meta = dict(node.metadata or {})
         fig_path = str(meta.get("figure_path", ""))
@@ -170,7 +170,7 @@ class Chunk:
         return out
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "Chunk":
+    def from_dict(cls, payload: dict[str, Any]) -> Chunk:
         tbl = payload.get("table")
         fig = payload.get("figure")
         return cls(
@@ -227,9 +227,13 @@ class ChunkSet:
         nodes = [c.to_node() for c in self.chunks]
         for i in range(len(nodes)):
             if i > 0:
-                nodes[i].relationships[NodeRelationship.PREVIOUS] = RelatedNodeInfo(node_id=nodes[i - 1].node_id)
+                nodes[i].relationships[NodeRelationship.PREVIOUS] = RelatedNodeInfo(
+                    node_id=nodes[i - 1].node_id
+                )
             if i < len(nodes) - 1:
-                nodes[i].relationships[NodeRelationship.NEXT] = RelatedNodeInfo(node_id=nodes[i + 1].node_id)
+                nodes[i].relationships[NodeRelationship.NEXT] = RelatedNodeInfo(
+                    node_id=nodes[i + 1].node_id
+                )
         return nodes
 
     @classmethod
@@ -240,8 +244,8 @@ class ChunkSet:
         ticker: str = "",
         doc_type: str = "",
         label: str = "",
-        params: Optional[dict[str, Any]] = None,
-    ) -> "ChunkSet":
+        params: dict[str, Any] | None = None,
+    ) -> ChunkSet:
         """Reconstructs a ChunkSet from a sequence of LlamaIndex nodes."""
         chunks = [Chunk.from_node(n) for n in nodes]
         fingerprint = _sha256(
@@ -274,7 +278,7 @@ class ChunkSet:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "ChunkSet":
+    def from_dict(cls, payload: dict[str, Any]) -> ChunkSet:
         return cls(
             doc_id=str(payload.get("doc_id", "")),
             ticker=str(payload.get("ticker", "")),
@@ -300,11 +304,49 @@ class ChunkSet:
         return "\n\n".join(parts)
 
 
+def chunk_params(
+    document: ExtractedDocument,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
+    skip_sections: Sequence[str] | None = None,
+    min_figure_pixels: int = MIN_FIGURE_PIXELS,
+) -> dict[str, Any]:
+    """Returns the settings that determine a chunk set's content.
+
+    `chunk_document` records this on the `ChunkSet` and folds it into the
+    fingerprint, so a caller wanting to know whether a chunk file on disk is
+    what this configuration would produce compares this dict against the
+    recorded one -- one comparison, not a list of fields that drifts the next
+    time a setting is added here.
+
+    Args:
+        document: The extraction being chunked; its `extractor` version is
+            part of the answer, because different text chunks differently.
+        chunk_size: Target chunk size, in characters.
+        chunk_overlap: Overlap between adjacent chunks, in characters.
+        skip_sections: Section headings to drop.
+        min_figure_pixels: Smallest figure edge worth keeping.
+
+    Returns:
+        The parameter record, JSON-round-trippable.
+    """
+    return {
+        "chunk_size": int(chunk_size),
+        "chunk_overlap": int(chunk_overlap),
+        "skip_sections": sorted({s.strip().lower() for s in (skip_sections or ())}),
+        "min_figure_pixels": int(min_figure_pixels),
+        "version": CHUNKER_VERSION,
+        # Recorded so the indexer's state can tell a chunk file produced by an
+        # older extractor from one the current pipeline would produce.
+        "extractor": str(document.extractor or ""),
+    }
+
+
 def chunk_document(
     document: ExtractedDocument,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
-    skip_sections: Optional[Sequence[str]] = None,
+    skip_sections: Sequence[str] | None = None,
     min_figure_pixels: int = MIN_FIGURE_PIXELS,
 ) -> ChunkSet:
     """Decomposes an ExtractedDocument into multimodal element chunks using LlamaIndex."""
@@ -421,7 +463,8 @@ def chunk_document(
                             section=sec,
                             path=list(block.path),
                             text=block.text.strip(),
-                            embed_text=_context(page, trail, "Table") + block.text.strip(),
+                            embed_text=_context(page, trail, "Table")
+                            + block.text.strip(),
                             table=tbl,
                         )
                     )
@@ -431,7 +474,12 @@ def chunk_document(
             if tbl.n_rows <= MAX_TABLE_ROWS and len(tbl_md) <= MAX_TABLE_CHARS:
                 seq += 1
                 cid = f"{document.doc_id}_p{page:04d}_tbl_{seq:03d}"
-                meta = {"n_rows": tbl.n_rows, "n_cols": tbl.n_cols, "header_rows": tbl.header_rows, "caption": tbl.caption}
+                meta = {
+                    "n_rows": tbl.n_rows,
+                    "n_cols": tbl.n_cols,
+                    "header_rows": tbl.header_rows,
+                    "caption": tbl.caption,
+                }
                 chunks.append(
                     Chunk(
                         chunk_id=cid,
@@ -452,7 +500,7 @@ def chunk_document(
                 )
             else:
                 # Row-wise partitioning with header preservation
-                hdrs = tbl.rows[:tbl.header_rows] if tbl.header_rows > 0 else []
+                hdrs = tbl.rows[: tbl.header_rows] if tbl.header_rows > 0 else []
                 body = tbl.body if tbl.header_rows > 0 else tbl.rows
                 batch_size = max(10, MAX_TABLE_ROWS - max(1, tbl.header_rows))
                 total_parts = (len(body) + batch_size - 1) // batch_size
@@ -489,7 +537,10 @@ def chunk_document(
                             section=sec,
                             path=list(block.path),
                             text=sub_md,
-                            embed_text=_context(page, trail, f"Table Part {part}/{total_parts}") + sub_md,
+                            embed_text=_context(
+                                page, trail, f"Table Part {part}/{total_parts}"
+                            )
+                            + sub_md,
                             metadata=meta,
                             table=sub_table,
                         )
@@ -499,7 +550,11 @@ def chunk_document(
         if block.kind == KIND_FIGURE:
             _flush_text()
             fig = block.figure
-            if fig is None or fig.width < min_figure_pixels or fig.height < min_figure_pixels:
+            if (
+                fig is None
+                or fig.width < min_figure_pixels
+                or fig.height < min_figure_pixels
+            ):
                 continue
             if fig.kind == "icon" and not fig.caption:
                 continue
@@ -534,7 +589,13 @@ def chunk_document(
                     text=text,
                     embed_text=embed_text,
                     figure_path=fig.path,
-                    metadata={"figure_path": fig.path, "kind": fig.kind, "caption": fig.caption, "width": fig.width, "height": fig.height},
+                    metadata={
+                        "figure_path": fig.path,
+                        "kind": fig.kind,
+                        "caption": fig.caption,
+                        "width": fig.width,
+                        "height": fig.height,
+                    },
                     figure=fig,
                 )
             )
@@ -556,13 +617,13 @@ def chunk_document(
 
     _flush_text()
 
-    params = {
-        "chunk_size": int(chunk_size),
-        "chunk_overlap": int(chunk_overlap),
-        "skip_sections": sorted(list(skip_set)),
-        "min_figure_pixels": int(min_figure_pixels),
-        "version": CHUNKER_VERSION,
-    }
+    params = chunk_params(
+        document,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        skip_sections=skip_sections,
+        min_figure_pixels=min_figure_pixels,
+    )
     fingerprint = _sha256(
         "|".join(f"{c.chunk_id}:{_sha256(c.text)}" for c in chunks)
         + f"|{json.dumps(params, sort_keys=True)}"
@@ -601,10 +662,10 @@ def write_chunk_cache(chunk_set: ChunkSet, path: Path) -> None:
         json.dumps(chunk_set.to_dict(), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    os.replace(str(temp_path), str(target))
+    temp_path.replace(target)
 
 
-def read_chunk_cache(path: Path) -> Optional[ChunkSet]:
+def read_chunk_cache(path: Path) -> ChunkSet | None:
     """Reads a ChunkSet from disk, returning None if unreadable or absent."""
     target = Path(path)
     if not target.exists():

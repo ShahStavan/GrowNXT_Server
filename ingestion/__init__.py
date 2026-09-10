@@ -42,10 +42,10 @@ from ingestion.documents.storage import (
     DocumentStore,
 )
 from ingestion.fetcher import (
-    DOC_TYPES,
     DOC_TYPE_ANNUAL_REPORT,
     DOC_TYPE_PRESENTATION,
     DOC_TYPE_TRANSCRIPT,
+    DOC_TYPES,
     STAGES,
     DocumentRecord,
     FetchResult,

@@ -42,8 +42,14 @@ KIND_FORMULA: str = "formula"
 KIND_CODE: str = "code"
 
 KINDS: tuple[str, ...] = (
-    KIND_HEADING, KIND_TEXT, KIND_LIST, KIND_TABLE,
-    KIND_FIGURE, KIND_CAPTION, KIND_FORMULA, KIND_CODE,
+    KIND_HEADING,
+    KIND_TEXT,
+    KIND_LIST,
+    KIND_TABLE,
+    KIND_FIGURE,
+    KIND_CAPTION,
+    KIND_FORMULA,
+    KIND_CODE,
 )
 
 
@@ -95,7 +101,8 @@ class Table:
             return []
         return [
             " ".join(
-                row[column] for row in self.rows[:self.header_rows]
+                row[column]
+                for row in self.rows[: self.header_rows]
                 if column < len(row) and row[column]
             )
             for column in range(self.n_cols)
@@ -104,7 +111,7 @@ class Table:
     @property
     def body(self) -> list[list[str]]:
         """Returns the rows below the header."""
-        return self.rows[self.header_rows:]
+        return self.rows[self.header_rows :]
 
     def to_markdown(self, include_caption: bool = True) -> str:
         """Renders the table as GitHub-flavoured markdown.
@@ -142,15 +149,20 @@ class Table:
 
     def to_dict(self) -> dict[str, Any]:
         """Returns the JSON form, omitting empty optional fields."""
-        return {"rows": self.rows, "header_rows": self.header_rows,
-                **_present(caption=self.caption, page=self.page)}
+        return {
+            "rows": self.rows,
+            "header_rows": self.header_rows,
+            **_present(caption=self.caption, page=self.page),
+        }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "Table":
+    def from_dict(cls, payload: dict[str, Any]) -> Table:
         """Rebuilds a Table from its JSON form."""
         return cls(
-            rows=[[_clean_cell(cell) for cell in (row or [])]
-                  for row in (payload.get("rows") or [])],
+            rows=[
+                [_clean_cell(cell) for cell in (row or [])]
+                for row in (payload.get("rows") or [])
+            ],
             header_rows=int(payload.get("header_rows", 0)),
             caption=str(payload.get("caption", "")),
             page=int(payload.get("page", 0)),
@@ -183,8 +195,11 @@ class Figure:
 
     def to_dict(self) -> dict[str, Any]:
         """Returns the JSON form, omitting empty optional fields."""
-        out: dict[str, Any] = {"path": self.path, "page": self.page,
-                               **_present(caption=self.caption, kind=self.kind)}
+        out: dict[str, Any] = {
+            "path": self.path,
+            "page": self.page,
+            **_present(caption=self.caption, kind=self.kind),
+        }
         if self.width or self.height:
             # Written as a pair: one zero dimension still means something when
             # the other is known.
@@ -192,7 +207,7 @@ class Figure:
         return out
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "Figure":
+    def from_dict(cls, payload: dict[str, Any]) -> Figure:
         """Rebuilds a Figure from its JSON form."""
         return cls(
             path=str(payload.get("path", "")),
@@ -247,7 +262,9 @@ class Block:
     def to_dict(self) -> dict[str, Any]:
         """Returns the JSON form, omitting empty optional fields."""
         out: dict[str, Any] = {
-            "kind": self.kind, "text": self.text, "page": self.page,
+            "kind": self.kind,
+            "text": self.text,
+            "page": self.page,
             **_present(level=self.level, path=list(self.path)),
         }
         if self.table is not None:
@@ -257,7 +274,7 @@ class Block:
         return out
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "Block":
+    def from_dict(cls, payload: dict[str, Any]) -> Block:
         """Rebuilds a Block from its JSON form."""
         table, figure = payload.get("table"), payload.get("figure")
         return cls(
@@ -358,15 +375,16 @@ class ExtractedDocument:
         """
         chars = self.chars_by_page()
         return sorted(
-            page for page, count in self.blocks_by_page().items()
+            page
+            for page, count in self.blocks_by_page().items()
             if count and chars.get(page, 0) == 0
         )
 
     def sections(self) -> list[str]:
         """Returns the distinct outermost headings, in first-seen order."""
-        return list(dict.fromkeys(
-            block.section for block in self.blocks if block.section
-        ))
+        return list(
+            dict.fromkeys(block.section for block in self.blocks if block.section)
+        )
 
     # --- Serialisation -------------------------------------------------------
 
@@ -396,7 +414,7 @@ class ExtractedDocument:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "ExtractedDocument":
+    def from_dict(cls, payload: dict[str, Any]) -> ExtractedDocument:
         """Rebuilds an ExtractedDocument from its JSON form."""
         return cls(
             doc_id=str(payload.get("doc_id", "")),
@@ -422,7 +440,7 @@ class ExtractedDocument:
                 parts.append("#" * max(1, min(6, block.level or 1)) + " " + block.text)
             elif block.kind == KIND_FIGURE and block.figure is not None:
                 label = block.figure.caption or block.figure.kind or "figure"
-                parts.append("![%s](%s)" % (label, block.figure.path))
+                parts.append(f"![{label}]({block.figure.path})")
             else:
                 parts.append(block.text)
         return "\n\n".join(part for part in parts if part.strip())

@@ -27,35 +27,38 @@ parts through the same object and comparing them.
 """
 
 import logging
-from pathlib import Path
 import sys
-from typing import Callable, List, Tuple
+from collections.abc import Callable
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts import cli  # noqa: E402
-from scripts.checks import Failure, Report, banner, require  # noqa: E402
+from core.config import OUTPUT_DIR
 from reporting import analytics, composites, fmt, selfcheck  # noqa: E402
 from reporting.client import CollectorClient  # noqa: E402
 from reporting.snapshot import (  # noqa: E402
-    BalancePeriod, CashflowPeriod, CompanySnapshot, IncomePeriod,
+    BalancePeriod,
+    CashflowPeriod,
+    CompanySnapshot,
+    IncomePeriod,
     build_snapshot,
 )
-
-from core.config import OUTPUT_DIR
+from scripts import cli  # noqa: E402
+from scripts.checks import Failure, Report, banner, require  # noqa: E402
 
 # Tickers with a complete payload set already on disk. The harness reads the
 # cache only; it must not depend on the network to run.
-CACHED_TICKERS: Tuple[str, ...] = ("WIPRO", "RELIANCE", "TCS", "HDFCBANK")
+CACHED_TICKERS: tuple[str, ...] = ("WIPRO", "RELIANCE", "TCS", "HDFCBANK")
 
 CACHE_ROOT: Path = OUTPUT_DIR
 
 
-
 def _absent(value, label: str) -> None:
     """Asserts a ratio was withheld rather than computed."""
-    require(value is None,
-             "%s should have been withheld but came back as %r" % (label, value))
+    require(
+        value is None,
+        f"{label} should have been withheld but came back as {value!r}",
+    )
 
 
 def _distressed_snapshot() -> CompanySnapshot:
@@ -68,56 +71,140 @@ def _distressed_snapshot() -> CompanySnapshot:
     pass.
     """
     years = [
-        IncomePeriod(period="FY 2024", revenue=4000.0, ebit=200.0, pbt=100.0,
-                     pat=80.0, eps=0.8, depreciation=120.0, interest=100.0,
-                     raw_materials=2400.0, sga=600.0),
-        IncomePeriod(period="FY 2025", revenue=3500.0, ebit=-300.0, pbt=-500.0,
-                     pat=-600.0, eps=-6.0, depreciation=130.0, interest=200.0,
-                     raw_materials=2200.0, sga=650.0),
+        IncomePeriod(
+            period="FY 2024",
+            revenue=4000.0,
+            ebit=200.0,
+            pbt=100.0,
+            pat=80.0,
+            eps=0.8,
+            depreciation=120.0,
+            interest=100.0,
+            raw_materials=2400.0,
+            sga=600.0,
+        ),
+        IncomePeriod(
+            period="FY 2025",
+            revenue=3500.0,
+            ebit=-300.0,
+            pbt=-500.0,
+            pat=-600.0,
+            eps=-6.0,
+            depreciation=130.0,
+            interest=200.0,
+            raw_materials=2200.0,
+            sga=650.0,
+        ),
         # The distressed year. EBITDA is EBIT plus depreciation, so -800 plus
         # 100 leaves it negative too.
-        IncomePeriod(period="FY 2026", revenue=3000.0, ebit=-800.0, pbt=-1200.0,
-                     pat=-1100.0, eps=-11.0, depreciation=100.0, interest=300.0,
-                     raw_materials=-50.0, sga=700.0),
+        IncomePeriod(
+            period="FY 2026",
+            revenue=3000.0,
+            ebit=-800.0,
+            pbt=-1200.0,
+            pat=-1100.0,
+            eps=-11.0,
+            depreciation=100.0,
+            interest=300.0,
+            raw_materials=-50.0,
+            sga=700.0,
+        ),
     ]
     balance = [
-        BalancePeriod(period="FY 2024", equity=1000.0, debt=2000.0, cash=300.0,
-                      total_assets=5000.0, current_assets=1800.0,
-                      current_liabilities=1500.0, inventory=400.0,
-                      receivables=500.0, shares_cr=100.0, payables=300.0,
-                      goodwill_intangibles=200.0, retained_earnings=400.0,
-                      long_term_debt=1500.0, total_liabilities=4000.0),
-        BalancePeriod(period="FY 2025", equity=200.0, debt=2600.0, cash=200.0,
-                      total_assets=4800.0, current_assets=1600.0,
-                      current_liabilities=2000.0, inventory=380.0,
-                      receivables=480.0, shares_cr=100.0, payables=320.0,
-                      goodwill_intangibles=200.0, retained_earnings=-200.0,
-                      long_term_debt=1900.0, total_liabilities=4600.0),
+        BalancePeriod(
+            period="FY 2024",
+            equity=1000.0,
+            debt=2000.0,
+            cash=300.0,
+            total_assets=5000.0,
+            current_assets=1800.0,
+            current_liabilities=1500.0,
+            inventory=400.0,
+            receivables=500.0,
+            shares_cr=100.0,
+            payables=300.0,
+            goodwill_intangibles=200.0,
+            retained_earnings=400.0,
+            long_term_debt=1500.0,
+            total_liabilities=4000.0,
+        ),
+        BalancePeriod(
+            period="FY 2025",
+            equity=200.0,
+            debt=2600.0,
+            cash=200.0,
+            total_assets=4800.0,
+            current_assets=1600.0,
+            current_liabilities=2000.0,
+            inventory=380.0,
+            receivables=480.0,
+            shares_cr=100.0,
+            payables=320.0,
+            goodwill_intangibles=200.0,
+            retained_earnings=-200.0,
+            long_term_debt=1900.0,
+            total_liabilities=4600.0,
+        ),
         # Negative equity; current liabilities above total assets, so capital
         # employed is negative; and cash above equity plus debt, so invested
         # capital is negative.
-        BalancePeriod(period="FY 2026", equity=-400.0, debt=2900.0, cash=3400.0,
-                      total_assets=4500.0, current_assets=1400.0,
-                      current_liabilities=4800.0, inventory=360.0,
-                      receivables=450.0, shares_cr=100.0, payables=350.0,
-                      goodwill_intangibles=200.0, retained_earnings=-900.0,
-                      long_term_debt=2100.0, total_liabilities=4900.0),
+        BalancePeriod(
+            period="FY 2026",
+            equity=-400.0,
+            debt=2900.0,
+            cash=3400.0,
+            total_assets=4500.0,
+            current_assets=1400.0,
+            current_liabilities=4800.0,
+            inventory=360.0,
+            receivables=450.0,
+            shares_cr=100.0,
+            payables=350.0,
+            goodwill_intangibles=200.0,
+            retained_earnings=-900.0,
+            long_term_debt=2100.0,
+            total_liabilities=4900.0,
+        ),
     ]
     cashflow = [
-        CashflowPeriod(period="FY 2024", cfo=300.0, capex=150.0, fcf=150.0,
-                       dividends_paid=40.0, cash_from_investing=-150.0,
-                       cash_from_financing=-100.0, net_change_in_cash=50.0),
-        CashflowPeriod(period="FY 2025", cfo=-100.0, capex=120.0, fcf=-220.0,
-                       dividends_paid=0.0, cash_from_investing=-120.0,
-                       cash_from_financing=120.0, net_change_in_cash=-100.0),
-        CashflowPeriod(period="FY 2026", cfo=-500.0, capex=90.0, fcf=-590.0,
-                       dividends_paid=0.0, cash_from_investing=-90.0,
-                       cash_from_financing=390.0, net_change_in_cash=-200.0),
+        CashflowPeriod(
+            period="FY 2024",
+            cfo=300.0,
+            capex=150.0,
+            fcf=150.0,
+            dividends_paid=40.0,
+            cash_from_investing=-150.0,
+            cash_from_financing=-100.0,
+            net_change_in_cash=50.0,
+        ),
+        CashflowPeriod(
+            period="FY 2025",
+            cfo=-100.0,
+            capex=120.0,
+            fcf=-220.0,
+            dividends_paid=0.0,
+            cash_from_investing=-120.0,
+            cash_from_financing=120.0,
+            net_change_in_cash=-100.0,
+        ),
+        CashflowPeriod(
+            period="FY 2026",
+            cfo=-500.0,
+            capex=90.0,
+            fcf=-590.0,
+            dividends_paid=0.0,
+            cash_from_investing=-90.0,
+            cash_from_financing=390.0,
+            net_change_in_cash=-200.0,
+        ),
     ]
     return CompanySnapshot(
-        ticker="STRESS", name="Stress Test Industries",
+        ticker="STRESS",
+        name="Stress Test Industries",
         sector="Diversified Manufacturing",
-        years=years, balance=balance, cashflow=cashflow,
+        years=years,
+        balance=balance,
+        cashflow=cashflow,
         market_cap_cr=500.0,
     )
 
@@ -133,9 +220,10 @@ def check_division_helpers() -> str:
     # survive. Interest cover of minus two says the company cannot service
     # its debt, which is exactly what a reader needs to see.
     result = fmt.pos_div(-800.0, 400.0)
-    require(result is not None and abs(result + 2.0) < 1e-12,
-             "a negative numerator over a positive base must survive, got %r"
-             % result)
+    require(
+        result is not None and abs(result + 2.0) < 1e-12,
+        f"a negative numerator over a positive base must survive, got {result!r}",
+    )
     return "division helpers guard the denominator only"
 
 
@@ -160,9 +248,10 @@ def check_distressed_ratios() -> str:
 
     # Interest cover is not withheld: the denominator is positive and the
     # negative result is the finding.
-    require(latest.interest_coverage is not None and latest.interest_coverage < 0,
-             "interest cover should be negative and present, got %r"
-             % latest.interest_coverage)
+    require(
+        latest.interest_coverage is not None and latest.interest_coverage < 0,
+        f"interest cover should be negative and present, got {latest.interest_coverage!r}",
+    )
     return "11 ratios withheld on the distressed year, interest cover retained"
 
 
@@ -181,22 +270,30 @@ def check_distressed_composites() -> str:
 
     # The F-Score still scores: its signals are sign and direction tests, and
     # a company failing all of them is precisely what the framework is for.
-    require(comp.piotroski.score is not None,
-             "the F-Score should still be computable for a distressed company")
-    require(comp.piotroski.score <= 3,
-             "a company losing money on every axis should score low, got %s"
-             % comp.piotroski.score)
+    require(
+        comp.piotroski.score is not None,
+        "the F-Score should still be computable for a distressed company",
+    )
+    require(
+        comp.piotroski.score <= 3,
+        f"a company losing money on every axis should score low, got {comp.piotroski.score}",
+    )
 
     # Altman is designed for exactly this company and must produce a score
     # in the distress band rather than withhold.
-    require(comp.altman.score is not None,
-             "the Z-Score should be computable for a distressed manufacturer")
-    require(comp.altman.zone == "Distress",
-             "expected the distress band, got %r at %r"
-             % (comp.altman.zone, comp.altman.score))
-    return "DuPont withheld, F-Score %d of %d, Z-Score %.2f in the %s band" % (
-        comp.piotroski.score, comp.piotroski.computable,
-        comp.altman.score, comp.altman.zone.lower())
+    require(
+        comp.altman.score is not None,
+        "the Z-Score should be computable for a distressed manufacturer",
+    )
+    require(
+        comp.altman.zone == "Distress",
+        f"expected the distress band, got {comp.altman.zone!r} at {comp.altman.score!r}",
+    )
+    return (
+        f"DuPont withheld, F-Score {comp.piotroski.score} of "
+        f"{comp.piotroski.computable}, Z-Score {comp.altman.score:.2f} in the "
+        f"{comp.altman.zone.lower()} band"
+    )
 
 
 def check_guardrail_detector_fires() -> str:
@@ -211,22 +308,25 @@ def check_guardrail_detector_fires() -> str:
     comp = composites.compute(snap, derived)
 
     clean = selfcheck.run(snap, derived, comp)
-    guardrail = next(c for c in clean.checks
-                     if c.name.startswith("No ratio published against"))
-    require(guardrail.passed is True,
-             "the clean distressed report should show no breach, got %r"
-             % guardrail.actual)
+    guardrail = next(
+        c for c in clean.checks if c.name.startswith("No ratio published against")
+    )
+    require(
+        guardrail.passed is True,
+        f"the clean distressed report should show no breach, got {guardrail.actual!r}",
+    )
 
     # Plant one: an ROE on the year whose equity is negative.
     derived.annual[-1].roe = 275.0
     tampered = selfcheck.run(snap, derived, comp)
-    planted = next(c for c in tampered.checks
-                   if c.name.startswith("No ratio published against"))
-    require(planted.passed is False,
-             "the detector failed to report a planted breach")
-    require("return on equity" in planted.detail,
-             "the detector should name the offending figure, got %r"
-             % planted.detail)
+    planted = next(
+        c for c in tampered.checks if c.name.startswith("No ratio published against")
+    )
+    require(planted.passed is False, "the detector failed to report a planted breach")
+    require(
+        "return on equity" in planted.detail,
+        f"the detector should name the offending figure, got {planted.detail!r}",
+    )
     return "detector reports nil breaches when clean and one when planted"
 
 
@@ -234,7 +334,9 @@ def check_composites_carry_components() -> str:
     """A score must never be reachable without the parts that produced it."""
     reports = 0
     for ticker in CACHED_TICKERS:
-        has_cache = (CACHE_ROOT / ticker / "api" / "summary.json").exists() or (CACHE_ROOT / ticker / "summary.json").exists()
+        has_cache = (CACHE_ROOT / ticker / "api" / "summary.json").exists() or (
+            CACHE_ROOT / ticker / "summary.json"
+        ).exists()
         if not has_cache:
             continue
         snap = _cached_snapshot(ticker)
@@ -244,70 +346,99 @@ def check_composites_carry_components() -> str:
 
         score = comp.piotroski
         if score.score is not None:
-            require(bool(score.tests),
-                     "%s published an F-Score with no sub-tests" % ticker)
+            require(
+                bool(score.tests), f"{ticker} published an F-Score with no sub-tests"
+            )
             awarded = [t.points for t in score.tests if t.points is not None]
-            require(sum(awarded) == score.score,
-                     "%s F-Score %s does not equal its sub-tests %s"
-                     % (ticker, score.score, sum(awarded)))
-            require(all(t.definition for t in score.tests),
-                     "%s has an F-Score signal with no stated test" % ticker)
-            require(score.computable > 0,
-                     "%s published a score against a nil denominator" % ticker)
+            require(
+                sum(awarded) == score.score,
+                f"{ticker} F-Score {score.score} does not equal its sub-tests {sum(awarded)}",
+            )
+            require(
+                all(t.definition for t in score.tests),
+                f"{ticker} has an F-Score signal with no stated test",
+            )
+            require(
+                score.computable > 0,
+                f"{ticker} published a score against a nil denominator",
+            )
 
         altman = comp.altman
         if altman.score is not None:
-            require(len(altman.components) == 5,
-                     "%s published a Z-Score with %d terms, expected 5"
-                     % (ticker, len(altman.components)))
-            require(all(c.definition and c.weight for c in altman.components),
-                     "%s has a Z-Score term with no definition or coefficient"
-                     % ticker)
+            require(
+                len(altman.components) == 5,
+                f"{ticker} published a Z-Score with {len(altman.components)} terms, expected 5",
+            )
+            require(
+                all(c.definition and c.weight for c in altman.components),
+                f"{ticker} has a Z-Score term with no definition or coefficient",
+            )
             rebuilt = sum(c.contribution for c in altman.components)
-            require(abs(rebuilt - altman.score) < 1e-9,
-                     "%s Z-Score does not equal its terms" % ticker)
+            require(
+                abs(rebuilt - altman.score) < 1e-9,
+                f"{ticker} Z-Score does not equal its terms",
+            )
         else:
-            require(bool(altman.withheld_reason) or not altman.components,
-                     "%s withheld a Z-Score without saying why" % ticker)
+            require(
+                bool(altman.withheld_reason) or not altman.components,
+                f"{ticker} withheld a Z-Score without saying why",
+            )
 
         if comp.reinvestment.withheld_reason:
-            require(not comp.reinvestment.years,
-                     "%s withheld the reinvestment identity but kept rows"
-                     % ticker)
+            require(
+                not comp.reinvestment.years,
+                f"{ticker} withheld the reinvestment identity but kept rows",
+            )
     require(reports > 0, "no cached tickers were available to check")
-    return "%d reports carry components for every score published" % reports
+    return f"{reports} reports carry components for every score published"
 
 
 def check_cached_reports_verify() -> str:
     """Every cached company's own self-check must close."""
-    lines: List[str] = []
+    lines: list[str] = []
     for ticker in CACHED_TICKERS:
-        has_cache = (CACHE_ROOT / ticker / "api" / "summary.json").exists() or (CACHE_ROOT / ticker / "summary.json").exists()
+        has_cache = (CACHE_ROOT / ticker / "api" / "summary.json").exists() or (
+            CACHE_ROOT / ticker / "summary.json"
+        ).exists()
         if not has_cache:
-            lines.append("%s skipped, not cached" % ticker)
+            lines.append(f"{ticker} skipped, not cached")
             continue
         snap = _cached_snapshot(ticker)
         derived = analytics.compute(snap)
         comp = composites.compute(snap, derived)
         result = selfcheck.run(snap, derived, comp)
-        require(result.all_passed,
-                 "%s failed %d self-check(s): %s"
-                 % (ticker, len(result.failures),
-                    "; ".join(f.name for f in result.failures)))
-        require(result.passed_count > 0,
-                 "%s ran no applicable checks at all" % ticker)
-        lines.append("%s %d/%d" % (ticker, result.passed_count,
-                                   len(result.applicable)))
+        require(
+            result.all_passed,
+            f"{ticker} failed {len(result.failures)} self-check(s): "
+            f"{'; '.join(f.name for f in result.failures)}",
+        )
+        require(result.passed_count > 0, f"{ticker} ran no applicable checks at all")
+        lines.append(f"{ticker} {result.passed_count}/{len(result.applicable)}")
     return "; ".join(lines)
 
 
 def _cached_snapshot(ticker: str) -> CompanySnapshot:
     """Builds a snapshot from the on-disk cache without touching the network."""
-    client = CollectorClient(base_url="http://cache.invalid", cache_dir=CACHE_ROOT, use_cache=True)
+    client = CollectorClient(
+        base_url="http://cache.invalid", cache_dir=CACHE_ROOT, use_cache=True
+    )
     payloads = {}
-    for name in ("summary", "peers", "income_q", "income_a", "growth_q",
-                 "growth_a", "balance", "balance_growth", "cashflow", "dupont",
-                 "solvency", "liquidity", "capital_efficiency", "cagr"):
+    for name in (
+        "summary",
+        "peers",
+        "income_q",
+        "income_a",
+        "growth_q",
+        "growth_a",
+        "balance",
+        "balance_growth",
+        "cashflow",
+        "dupont",
+        "solvency",
+        "liquidity",
+        "capital_efficiency",
+        "cagr",
+    ):
         payloads[name] = client.fetch(ticker, name)
     return build_snapshot(ticker, payloads)
 
@@ -323,8 +454,10 @@ def check_distressed_report_renders() -> str:
     """
     import tempfile
 
-    from reporting import charts as charts_module
-    from reporting import typst_doc
+    from reporting import (
+        charts as charts_module,
+        typst_doc,
+    )
 
     snap = _distressed_snapshot()
     derived = analytics.compute(snap)
@@ -335,27 +468,36 @@ def check_distressed_report_renders() -> str:
         work_dir = Path(work)
         produced = charts_module.render_all(snap, derived, comp, work_dir)
         source = typst_doc.build_document(
-            snap, derived, comp, check, produced, as_of="01 Jan 2026")
-        require(len(source) > 10000,
-                 "the generated source is implausibly short at %d chars"
-                 % len(source))
-        require("Composite quality" in source,
-                 "the composite section is missing from the source")
+            snap, derived, comp, check, produced, as_of="01 Jan 2026"
+        )
+        require(
+            len(source) > 10000,
+            f"the generated source is implausibly short at {len(source)} chars",
+        )
+        require(
+            "Composite quality" in source,
+            "the composite section is missing from the source",
+        )
 
         source_path = work_dir / "stress.typ"
         source_path.write_text(source, encoding="utf-8")
         try:
             import typst
+
             pdf = typst.compile(str(source_path))
         except Exception as exc:  # noqa: BLE001 - surfaced as a failure
-            raise Failure("Typst compilation failed: %s" % exc)
-        require(len(pdf) > 20000,
-                 "the compiled PDF is implausibly small at %d bytes" % len(pdf))
-    return "compiled a %d KB report with %d charts from broken statements" % (
-        len(pdf) // 1024, len(produced))
+            raise Failure(f"Typst compilation failed: {exc}") from exc
+        require(
+            len(pdf) > 20000,
+            f"the compiled PDF is implausibly small at {len(pdf)} bytes",
+        )
+    return (
+        f"compiled a {len(pdf) // 1024} KB report with {len(produced)} charts "
+        "from broken statements"
+    )
 
 
-CHECKS: Tuple[Tuple[str, Callable[[], str]], ...] = (
+CHECKS: tuple[tuple[str, Callable[[], str]], ...] = (
     ("Division helpers", check_division_helpers),
     ("Distressed ratios withheld", check_distressed_ratios),
     ("Distressed composites", check_distressed_composites),

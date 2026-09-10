@@ -5,7 +5,7 @@ wrapping in a class -- only a reused connection pool.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 
@@ -21,10 +21,10 @@ MIN_CHARS = 3
 # the same host.
 _http = requests.Session()
 
-Hit = Dict[str, Any]
+Hit = dict[str, Any]
 
 
-def find(q: str) -> List[Hit]:
+def find(q: str) -> list[Hit]:
     """Returns listed companies matching a name or symbol fragment.
 
     Every failure degrades to no matches: a type-ahead box must not raise a

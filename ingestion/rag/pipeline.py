@@ -10,14 +10,12 @@ Google Python Style Guide Compliant.
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict
+import contextlib
 import json
 import logging
-import os
-from pathlib import Path
 import sys
 import time
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 try:
     from typing import TypedDict
@@ -26,6 +24,7 @@ except ImportError:
 
 try:
     from langgraph.graph import END, START, StateGraph
+
     LANGGRAPH_AVAILABLE = True
 except ImportError:
     LANGGRAPH_AVAILABLE = False
@@ -33,7 +32,7 @@ except ImportError:
     START = "START"
     END = "END"
 
-from core.config import OUTPUT_DIR, safe_ticker
+from core.config import safe_ticker
 from ingestion.indexer import IndexerConfig, QdrantVectorIndexer
 from ingestion.rag.probes import ThematicProbe, build_adaptive_probes
 from ingestion.rag.reranker import EvidenceReranker
@@ -41,8 +40,6 @@ from ingestion.rag.retriever import EvidenceChunk, ParallelVectorRetriever
 from ingestion.rag.synthesizer import (
     InstitutionalSynthesizer,
     ResearchDossier,
-    ThematicFinding,
-    utc_now,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,16 +54,16 @@ class ResearchState(TypedDict, total=False):
 
     ticker: str
     company_name: str
-    available_doc_types: List[str]
-    probes: List[Dict[str, Any]]
-    retrieved_evidence: Dict[str, List[Dict[str, Any]]]
-    reranked_evidence: Dict[str, List[Dict[str, Any]]]
-    findings: Dict[str, Dict[str, Any]]
-    dossier: Dict[str, Any]
+    available_doc_types: list[str]
+    probes: list[dict[str, Any]]
+    retrieved_evidence: dict[str, list[dict[str, Any]]]
+    reranked_evidence: dict[str, list[dict[str, Any]]]
+    findings: dict[str, dict[str, Any]]
+    dossier: dict[str, Any]
     typst_snippet: str
     markdown_snippet: str
     status: str
-    error: Optional[str]
+    error: str | None
     elapsed_seconds: float
 
 
@@ -75,8 +72,8 @@ class InstitutionalRAGPipeline:
 
     def __init__(
         self,
-        indexer: Optional[QdrantVectorIndexer] = None,
-        config: Optional[IndexerConfig] = None,
+        indexer: QdrantVectorIndexer | None = None,
+        config: IndexerConfig | None = None,
     ) -> None:
         self.indexer = indexer or QdrantVectorIndexer(config=config)
         self.retriever = ParallelVectorRetriever(indexer=self.indexer)
@@ -88,7 +85,9 @@ class InstitutionalRAGPipeline:
     def inspect_and_plan(self, state: ResearchState) -> ResearchState:
         """Inspects document availability and generates tailored thematic probes."""
         ticker = safe_ticker(state["ticker"])
-        logger.info("[%s] Node 1: Inspecting document state and planning probes...", ticker)
+        logger.info(
+            "[%s] Node 1: Inspecting document state and planning probes...", ticker
+        )
 
         # Inspect ticker state from disk
         ticker_state = self.indexer.load_ticker_state(ticker)
@@ -114,8 +113,12 @@ class InstitutionalRAGPipeline:
                 available_doc_types.update(discovered)
                 ticker_state = self.indexer.load_ticker_state(ticker)
 
-        doc_types_list = sorted(list(available_doc_types)) if available_doc_types else ["annual_report"]
-        probes = build_adaptive_probes(ticker=ticker, available_doc_types=doc_types_list)
+        doc_types_list = (
+            sorted(available_doc_types) if available_doc_types else ["annual_report"]
+        )
+        probes = build_adaptive_probes(
+            ticker=ticker, available_doc_types=doc_types_list
+        )
 
         logger.info(
             "[%s] Identified %d available doc types %s; generated %d adaptive probes.",
@@ -132,29 +135,40 @@ class InstitutionalRAGPipeline:
             "status": "PLANNING_COMPLETED",
         }
 
-    def _auto_ingest_and_index(self, ticker: str, max_docs: int = 2) -> set[str]:
+    def _auto_ingest_and_index(self, ticker: str) -> set[str]:
         """Automatically discovers, downloads, extracts, chunks, and indexes filings when absent."""
         found_types: set[str] = set()
-        logger.info("[%s] No filings on disk or vector index; discovering filings from catalogue...", ticker)
+        logger.info(
+            "[%s] No filings on disk or vector index; discovering filings from catalogue...",
+            ticker,
+        )
         try:
             from ingestion.catalog import fetch_catalog
-            from ingestion.documents.download import Downloader, DownloadRequest
-            from ingestion.documents.storage import DocumentStore
-            from ingestion.documents.extract import Extractor
             from ingestion.chunker import chunk_document, write_chunk_cache
+            from ingestion.documents.download import Downloader, DownloadRequest
+            from ingestion.documents.extract import Extractor
+            from ingestion.documents.storage import DocumentStore
 
             cat = fetch_catalog(ticker)
             if not cat.entries:
                 logger.warning("[%s] No catalogue entries found upstream.", ticker)
                 return found_types
 
-            store = DocumentStore.open(ticker, data_dir=self.indexer.config.output_dir).ensure()
+            store = DocumentStore.open(
+                ticker, data_dir=self.indexer.config.output_dir
+            ).ensure()
             downloader = Downloader(store=store)
 
             # Select: 1x Latest Annual Report, 3x Latest Concall Transcripts, 1x Latest Investor Presentation
-            annual_entries = [e for e in cat.entries if e.doc_type == "annual_report"][:1]
-            transcript_entries = [e for e in cat.entries if e.doc_type == "concall_transcript"][:3]
-            presentation_entries = [e for e in cat.entries if e.doc_type == "concall_presentation"][:1]
+            annual_entries = [e for e in cat.entries if e.doc_type == "annual_report"][
+                :1
+            ]
+            transcript_entries = [
+                e for e in cat.entries if e.doc_type == "concall_transcript"
+            ][:3]
+            presentation_entries = [
+                e for e in cat.entries if e.doc_type == "concall_presentation"
+            ][:1]
 
             target_entries = annual_entries + transcript_entries + presentation_entries
             logger.info(
@@ -175,7 +189,9 @@ class InstitutionalRAGPipeline:
             extractor = Extractor(ocr=False, figures=False)
             for r in results:
                 if r.ok and r.path:
-                    entry = next((e for e in target_entries if e.doc_id == r.doc_id), None)
+                    entry = next(
+                        (e for e in target_entries if e.doc_id == r.doc_id), None
+                    )
                     doc_type = entry.doc_type if entry else "concall_transcript"
                     try:
                         doc_extracted = extractor.run(
@@ -187,20 +203,36 @@ class InstitutionalRAGPipeline:
                             label=r.doc_id,
                             write=True,
                         )
-                        chunk_set = chunk_document(doc_extracted, chunk_size=800, chunk_overlap=100)
+                        chunk_set = chunk_document(
+                            doc_extracted, chunk_size=800, chunk_overlap=100
+                        )
                         chunk_path = store.root / "chunks" / f"{r.doc_id}.json"
                         write_chunk_cache(chunk_set, chunk_path)
                         found_types.add(doc_type)
-                        logger.info("[%s] Ingested and chunked %s (%d chunks).", ticker, r.doc_id, chunk_set.n_chunks)
+                        logger.info(
+                            "[%s] Ingested and chunked %s (%d chunks).",
+                            ticker,
+                            r.doc_id,
+                            chunk_set.n_chunks,
+                        )
                     except Exception as extract_err:
-                        logger.warning("[%s] Failed to extract %s: %s; continuing with other filings.", ticker, r.doc_id, extract_err)
+                        logger.warning(
+                            "[%s] Failed to extract %s: %s; continuing with other filings.",
+                            ticker,
+                            r.doc_id,
+                            extract_err,
+                        )
 
             # Index all successfully chunked documents into Qdrant & local matrix cache
             try:
                 self.indexer.index_ticker_documents(ticker)
-                logger.info("[%s] Indexed new filings into Qdrant vector store.", ticker)
+                logger.info(
+                    "[%s] Indexed new filings into Qdrant vector store.", ticker
+                )
             except Exception as index_err:
-                logger.warning("[%s] Indexing into Qdrant encountered error: %s", ticker, index_err)
+                logger.warning(
+                    "[%s] Indexing into Qdrant encountered error: %s", ticker, index_err
+                )
         except Exception as exc:
             logger.warning("[%s] Auto-ingestion failed: %s", ticker, exc)
 
@@ -221,8 +253,7 @@ class InstitutionalRAGPipeline:
         )
 
         serializable_evidence: dict[str, list[dict[str, Any]]] = {
-            k: [c.to_dict() for c in v]
-            for k, v in raw_evidence_map.items()
+            k: [c.to_dict() for c in v] for k, v in raw_evidence_map.items()
         }
 
         return {
@@ -245,8 +276,7 @@ class InstitutionalRAGPipeline:
 
         reranked_map = self.reranker.rerank_all(typed_map, top_k=5)
         serializable_reranked: dict[str, list[dict[str, Any]]] = {
-            k: [c.to_dict() for c in v]
-            for k, v in reranked_map.items()
+            k: [c.to_dict() for c in v] for k, v in reranked_map.items()
         }
 
         return {
@@ -259,15 +289,16 @@ class InstitutionalRAGPipeline:
     def synthesize_findings(self, state: ResearchState) -> ResearchState:
         """Generates grounded sell-side research findings for each pillar via hosted LLM."""
         ticker = safe_ticker(state["ticker"])
-        logger.info("[%s] Node 4: Synthesizing institutional research findings...", ticker)
+        logger.info(
+            "[%s] Node 4: Synthesizing institutional research findings...", ticker
+        )
 
         probes_data = state.get("probes") or []
         probes = [ThematicProbe(**p) for p in probes_data]
 
         reranked_data = state.get("reranked_evidence") or {}
         reranked_map: dict[str, list[EvidenceChunk]] = {
-            k: [EvidenceChunk.from_dict(c) for c in v]
-            for k, v in reranked_data.items()
+            k: [EvidenceChunk.from_dict(c) for c in v] for k, v in reranked_data.items()
         }
 
         dossier = self.synthesizer.synthesize_all(
@@ -278,9 +309,7 @@ class InstitutionalRAGPipeline:
             available_doc_types=state.get("available_doc_types", []),
         )
 
-        serializable_findings = {
-            k: v.to_dict() for k, v in dossier.pillars.items()
-        }
+        serializable_findings = {k: v.to_dict() for k, v in dossier.pillars.items()}
 
         return {
             **state,
@@ -293,7 +322,9 @@ class InstitutionalRAGPipeline:
     def format_and_persist(self, state: ResearchState) -> ResearchState:
         """Formats Typst and Markdown snippets and atomically writes findings.json to disk."""
         ticker = safe_ticker(state["ticker"])
-        logger.info("[%s] Node 5: Formatting and persisting findings to disk...", ticker)
+        logger.info(
+            "[%s] Node 5: Formatting and persisting findings to disk...", ticker
+        )
 
         dossier_data = state.get("dossier") or {}
         dossier = ResearchDossier.from_dict(dossier_data) if dossier_data else None
@@ -305,20 +336,26 @@ class InstitutionalRAGPipeline:
         typst_blocks: list[str] = [
             f"// --- Institutional Qualitative Evidence: {ticker} ---",
             "#block(sticky: true, above: 10pt, below: 5pt)[",
-            f"  #text(size: 11pt, weight: \"bold\", fill: rgb(\"#002B49\"))[Institutional Research Findings & Strategic Highlights: {ticker}]",
+            f'  #text(size: 11pt, weight: "bold", fill: rgb("#002B49"))[Institutional Research Findings & Strategic Highlights: {ticker}]',
             "]",
         ]
 
         if dossier:
-            for pillar, finding in dossier.pillars.items():
-                typst_blocks.append(f"\n#block(above: 7pt, below: 3pt)[#text(weight: \"semibold\", fill: rgb(\"#007A87\"))[{finding.title}]]")
+            for _pillar, finding in dossier.pillars.items():
+                typst_blocks.append(
+                    f'\n#block(above: 7pt, below: 3pt)[#text(weight: "semibold", fill: rgb("#007A87"))[{finding.title}]]'
+                )
                 for bullet in finding.bullet_points:
                     # Escape raw dollar signs or hash symbols for Typst
                     esc_bullet = bullet.replace("$", "\\$").replace("#", "\\#")
                     typst_blocks.append(f"- {esc_bullet}")
                 if finding.takeaway:
-                    esc_takeaway = finding.takeaway.replace("$", "\\$").replace("#", "\\#")
-                    typst_blocks.append(f"\n#text(style: \"italic\", fill: rgb(\"#333333\"))[💡 *Analyst Takeaway*: {esc_takeaway}]\n")
+                    esc_takeaway = finding.takeaway.replace("$", "\\$").replace(
+                        "#", "\\#"
+                    )
+                    typst_blocks.append(
+                        f'\n#text(style: "italic", fill: rgb("#333333"))[💡 *Analyst Takeaway*: {esc_takeaway}]\n'
+                    )
 
         typst_text = "\n".join(typst_blocks)
 
@@ -332,7 +369,7 @@ class InstitutionalRAGPipeline:
             json.dumps(dossier_data, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-        os.replace(str(temp_json), str(json_path))
+        temp_json.replace(json_path)
 
         md_path = findings_dir / FINDINGS_MD_NAME
         md_path.write_text(md_text, encoding="utf-8")
@@ -400,12 +437,21 @@ class InstitutionalRAGPipeline:
         }
 
         # Check existing findings cache if not force
-        findings_path = self.indexer.config.output_dir / sym / FINDINGS_DIR_NAME / FINDINGS_JSON_NAME
+        findings_path = (
+            self.indexer.config.output_dir
+            / sym
+            / FINDINGS_DIR_NAME
+            / FINDINGS_JSON_NAME
+        )
         if findings_path.exists() and not force:
             try:
                 data = json.loads(findings_path.read_text(encoding="utf-8"))
                 dossier = ResearchDossier.from_dict(data)
-                logger.info("[%s] Found cached findings at %s. Skipping re-generation.", sym, findings_path)
+                logger.info(
+                    "[%s] Found cached findings at %s. Skipping re-generation.",
+                    sym,
+                    findings_path,
+                )
                 return {
                     **initial_state,
                     "dossier": dossier.to_dict(),
@@ -415,7 +461,9 @@ class InstitutionalRAGPipeline:
                     "elapsed_seconds": time.perf_counter() - start_time,
                 }
             except Exception as exc:
-                logger.warning("[%s] Could not read cached findings: %s. Re-running.", sym, exc)
+                logger.warning(
+                    "[%s] Could not read cached findings: %s. Re-running.", sym, exc
+                )
 
         logger.info("[%s] Starting Institutional RAG Pipeline...", sym)
 
@@ -444,7 +492,7 @@ def extract_ticker_findings(
     ticker: str,
     company_name: str = "",
     force: bool = False,
-    config: Optional[IndexerConfig] = None,
+    config: IndexerConfig | None = None,
 ) -> ResearchDossier:
     """Functional convenience API to extract institutional research findings."""
     pipeline = InstitutionalRAGPipeline(config=config)
@@ -460,15 +508,25 @@ if __name__ == "__main__":
     )
 
     if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
-        try:
+        with contextlib.suppress(Exception):
             sys.stdout.reconfigure(encoding="utf-8")
-        except Exception:
-            pass
 
-    parser = argparse.ArgumentParser(description="GrowNXT Institutional Qualitative RAG Pipeline")
-    parser.add_argument("--ticker", type=str, help="Stock ticker symbol (e.g. WIPRO, TCS, HDFCBANK)")
-    parser.add_argument("--all", action="store_true", help="Run RAG pipeline across all stocks in output/")
-    parser.add_argument("--force", action="store_true", help="Force re-generation ignoring cached findings")
+    parser = argparse.ArgumentParser(
+        description="GrowNXT Institutional Qualitative RAG Pipeline"
+    )
+    parser.add_argument(
+        "--ticker", type=str, help="Stock ticker symbol (e.g. WIPRO, TCS, HDFCBANK)"
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run RAG pipeline across all stocks in output/",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-generation ignoring cached findings",
+    )
 
     args = parser.parse_args()
 
@@ -476,7 +534,9 @@ if __name__ == "__main__":
 
     if args.ticker:
         res = pipeline.run(ticker=args.ticker, force=args.force)
-        print(f"\n==================== QUALITATIVE RESEARCH FINDINGS: {args.ticker} ====================")
+        print(
+            f"\n==================== QUALITATIVE RESEARCH FINDINGS: {args.ticker} ===================="
+        )
         print(res.get("markdown_snippet", ""))
     elif args.all:
         output_root = pipeline.indexer.config.output_dir
@@ -485,6 +545,8 @@ if __name__ == "__main__":
             sym = tdir.name
             print(f"\n>>> Running RAG pipeline for {sym}...")
             res = pipeline.run(ticker=sym, force=args.force)
-            print(f"[{sym}] Status: {res.get('status')} ({res.get('elapsed_seconds', 0):.2f}s)")
+            print(
+                f"[{sym}] Status: {res.get('status')} ({res.get('elapsed_seconds', 0):.2f}s)"
+            )
     else:
         parser.print_help()

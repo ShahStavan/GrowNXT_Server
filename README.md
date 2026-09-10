@@ -174,7 +174,7 @@ flowchart TD
 ```
 
 #### Multi-Tier Search Implementation:
-- **Tier-1 Local Vector Matrix Acceleration**: For ingested stocks, vectors and payloads are serialized locally to `output/<TICKER>/vectors.npz` and `payloads.json`. Retrieval executes a vectorized dot-product matrix multiplication ($Q \times D^T$) across all probe queries concurrently in **< 0.005s**, completely bypassing network roundtrips.
+- **Tier-1 Local Vector Matrix Acceleration**: For ingested stocks, vectors and payloads are mirrored from Qdrant to `output/<TICKER>/vectors.npz` and `payloads.json` by the batch embedding job (`python -m scripts.embed_nifty50`), so every stock's embeddings exist as one self-contained artifact on disk. Retrieval executes a vectorized dot-product matrix multiplication ($Q \times D^T$) across all probe queries concurrently in **< 0.005s**, completely bypassing network roundtrips.
 - **Tier-2 Qdrant Cloud Single-Flight Batch Search**: When local caches are unavailable, the retriever executes a single HTTP batch search (`search_batch_by_vectors`) querying all probe vectors in one flight with payload filters (`ticker`, `doc_type`, `element_type`), reducing round-trip latency from seconds to under 250ms.
 - **Persistent Probe Embedding Cache**: Deterministic probe queries are cached on disk (`probe_vectors.json`), eliminating embedding forward-pass latency on repeated runs.
 
@@ -312,8 +312,11 @@ pip install -r requirements.txt
 # 3. Configure environment variables (.env) — all optional
 # GROWNXT_LLM_API_URL=https://grownxt-llm.vercel.app   # hosted model endpoint
 # GROWNXT_LLM_API_KEY=...                              # optional API key
-# QDRANT_URL=...                                       # Qdrant Cloud cluster URL
+# QDRANT_API_URL=...                                   # Qdrant server / Cloud cluster URL (unset = in-memory, lost on exit)
 # QDRANT_API_KEY=...                                   # Qdrant API key
+# QDRANT_COLLECTION_NAME=grownxt-embeddings            # per-stock collections are <name>_<ticker>
+# NIFTY50_ADMIN_TOKEN=...                              # bearer token for POST /api/embeddings/nifty50/run
+# NIFTY50_NOTIFY_WEBHOOK_URL=...                       # optional completion webhook for the batch job
 # GDRIVE_CLIENT_ID=...                                 # Drive delivery
 # GDRIVE_CLIENT_SECRET=...
 
@@ -330,6 +333,74 @@ python scripts/generate_report.py WIPRO
 python scripts/evaluate_full_pipeline.py
 python scripts/verify_reporting.py
 ```
+
+---
+
+## 🖥 GPU Acceleration
+
+Docling's layout and TableFormer passes are the dominant cost of ingestion — a
+561-page annual report is roughly **55 minutes on four CPU cores**. Both are
+PyTorch models, so an NVIDIA card cuts that several-fold. Nothing in the code
+needs changing; what has to change is the installed **torch build**, because
+`requirements.txt` pins the CPU wheel and a CPU wheel makes every `device=auto`
+in the stack resolve to `cpu`, silently.
+
+**1. Check what this machine currently resolves to:**
+
+```powershell
+python -m scripts.embed_nifty50 --hardware
+```
+
+A `torch cuda build: none (CPU wheel)` row next to a real GPU means the card is
+idle. The command warns explicitly when that is the case.
+
+**2. Install a CUDA build of torch** matching your driver (`nvidia-smi` reports
+the maximum CUDA version it supports):
+
+```powershell
+pip uninstall -y torch torchvision
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+```
+
+**3. Confirm, then run.** `--hardware` should now report `device: cuda` with the
+card named, `embed precision: float16`, and an embed batch size sized from VRAM:
+
+```powershell
+python -m scripts.embed_nifty50 --hardware
+python -m scripts.embed_nifty50 --tickers WIPRO      # one ticker first
+```
+
+### What gets tuned, and how to override it
+
+`core/hardware.py` resolves one profile per run and applies it to every stage —
+Docling's `AcceleratorOptions`, torch's intra-op thread pool, and the embedder's
+device, batch size and precision. Its defaults are detected from the machine;
+each is overridable by CLI flag or environment variable, flag winning.
+
+| Setting | Default | Flag | Variable |
+| :--- | :--- | :--- | :--- |
+| Device | detected (`cuda` if torch can reach it) | `--device` | `GROWNXT_DEVICE` |
+| Extraction threads | physical cores (Docling's own default is **4** on any machine) | `--threads` | `GROWNXT_NUM_THREADS` |
+| Embed batch size | sized from VRAM; 16 on a low-RAM CPU host | `--embed-batch-size` | `GROWNXT_EMBED_BATCH_SIZE` |
+| Embed precision | `float16` on CUDA, `float32` otherwise | — | `GROWNXT_EMBED_FP16` |
+| Table mode | TableFormer accurate | `--fast-tables` | — |
+
+Two behaviours worth knowing before a long backfill:
+
+* **`--fast-tables` re-extracts.** The table mode changes the extracted text, so
+  it is part of the recorded extractor version: switching it makes Layer 1 treat
+  every document indexed under the other mode as stale. Device and thread count
+  deliberately are *not* part of that version — the same model on a GPU and on a
+  CPU produces the same document, and must not invalidate a cache.
+* **`--workers` yields to VRAM.** Workers are threads in one process, so each
+  loads its own copy of the layout and table models onto the same card. Under
+  8 GB of VRAM the batch drops to one ticker at a time and says so, rather than
+  running out of memory hours into a run.
+
+The profile that a run actually got is recorded in its manifest (`hardware`) and
+in the `run_started` event in `logs/nifty50/runs/<run_id>/events.jsonl`.
+
+---
 
 ### Server API Endpoints
 

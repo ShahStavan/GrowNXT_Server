@@ -21,7 +21,7 @@ varying heights. In a column of financials that reads as broken. Cambria
 and Segoe UI both ship lining figures and support tabular widths.
 """
 
-from typing import Final, List, Tuple
+from typing import Final
 
 # --- Brand ---------------------------------------------------------------
 
@@ -33,25 +33,25 @@ BRAND_TAGLINE: Final[str] = "Equity Research"
 # Deep-indigo scheme. Neutrals carry a slight blue bias rather than being
 # pure grey, so they read as chosen alongside the brand hue instead of
 # inherited.
-INK: Final[str] = "#14171F"          # Body text, table figures
-INK_SOFT: Final[str] = "#373E4E"     # Secondary text, table headers
-MUTED: Final[str] = "#586074"        # Labels, units, source lines
-FAINT: Final[str] = "#8A90A2"        # Axis ticks, de-emphasised marks
-RULE: Final[str] = "#C0C5D2"         # Table strokes and dividers
-RULE_LIGHT: Final[str] = "#E6E9F0"   # Interior hairlines, gridlines
+INK: Final[str] = "#14171F"  # Body text, table figures
+INK_SOFT: Final[str] = "#373E4E"  # Secondary text, table headers
+MUTED: Final[str] = "#586074"  # Labels, units, source lines
+FAINT: Final[str] = "#8A90A2"  # Axis ticks, de-emphasised marks
+RULE: Final[str] = "#C0C5D2"  # Table strokes and dividers
+RULE_LIGHT: Final[str] = "#E6E9F0"  # Interior hairlines, gridlines
 SURFACE: Final[str] = "#FFFFFF"
-SUNKEN: Final[str] = "#F3F4F9"       # Zebra and panel fills
+SUNKEN: Final[str] = "#F3F4F9"  # Zebra and panel fills
 SUNKEN_DEEP: Final[str] = "#E8EAF2"  # Table header fill
 
-BRAND: Final[str] = "#1F3A6E"        # Furniture only, never data
+BRAND: Final[str] = "#1F3A6E"  # Furniture only, never data
 BRAND_TINT: Final[str] = "#E9EDF6"
 
-POSITIVE: Final[str] = "#12795C"     # Gains, beats
-NEGATIVE: Final[str] = "#B23A3A"     # Declines, misses
+POSITIVE: Final[str] = "#12795C"  # Gains, beats
+NEGATIVE: Final[str] = "#B23A3A"  # Declines, misses
 
 # Stepped-lightness ramp built from the brand hue: ordering reads correctly
 # in mono as well as colour.
-SERIES: Final[List[str]] = [
+SERIES: Final[list[str]] = [
     "#151F3D",
     "#27407A",
     "#4A66A8",
@@ -67,14 +67,18 @@ ACCENT_LINE: Final[str] = "#A0641C"
 # Fallback chains. Typst resolves the first available name; each chain ends
 # in a face present on effectively every host. All have lining figures.
 
-FONT_DISPLAY: Final[Tuple[str, ...]] = ("Cambria", "Palatino Linotype", "Libertinus Serif")
-FONT_BODY: Final[Tuple[str, ...]] = ("Segoe UI", "Calibri", "DejaVu Sans")
-FONT_MONO: Final[Tuple[str, ...]] = ("Consolas", "DejaVu Sans Mono")
+FONT_DISPLAY: Final[tuple[str, ...]] = (
+    "Cambria",
+    "Palatino Linotype",
+    "Libertinus Serif",
+)
+FONT_BODY: Final[tuple[str, ...]] = ("Segoe UI", "Calibri", "DejaVu Sans")
+FONT_MONO: Final[tuple[str, ...]] = ("Consolas", "DejaVu Sans Mono")
 
 SIZE_MASTHEAD: Final[str] = "20pt"
 SIZE_SUBTITLE: Final[str] = "8.4pt"
-SIZE_H1: Final[str] = "11.5pt"       # Section heads
-SIZE_H2: Final[str] = "8.0pt"        # Exhibit captions
+SIZE_H1: Final[str] = "11.5pt"  # Section heads
+SIZE_H2: Final[str] = "8.0pt"  # Exhibit captions
 SIZE_BODY: Final[str] = "8.0pt"
 SIZE_TABLE: Final[str] = "7.1pt"
 SIZE_PANEL: Final[str] = "7.2pt"
@@ -119,15 +123,16 @@ CHART_H_SHORT: Final[float] = 1.80
 # block. Each role is named separately even where two share a value today, so
 # one can be adjusted without dragging the other with it.
 
-TICK_PERIOD: Final[float] = 5.9       # Period labels on an annual axis
-TICK_DENSE: Final[float] = 5.6        # Same, where eight periods crowd the axis
-TICK_RANKED: Final[float] = 6.1       # Peer names on a ranked horizontal panel
-TICK_CATEGORY: Final[float] = 6.4     # Named categories, e.g. Sources / Uses
-DATA_LABEL: Final[float] = 6.0        # Value printed at a series end
+TICK_PERIOD: Final[float] = 5.9  # Period labels on an annual axis
+TICK_DENSE: Final[float] = 5.6  # Same, where eight periods crowd the axis
+TICK_RANKED: Final[float] = 6.1  # Peer names on a ranked horizontal panel
+TICK_CATEGORY: Final[float] = 6.4  # Named categories, e.g. Sources / Uses
+DATA_LABEL: Final[float] = 6.0  # Value printed at a series end
 DATA_LABEL_TIGHT: Final[float] = 5.7  # Same, where the panel leaves less room
-ANNOTATION: Final[float] = 5.6        # Muted explanatory text inside a chart
-SEGMENT_CAPTION: Final[float] = 5.5   # Label set inside a composition bar
-SCORE_VALUE: Final[float] = 6.2       # Emphasised score printed on a chart
+ANNOTATION: Final[float] = 5.6  # Muted explanatory text inside a chart
+SEGMENT_CAPTION: Final[float] = 5.5  # Label set inside a composition bar
+SCORE_VALUE: Final[float] = 6.2  # Emphasised score printed on a chart
+
 
 def matplotlib_rc() -> dict:
     """Builds the matplotlib rcParams that mirror these tokens.

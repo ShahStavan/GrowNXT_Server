@@ -11,9 +11,9 @@ issuing fourteen requests.
 
 import json
 import logging
-from pathlib import Path
 import time
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any
 from urllib.parse import quote
 
 import requests
@@ -27,7 +27,7 @@ DEFAULT_CACHE_DIR: Path = OUTPUT_DIR
 
 
 # Endpoint suffixes keyed by the name used throughout the report code.
-ENDPOINTS: Dict[str, str] = {
+ENDPOINTS: dict[str, str] = {
     "summary": "/stocks/{sym}/summary",
     "peers": "/stocks/{sym}/peers",
     "income_q": "/stocks/{sym}/income/quarterly",
@@ -55,7 +55,7 @@ class CollectorClient:
     def __init__(
         self,
         base_url: str = DEFAULT_BASE_URL,
-        cache_dir: Optional[Path] = None,
+        cache_dir: Path | None = None,
         timeout: int = 45,
         max_retries: int = 2,
         use_cache: bool = True,
@@ -83,7 +83,7 @@ class CollectorClient:
             return self.cache_dir / "api" / (name + ".json")
         return self.cache_dir / sym / "api" / (name + ".json")
 
-    def _get(self, url: str) -> Optional[Any]:
+    def _get(self, url: str) -> Any | None:
         """GETs a URL and parses JSON, retrying transient failures."""
         for attempt in range(self.max_retries + 1):
             try:
@@ -92,7 +92,10 @@ class CollectorClient:
                     return response.json()
                 logger.warning(
                     "Collector returned %s for %s (attempt %d/%d)",
-                    response.status_code, url, attempt + 1, self.max_retries + 1,
+                    response.status_code,
+                    url,
+                    attempt + 1,
+                    self.max_retries + 1,
                 )
                 if 400 <= response.status_code < 500 and response.status_code != 429:
                     return None
@@ -102,7 +105,7 @@ class CollectorClient:
                 time.sleep(1.5 * (attempt + 1))
         return None
 
-    def fetch(self, ticker: str, name: str, refresh: bool = False) -> Optional[Any]:
+    def fetch(self, ticker: str, name: str, refresh: bool = False) -> Any | None:
         """Fetches one endpoint payload, using the disk cache when allowed.
 
         Args:
@@ -123,12 +126,22 @@ class CollectorClient:
             if path.exists():
                 try:
                     payload = json.loads(path.read_text(encoding="utf-8"))
-                    return payload.get("data", payload) if isinstance(payload, dict) else payload
+                    return (
+                        payload.get("data", payload)
+                        if isinstance(payload, dict)
+                        else payload
+                    )
                 except (OSError, ValueError) as exc:
                     logger.warning("Cache unreadable at %s: %s", path, exc)
 
             # 2. Legacy fallback check: .cache/api/<TICKER>/<name>.json
-            legacy_path = Path(__file__).resolve().parent.parent / ".cache" / "api" / safe_ticker(ticker) / (name + ".json")
+            legacy_path = (
+                Path(__file__).resolve().parent.parent
+                / ".cache"
+                / "api"
+                / safe_ticker(ticker)
+                / (name + ".json")
+            )
             if legacy_path.exists():
                 try:
                     payload = json.loads(legacy_path.read_text(encoding="utf-8"))
@@ -137,9 +150,15 @@ class CollectorClient:
                         path.write_text(json.dumps(payload), encoding="utf-8")
                     except Exception:
                         pass
-                    return payload.get("data", payload) if isinstance(payload, dict) else payload
+                    return (
+                        payload.get("data", payload)
+                        if isinstance(payload, dict)
+                        else payload
+                    )
                 except (OSError, ValueError) as exc:
-                    logger.warning("Legacy cache unreadable at %s: %s", legacy_path, exc)
+                    logger.warning(
+                        "Legacy cache unreadable at %s: %s", legacy_path, exc
+                    )
 
         # Percent-encode the symbol: an unescaped '&' in a ticker such as
         # 'M&M' would otherwise terminate the path and start a query string,
@@ -159,7 +178,7 @@ class CollectorClient:
 
         return payload.get("data", payload) if isinstance(payload, dict) else payload
 
-    def fetch_all(self, ticker: str, refresh: bool = False) -> Dict[str, Any]:
+    def fetch_all(self, ticker: str, refresh: bool = False) -> dict[str, Any]:
         """Fetches every endpoint for a ticker.
 
         Args:
@@ -175,13 +194,13 @@ class CollectorClient:
             CollectorError: If no endpoint at all could be retrieved,
                 which means the ticker or the service is wrong.
         """
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         for name in ENDPOINTS:
             out[name] = self.fetch(ticker, name, refresh=refresh)
         if all(value is None for value in out.values()):
             raise CollectorError("No collector data available for " + ticker)
 
-        missing: List[str] = [k for k, v in out.items() if v is None]
+        missing: list[str] = [k for k, v in out.items() if v is None]
         if missing:
             logger.warning("[%s] endpoints unavailable: %s", ticker, ", ".join(missing))
         return out

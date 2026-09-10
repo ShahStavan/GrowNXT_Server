@@ -1,7 +1,6 @@
 import re
 import sys
 
-
 DANGEROUS_PATTERNS = [
     r"\bgit\s+reset\s+--hard\b",
     r"\bgit\s+clean\s+-[a-zA-Z]*f",

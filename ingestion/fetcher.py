@@ -8,20 +8,18 @@ Google Python Style Guide Compliant.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import contextlib
 import datetime as _datetime
 import hashlib
 import logging
-import os
-from pathlib import Path
 import tempfile
 import time
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
-
-from core.config import safe_ticker
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +36,14 @@ FINDINGS_DIR: str = "findings"
 DOC_TYPE_ANNUAL_REPORT: str = "annual_report"
 DOC_TYPE_TRANSCRIPT: str = "concall_transcript"
 DOC_TYPE_PRESENTATION: str = "concall_presentation"
-DOC_TYPES: List[str] = [DOC_TYPE_ANNUAL_REPORT, DOC_TYPE_TRANSCRIPT, DOC_TYPE_PRESENTATION]
+DOC_TYPES: list[str] = [
+    DOC_TYPE_ANNUAL_REPORT,
+    DOC_TYPE_TRANSCRIPT,
+    DOC_TYPE_PRESENTATION,
+]
 
 # Stage names, in pipeline order.
-STAGES: List[str] = ["download", "parse", "chunk", "embed", "prompt"]
+STAGES: list[str] = ["download", "parse", "chunk", "embed", "prompt"]
 
 # Exchange hosts reject non-browser agents outright.
 DOWNLOAD_HEADERS = {
@@ -59,7 +61,12 @@ MIN_BYTES: int = 8 * 1024
 
 def utc_now() -> str:
     """Returns the current UTC time as an ISO-8601 string with a Z suffix."""
-    return _datetime.datetime.now(_datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        _datetime.datetime.now(_datetime.UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def sha256_text(text: str) -> str:
@@ -71,7 +78,7 @@ def sha256_file(path: Path, block_size: int = 1 << 20) -> str:
     """Returns the SHA-256 hex digest of a file, read in blocks."""
     digest = hashlib.sha256()
     try:
-        with open(str(path), "rb") as handle:
+        with path.open("rb") as handle:
             for block in iter(lambda: handle.read(block_size), b""):
                 digest.update(block)
     except OSError as exc:
@@ -88,7 +95,7 @@ class StageState:
     fingerprint: str = ""
     version: str = ""
     at: str = ""
-    detail: Dict[str, Any] = field(default_factory=dict)
+    detail: dict[str, Any] = field(default_factory=dict)
     error: str = ""
 
     @property
@@ -96,8 +103,8 @@ class StageState:
         """True when the stage completed successfully."""
         return self.status == "done"
 
-    def to_dict(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
             "status": self.status,
             "fingerprint": self.fingerprint,
             "version": self.version,
@@ -109,7 +116,7 @@ class StageState:
         return out
 
     @classmethod
-    def from_dict(cls, payload: Optional[Dict[str, Any]]) -> "StageState":
+    def from_dict(cls, payload: dict[str, Any] | None) -> StageState:
         data = payload or {}
         return cls(
             status=str(data.get("status", "pending")),
@@ -129,9 +136,9 @@ class DocumentRecord:
     doc_type: str
     label: str
     source_url: str
-    period: Dict[str, Any] = field(default_factory=dict)
-    stages: Dict[str, StageState] = field(default_factory=dict)
-    history: List[Dict[str, Any]] = field(default_factory=list)
+    period: dict[str, Any] = field(default_factory=dict)
+    stages: dict[str, StageState] = field(default_factory=dict)
+    history: list[dict[str, Any]] = field(default_factory=list)
 
     def stage(self, name: str) -> StageState:
         if name not in self.stages:
@@ -139,7 +146,7 @@ class DocumentRecord:
         return self.stages[name]
 
     def record(self, event: str, **fields: Any) -> None:
-        entry: Dict[str, Any] = {"event": event, "at": utc_now()}
+        entry: dict[str, Any] = {"event": event, "at": utc_now()}
         entry.update({k: v for k, v in fields.items() if v not in (None, "")})
         self.history.append(entry)
 
@@ -150,7 +157,7 @@ class DocumentRecord:
     def relative_path(self, sub_dir: str, suffix: str) -> str:
         return sub_dir + "/" + self.doc_id + suffix
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "doc_id": self.doc_id,
             "doc_type": self.doc_type,
@@ -163,7 +170,7 @@ class DocumentRecord:
         }
 
     @classmethod
-    def from_dict(cls, payload: Dict[str, Any]) -> "DocumentRecord":
+    def from_dict(cls, payload: dict[str, Any]) -> DocumentRecord:
         stages = {
             name: StageState.from_dict(value)
             for name, value in (payload.get("stages") or {}).items()
@@ -184,7 +191,7 @@ class FetchResult:
     """Outcome of one download attempt."""
 
     ok: bool = False
-    path: Optional[Path] = None
+    path: Path | None = None
     relative_path: str = ""
     sha256: str = ""
     n_bytes: int = 0
@@ -193,20 +200,20 @@ class FetchResult:
     error: str = ""
 
 
-def _request_headers(url: str) -> Dict[str, str]:
+def _request_headers(url: str) -> dict[str, str]:
     headers = dict(DOWNLOAD_HEADERS)
     try:
         parsed = urlparse(url)
     except ValueError:
         return headers
     if parsed.scheme in ("http", "https") and parsed.netloc:
-        headers["Referer"] = "%s://%s/" % (parsed.scheme, parsed.netloc)
+        headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
     return headers
 
 
 def _looks_like_pdf(path: Path) -> bool:
     try:
-        with open(str(path), "rb") as handle:
+        with path.open("rb") as handle:
             return handle.read(len(PDF_MAGIC)) == PDF_MAGIC
     except OSError:
         return False
@@ -234,66 +241,83 @@ def download_document(
                 n_bytes=target.stat().st_size,
                 reused=True,
             )
-        logger.warning("[%s] existing file is not a usable PDF; re-downloading.", record.doc_id)
+        logger.warning(
+            "[%s] existing file is not a usable PDF; re-downloading.", record.doc_id
+        )
 
     last_error = ""
     for attempt in range(max_retries + 1):
-        handle = tempfile.NamedTemporaryFile(
-            dir=str(destination), prefix="." + record.doc_id + "-", suffix=".part",
-            delete=False,
-        )
-        temporary = Path(handle.name)
         written = 0
         content_type = ""
-        try:
-            with requests.get(record.source_url, headers=_request_headers(record.source_url),
-                              timeout=timeout, stream=True, allow_redirects=True) as response:
-                content_type = str(response.headers.get("Content-Type", ""))
-                if not response.ok:
-                    last_error = "HTTP %d" % response.status_code
-                    raise IOError(last_error)
-                with handle:
+        with tempfile.NamedTemporaryFile(
+            dir=str(destination),
+            prefix="." + record.doc_id + "-",
+            suffix=".part",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            try:
+                with requests.get(
+                    record.source_url,
+                    headers=_request_headers(record.source_url),
+                    timeout=timeout,
+                    stream=True,
+                    allow_redirects=True,
+                ) as response:
+                    content_type = str(response.headers.get("Content-Type", ""))
+                    if not response.ok:
+                        last_error = f"HTTP {response.status_code}"
+                        raise OSError(last_error)
                     for block in response.iter_content(chunk_size=1 << 16):
                         if not block:
                             continue
                         written += len(block)
                         if written > MAX_BYTES:
-                            raise IOError("response exceeds %d bytes" % MAX_BYTES)
+                            raise OSError(f"response exceeds {MAX_BYTES} bytes")
                         handle.write(block)
 
-            if written < MIN_BYTES:
-                last_error = "response too small (%d bytes)" % written
-                raise IOError(last_error)
-            if not _looks_like_pdf(temporary):
-                last_error = "response is not a PDF (content-type %r)" % content_type
-                raise IOError(last_error)
-
-            os.replace(str(temporary), str(target))
-            digest = sha256_file(target)
-            logger.info("[%s] downloaded %.1f MB", record.doc_id, written / (1024 * 1024))
-            return FetchResult(
-                ok=True,
-                path=target,
-                relative_path=relative,
-                sha256=digest,
-                n_bytes=written,
-                reused=False,
-                content_type=content_type,
-            )
-
-        except (requests.RequestException, IOError, OSError) as exc:
-            last_error = str(exc) or last_error or "download failed"
-            try:
                 handle.close()
-            except OSError:
-                pass
-            try:
-                if temporary.exists():
-                    temporary.unlink()
-            except OSError:
-                pass
-            logger.warning("[%s] download failed (%s), attempt %d/%d",
-                           record.doc_id, last_error, attempt + 1, max_retries + 1)
+
+                if written < MIN_BYTES:
+                    last_error = f"response too small ({written} bytes)"
+                    raise OSError(last_error)
+                if not _looks_like_pdf(temporary):
+                    last_error = (
+                        f"response is not a PDF (content-type {content_type!r})"
+                    )
+                    raise OSError(last_error)
+
+                temporary.replace(target)
+                digest = sha256_file(target)
+                logger.info(
+                    "[%s] downloaded %.1f MB", record.doc_id, written / (1024 * 1024)
+                )
+                return FetchResult(
+                    ok=True,
+                    path=target,
+                    relative_path=relative,
+                    sha256=digest,
+                    n_bytes=written,
+                    reused=False,
+                    content_type=content_type,
+                )
+
+            except (requests.RequestException, OSError) as exc:
+                last_error = str(exc) or last_error or "download failed"
+                with contextlib.suppress(OSError):
+                    handle.close()
+                try:
+                    if temporary.exists():
+                        temporary.unlink()
+                except OSError:
+                    pass
+            logger.warning(
+                "[%s] download failed (%s), attempt %d/%d",
+                record.doc_id,
+                last_error,
+                attempt + 1,
+                max_retries + 1,
+            )
             if attempt < max_retries:
                 time.sleep(2.0 * (attempt + 1))
 

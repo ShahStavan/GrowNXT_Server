@@ -12,6 +12,15 @@ Autonomous financial intelligence and institutional equity research platform. Co
   - **Track 1 (Quantitative)**: Normalized income, balance sheet, and cash flow analysis (`reporting/snapshot.py`, `reporting/analytics.py`), composite scoring (`reporting/composites.py`), 20 deterministic self-checks (`reporting/selfcheck.py`), and SVG chart generation (`reporting/charts.py`).
   - **Track 2 (Qualitative RAG)**: Multi-document ingestion (`ingestion/`), semantic chunking with Docling layout parsing (`ingestion/chunker.py`), Qdrant in-memory vector index with Snowflake Arctic embeddings (`ingestion/indexer.py`), financial probes (`ingestion/rag/probes.py`), and SLM thematic synthesis (`ingestion/rag/synthesizer.py`).
   - **Publication**: Generates Typst markup (`reporting/typst_doc.py`) and compiles directly to PDF via the `typst` compiler.
+- **Nifty 50 Batch Embedding (`ingestion/batch.py`, `scripts/embed_nifty50.py`)**:
+  - Embeds each constituent's newest annual report, concall transcript and investor presentation into **its own Qdrant collection** (`<QDRANT_COLLECTION_NAME>_<ticker>`) and mirrors them to `output/<TICKER>/vectors.npz` + `payloads.json` (the retriever's Tier-1 fast path).
+  - Two-layer change detection: Layer 1 diffs the catalogue's period-derived `doc_id`s against `output/<TICKER>/state.json` (new / failed / chunker-or-extractor version bump / collection change); Layer 2 is the indexer's fingerprint check. A steady-state run is 50 catalogue requests and nothing else.
+  - Constituents come from `ticker_mapping.csv` via `ingestion/nifty50.py`; run state lives in `output/_nifty50/run_manifest.json`; logs in `logs/nifty50/` (`ingestion/runlog.py`: rolling log, per-run `run.log`, `events.jsonl`, `summary.json`).
+  - Runs detached (`--background`) or via `POST /api/embeddings/nifty50/run`. Notifies once on completion, and once per constituent as it finishes (`ingestion/notify.py`), both on the same webhook.
+- **Compute Resolution (`core/hardware.py`)**:
+  - One profile per run — device, extraction threads, embed batch size, embed precision — detected from the machine and applied to every stage: Docling's `AcceleratorOptions`, torch's intra-op pool, and the `SentenceTransformer`. `profile()` resolves, `configure()` applies; both are safe without torch installed.
+  - Exists because each library defaults badly on its own: Docling pins **4 threads on any machine** and `device="auto"`, which resolves to CPU whenever torch came from the CPU wheel index — so a GPU can sit idle for a fifty-hour run with nothing said. `--hardware` reports the resolution up front, and `idle_gpu` names that exact case.
+  - The resolved profile is recorded in `RunManifest.hardware` and in the `run_started` event.
 - **Entry Points & Serving**:
   - `app.py`: Production entry point mounting Gradio UI + FastAPI ASGI + Flask WSGI (`a2wsgi`) on a unified server (default port `7860`).
   - `api/app.py`: Flask Application Factory (`create_app()`) exposing REST API routes and OpenAI-compatible `/v1/chat/completions` proxy with `<think>` token sanitization.
@@ -29,15 +38,23 @@ GrowNXT_Server/
 ├── api/              # Flask application factory and search discovery
 │   ├── app.py        # REST API endpoints & OpenAI reverse proxy
 │   └── search.py     # External stock search and directory validation
-├── core/             # Centralized paths and SLM configuration
+├── core/             # Centralized paths, compute, and SLM configuration
 │   ├── config.py     # System paths, safe_ticker folding, endpoint constants
+│   ├── hardware.py   # Device/threads/batch resolution for Docling, torch, the embedder
 │   └── llm_config.py # Hosted SLM integration and <think> token filtering
 ├── ingestion/        # Document fetching, chunking, and RAG pipeline
+│   ├── batch.py      # Nifty 50 batch orchestration: run_batch(), manifest, detached launch
 │   ├── catalog.py    # Document metadata catalog
 │   ├── chunker.py    # Docling layout and Markdown chunking
+│   ├── documents/    # DocumentStore paths, Downloader, Docling Extractor
 │   ├── fetcher.py    # BSE/NSE document downloader
-│   ├── indexer.py    # Qdrant vector store and Snowflake Arctic embeddings
+│   ├── indexer.py    # Qdrant vector store (per-ticker collections) and Snowflake Arctic embeddings
+│   ├── nifty50.py    # Constituent loader over ticker_mapping.csv
+│   ├── notify.py     # One-shot completion webhook
+│   ├── runlog.py     # logs/<job>/ file logging, JSONL events, counters
 │   └── rag/          # Probes, retriever, reranker, and synthesizer
+├── ticker_mapping.csv# Nifty 50 constituents (symbol, Screener name, sector, verified_at)
+├── logs/             # Batch job logs (gitignored; GROWNXT_LOG_DIR overrides)
 ├── reporting/        # Quantitative financial engine and Typst generation
 │   ├── analytics.py  # DuPont 5-factor, solvency, liquidity, and CAGR
 │   ├── charts.py     # SVG chart generation (matplotlib)
@@ -76,6 +93,21 @@ python api/app.py
 # Generate report via CLI
 python scripts/generate_report.py WIPRO
 python scripts/generate_report.py WIPRO INFY --refresh --keep-build
+
+# Embed Nifty 50 filings into Qdrant (incremental; re-runs are no-ops)
+python -m scripts.embed_nifty50                       # all 50 constituents
+python -m scripts.embed_nifty50 --tickers TCS INFY    # a subset
+python -m scripts.embed_nifty50 --limit 3 --dry-run   # catalogue + diff only, no network beyond that
+python -m scripts.embed_nifty50 --background          # detach; prints run_id
+python -m scripts.embed_nifty50 --status [--json] [--run-id ID] [--tail 20]
+python -m scripts.embed_nifty50 --force TCS           # re-extract/re-embed TCS's known filings
+python -m scripts.embed_nifty50 --no-ticker-notify    # end-of-run notification only
+
+# Compute: what device/threads/batch a run would resolve to, before running it
+python -m scripts.embed_nifty50 --hardware [--json]
+python -m scripts.embed_nifty50 --device cuda --threads 8 --embed-batch-size 64
+python -m scripts.embed_nifty50 --fast-tables         # TableFormer fast mode (re-extracts; see below)
+python -m scripts.embed_nifty50 --page-filter         # convert only an annual report's financial section
 ```
 
 ---
@@ -94,8 +126,15 @@ python scripts/verify_documents.py
 # Verify Docling layout parsing and chunking
 python scripts/verify_chunker.py
 
-# Verify ingestion and vector search indexing
-python scripts/verify_ingestion.py
+# Verify the Nifty 50 batch embedding pipeline, including hardware resolution,
+# GPU worker capping, and the extractor-version/table-mode contract
+# (offline; --live SYM adds a real two-run check)
+python scripts/verify_nifty50_embeddings.py
+python scripts/verify_nifty50_embeddings.py --live WIPRO
+
+# NOTE: scripts/ingest_documents.py and scripts/verify_ingestion.py import
+# names removed in the Docling refactor and raise ImportError. Use
+# scripts/embed_nifty50.py and scripts/verify_nifty50_embeddings.py instead.
 
 # Verify Google Drive authentication and upload flow
 python scripts/verify_gdrive.py
@@ -122,7 +161,19 @@ Create a root `.env` file (refer to `.env.example`):
 | `GDRIVE_CLIENT_ID` | Google Drive OAuth Client ID | - |
 | `GDRIVE_CLIENT_SECRET` | Google Drive OAuth Client Secret | - |
 | `GDRIVE_ROOT_FOLDER_ID`| Target folder ID in Google Drive | - |
-
+| `QDRANT_API_URL` | Qdrant server / Cloud URL. **Unset = in-memory store, lost on exit** (logged at ERROR) | - |
+| `QDRANT_API_KEY` | Qdrant API key | - |
+| `QDRANT_COLLECTION_NAME` | Shared collection name, and the prefix of per-ticker collections (`<name>_<ticker>`) | `grownxt_financial_elements` |
+| `QDRANT_COLLECTION_PER_TICKER` | `0` reverts to one shared collection with a `ticker` payload filter | `1` |
+| `QDRANT_PREFER_GRPC` | `0` forces the REST transport. gRPC sends vectors as binary rather than JSON; the client proves the connection at startup and falls back to REST on its own | `1` |
+| `GROWNXT_LOG_DIR` | Root for batch job logs (`logs/nifty50/`) | `./logs` |
+| `GROWNXT_DEVICE` | Device for Docling and the embedder: `auto`/`cuda`/`cuda:N`/`cpu`/`mps`/`xpu` | auto-detect |
+| `GROWNXT_NUM_THREADS` | Extraction threads. Docling's own default is **4 on any machine** | physical cores |
+| `GROWNXT_EMBED_BATCH_SIZE` | Texts per `model.encode` call | sized from VRAM |
+| `GROWNXT_EMBED_FP16` | `0` keeps the embedding model in float32 | on for CUDA |
+| `NIFTY50_ADMIN_TOKEN` | Bearer token for `POST /api/embeddings/nifty50/run`; unset disables the route (503) | - |
+| `NIFTY50_NOTIFY_WEBHOOK_URL` | POSTed once per batch run, plus once per constituent as it finishes (`--no-ticker-notify` disables the per-ticker feed). An ntfy URL (`https://ntfy.sh/<topic>`) gets ntfy's plain-text protocol with Title/Tags/Priority headers; any other URL gets Slack/Discord/Teams-compatible JSON (`text` + counters) | - |
+| `NIFTY50_NOTIFY_EMAIL_TO` | With an ntfy URL, sets the `Email` header so ntfy also forwards the notification to this inbox; set empty to disable | `shahstavan72@gmail.com` |
 ---
 
 ## Code & API Conventions
@@ -134,6 +185,8 @@ Create a root `.env` file (refer to `.env.example`):
   - `GET /api/stocks/<sym>/report`: Returns metadata and Google Drive link (compiles on demand).
   - `GET /api/stocks/<sym>/report/file`: Direct binary PDF stream (`?download=1` for attachment).
   - `POST /v1/chat/completions`: OpenAI-compatible streaming chat completion proxy.
+  - `POST /api/embeddings/nifty50/run`: Launches the batch as a **detached process** (never in-process) and returns `202 {run_id, status_url}`; `409` while a run is live; requires `Authorization: Bearer <NIFTY50_ADMIN_TOKEN>` (or `X-Admin-Token`). Body mirrors the CLI: `tickers`, `force`, `force_all`, `annual_reports`, `transcripts`, `presentations`, `dry_run`, plus the compute knobs `device`, `num_threads`, `embed_batch_size`, `fast_tables` (omit them to resolve from the host).
+  - `GET /api/embeddings/nifty50/status[/{run_id}]`: Reads `run_manifest.json`; pure file read, safe to poll.
 - **Domain Errors**: Map domain exceptions to appropriate HTTP status codes via `STATUSES` in `api/app.py` (`ReportError` -> 404, `DriveAuthError` -> 503, `DriveError` -> 502).
 
 ---
@@ -170,6 +223,23 @@ Create a root `.env` file (refer to `.env.example`):
 - **Ticker Folding**: Indian tickers contain ampersands/hyphens (e.g. `M&M`). ALWAYS use `safe_ticker(sym)` from `core/config.py` when constructing directory paths.
 - **Directory Lifecycle**: Build artifacts (`*.svg`, `*.typ`) are swept after compilation (`_sweep_build`), leaving only `<TICKER>_report.pdf` and `findings/` in `OUTPUT_DIR/<TICKER>/`.
 - **No Database Engine**: Project is entirely file-backed and cached per-ticker in `OUTPUT_DIR/`. Do not introduce SQL or ORM dependencies.
+- **Per-ticker Qdrant collections**: `IndexerConfig.collection_for(ticker)` is the only way to name a collection; every search/upsert path takes the ticker. `search_batch_by_vectors` refuses a batch spanning two tickers. `output/_nifty50/` is cross-ticker state, not a stock — `index_all_tickers` skips `_`-prefixed directories.
+- **`should_index_document` history**: its final comparison was inverted (re-embedding every current document, skipping real collection changes). `scripts/verify_nifty50_embeddings.py` guards it; keep that check green.
+- **Layer 1 "known" means "successfully indexed by the current pipeline"**: a `doc_id` recorded as FAILED, produced by an older `CHUNKER_VERSION`/`EXTRACT_VERSION`, or living in a different collection is re-processed automatically. `Extractor.run()` itself never reads its cache — only Layer 1 prevents a redundant Docling pass.
+- **`os.kill(pid, 0)` terminates the process on Windows** — use `ingestion.batch.pid_alive()` for liveness checks.
+- **A CPU-only torch wheel makes every `device="auto"` mean `cpu`**, on a machine with a working GPU, with no error anywhere. `core.hardware.HardwareProfile.idle_gpu` is the detector (NVIDIA driver present, `torch.version.cuda` empty); `--hardware` surfaces it. `requirements.txt` pins the CPU wheel deliberately, for the Space.
+- **The table mode is part of the extractor version, the device is not.** `extract_version(accurate_tables)` appends `+fast-tables`, so `--fast-tables` makes Layer 1 re-extract everything indexed the other way — correct, because it changes the text. Device and thread count produce the same document and must never enter that comparison, or every machine would invalidate the last one's cache.
+- **`--workers` is capped to 1 under `GPU_CONCURRENCY_VRAM_GB` (8 GB)**: workers are threads sharing a process, so each puts its own layout and table models on the same card. `resolve_workers()` owns that decision and logs it.
+- **Per-ticker notifications are quiet by design**: ntfy priority 2 for an OK ticker so fifty of them do not buzz a phone fifty times, 4 for `FAILED`/`PARTIAL`. The `Email` header is set **only** on the end-of-run summary -- `notify_ticker` never sets it, or one run would be fifty-one emails.
+- **`Popen.pid` is not the batch process's pid.** A Windows venv `python.exe` can be a launcher stub, so `launch_detached` records the stub's id. The child therefore claims its own run via `RunManifest.claimed` rather than by comparing pids -- comparing them made every `--background` run refuse itself at startup. Keep `_check_launch_handoff` in the verification suite green.
+- **The CLI entry point loads `.env` itself** (`scripts/embed_nifty50.py`). It must not rely on `ingestion.indexer` importing dotenv as a side effect: a detached run that found neither `QDRANT_API_URL` nor the webhook would embed into an in-memory store and never say so.
+- **Page filtering keeps the financial tail, and fails toward keeping pages.** `ingestion/documents/sections.py` finds where an annual report's financial section starts with a cheap pypdf text pass (~60 ms/page against Docling's seconds) and converts only from there. Every uncertain case -- under 60 pages, no anchor, an unreadable or scanned PDF, an anchor on page 1 -- returns None, meaning convert everything: a dropped page is unsearchable forever, a spare one costs seconds. Measured on ADANIENT FY2026: pages 222-396, dropping 221 of 396.
+- **An anchor must be the statements, not a phrase near them.** Page 191 of that filing begins "INDEPENDENT AUDITOR'S **CERTIFICATE** ON COMPLIANCE WITH THE CORPORATE GOVERNANCE REQUIREMENTS". Matching merely `independent auditor` anchors there and drags in 31 pages of the governance report the filter exists to drop, so `ANCHORS` requires the word "report". `check_page_filter` guards this; keep it green.
+- **`extract_version` carries every setting that changes the text**, now the table mode *and* the page filter (`+fast-tables+fin-pages`, in that fixed order). The page range also enters `Extractor._cache_key`, so a full extraction on disk can never satisfy a filtered request or the reverse. Device and thread count still must never enter either.
+- **OCR and figures are already off in the batch path** (`stages.py`, `Extractor(ocr=False, figures=False)`). The `ocr: bool = True` in `ingestion/documents/extract.py` is only the dataclass default and does not apply to a Nifty 50 run -- do not go looking for a saving there.
+- **The embedding matrix is never materialised in Python.** `index_chunk_set` calls `embed_matrix` and hands the array to `upload_vectors`, which uses Qdrant's `upload_collection`. Building `PointStruct`s instead means one Python float per dimension per chunk -- some 2.4 million objects for one annual report. `embed_texts` still returns lists for the search path.
+- **Only the last upsert batch waits.** Qdrant applies a shard's operations in order, so an acknowledged final batch implies the ones before it -- which preserves the invariant that `state.json` records INDEXED only once the server holds the vectors. Waiting on all of them cost a round trip per 128 points.
+- **Batch logs** are in `logs/nifty50/runs/<run_id>/events.jsonl` (one JSON object per stage boundary: catalogue counts, bytes downloaded, pages/tables/figures extracted, chunks, embed rate, Qdrant point counts). Query with `jq`, not by reading `run.log`.
 
 ---
 

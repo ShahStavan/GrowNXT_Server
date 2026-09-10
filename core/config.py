@@ -13,7 +13,7 @@ footprint removable in a single step.
 
 import os
 from pathlib import Path
-from typing import Dict, Final, Tuple
+from typing import Final
 
 PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parent.parent
 
@@ -33,7 +33,7 @@ FINANCIAL_DATA_COLLECTOR_BASE_URL: Final[str] = os.getenv(
 ).rstrip("/")
 
 # Default outbound HTTP headers for the REST and document hosts.
-HTTP_HEADERS: Final[Dict[str, str]] = {
+HTTP_HEADERS: Final[dict[str, str]] = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -44,7 +44,7 @@ HTTP_HEADERS: Final[Dict[str, str]] = {
 
 # The hosted model endpoint carries its own default URL and treats its key as
 # optional, so no variable has to be present for the server to start.
-REQUIRED_ENV_VARS: Final[Tuple[str, ...]] = ()
+REQUIRED_ENV_VARS: Final[tuple[str, ...]] = ()
 
 
 def safe_ticker(ticker: str) -> str:
@@ -90,4 +90,4 @@ def report_path(ticker: str, create_parent: bool = False) -> Path:
         Path: ``OUTPUT_DIR/<TICKER>/<TICKER>_report.pdf``.
     """
     folder = stock_dir(ticker, create=create_parent)
-    return folder / ("%s_report.pdf" % safe_ticker(ticker))
+    return folder / f"{safe_ticker(ticker)}_report.pdf"

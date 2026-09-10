@@ -16,26 +16,20 @@ Google Python Style Guide Compliant.
 from __future__ import annotations
 
 import json
-from pathlib import Path
-import sys
 import unittest
+from pathlib import Path
 
 from ingestion.chunker import (
-    CHUNKER_VERSION,
-    DEFAULT_ANNUAL_SKIP_SECTIONS,
     ELEMENT_FIGURE,
     ELEMENT_TABLE,
     ELEMENT_TEXT,
     Chunk,
     ChunkSet,
     chunk_document,
-    read_chunk_cache,
-    write_chunk_cache,
 )
 from ingestion.documents.content import (
     KIND_FIGURE,
     KIND_HEADING,
-    KIND_LIST,
     KIND_TABLE,
     KIND_TEXT,
     Block,
@@ -56,7 +50,12 @@ class TestSentenceSplitter(unittest.TestCase):
             label="Test Presentation",
             blocks=[
                 Block(kind=KIND_HEADING, text="Overview", path=["Overview"], page=1),
-                Block(kind=KIND_TEXT, text="Short business update paragraph.", path=["Overview"], page=1),
+                Block(
+                    kind=KIND_TEXT,
+                    text="Short business update paragraph.",
+                    path=["Overview"],
+                    page=1,
+                ),
             ],
         )
         chunk_set = chunk_document(doc, chunk_size=500, chunk_overlap=50)
@@ -112,8 +111,19 @@ class TestTableChunking(unittest.TestCase):
             ticker="TEST",
             label="Annual Report",
             blocks=[
-                Block(kind=KIND_HEADING, text="Segment Review", path=["Segment Review"], page=12),
-                Block(kind=KIND_TABLE, text=table.to_markdown(), path=["Segment Review"], table=table, page=12),
+                Block(
+                    kind=KIND_HEADING,
+                    text="Segment Review",
+                    path=["Segment Review"],
+                    page=12,
+                ),
+                Block(
+                    kind=KIND_TABLE,
+                    text=table.to_markdown(),
+                    path=["Segment Review"],
+                    table=table,
+                    page=12,
+                ),
             ],
         )
         chunk_set = chunk_document(doc)
@@ -128,7 +138,9 @@ class TestTableChunking(unittest.TestCase):
 
     def test_large_table_is_partitioned_with_headers_repeated(self) -> None:
         header = [["Line Item", "FY26", "FY25"]]
-        body = [[f"Schedule Item {i}", f"{1000 + i}", f"{900 + i}"] for i in range(1, 60)]
+        body = [
+            [f"Schedule Item {i}", f"{1000 + i}", f"{900 + i}"] for i in range(1, 60)
+        ]
         table = Table(
             rows=header + body,
             header_rows=1,
@@ -141,8 +153,16 @@ class TestTableChunking(unittest.TestCase):
             ticker="TEST",
             label="Annual Report",
             blocks=[
-                Block(kind=KIND_HEADING, text="Financials", path=["Financials"], page=20),
-                Block(kind=KIND_TABLE, text=table.to_markdown(), path=["Financials"], table=table, page=20),
+                Block(
+                    kind=KIND_HEADING, text="Financials", path=["Financials"], page=20
+                ),
+                Block(
+                    kind=KIND_TABLE,
+                    text=table.to_markdown(),
+                    path=["Financials"],
+                    table=table,
+                    page=20,
+                ),
             ],
         )
         chunk_set = chunk_document(doc)
@@ -172,8 +192,19 @@ class TestFigureChunking(unittest.TestCase):
             ticker="TEST",
             label="Investor Presentation",
             blocks=[
-                Block(kind=KIND_HEADING, text="Revenue Growth", path=["Revenue Growth"], page=4),
-                Block(kind=KIND_FIGURE, text="", path=["Revenue Growth"], figure=fig, page=4),
+                Block(
+                    kind=KIND_HEADING,
+                    text="Revenue Growth",
+                    path=["Revenue Growth"],
+                    page=4,
+                ),
+                Block(
+                    kind=KIND_FIGURE,
+                    text="",
+                    path=["Revenue Growth"],
+                    figure=fig,
+                    page=4,
+                ),
             ],
         )
         chunk_set = chunk_document(doc)
@@ -279,6 +310,7 @@ class TestChunkSerialization(unittest.TestCase):
         nodes = chunk_set.to_nodes()
         self.assertEqual(len(nodes), 2)
         from llama_index.core.schema import ImageNode, TextNode
+
         self.assertIsInstance(nodes[0], TextNode)
         self.assertIsInstance(nodes[1], ImageNode)
         self.assertEqual(nodes[1].image_path, "figures/test_doc/p0004-01.png")
@@ -288,10 +320,15 @@ class TestChunkSerialization(unittest.TestCase):
         self.assertEqual(reconstructed_chunk.text, "Prose content for LlamaIndex node.")
 
         from llama_index.core.schema import NodeRelationship
+
         self.assertIn(NodeRelationship.NEXT, nodes[0].relationships)
-        self.assertEqual(nodes[0].relationships[NodeRelationship.NEXT].node_id, nodes[1].node_id)
+        self.assertEqual(
+            nodes[0].relationships[NodeRelationship.NEXT].node_id, nodes[1].node_id
+        )
         self.assertIn(NodeRelationship.PREVIOUS, nodes[1].relationships)
-        self.assertEqual(nodes[1].relationships[NodeRelationship.PREVIOUS].node_id, nodes[0].node_id)
+        self.assertEqual(
+            nodes[1].relationships[NodeRelationship.PREVIOUS].node_id, nodes[0].node_id
+        )
 
         reconstructed_set = ChunkSet.from_nodes(nodes, doc_id="test_doc", ticker="TEST")
         self.assertEqual(reconstructed_set.n_chunks, 2)

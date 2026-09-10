@@ -26,16 +26,17 @@ which is the fix for "it stopped working after a week".
 Google Python Style Guide Compliant.
 """
 
-from dataclasses import dataclass
+import contextlib
 import datetime as _datetime
 import hashlib
 import json
 import logging
 import os
-from pathlib import Path
 import time
-from typing import Any, Dict, Optional
 import uuid
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 import requests
 
@@ -94,7 +95,7 @@ class DriveFile:
     shared: bool
     uploaded_at: str
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Returns the JSON-serialisable form used by the API and the sidecar."""
         return {
             "file_id": self.file_id,
@@ -118,13 +119,13 @@ def _token_file() -> Path:
     return Path(configured) if configured else DEFAULT_TOKEN_FILE
 
 
-def _stored_token() -> Optional[str]:
+def _stored_token() -> str | None:
     """Reads the refresh token from the token file, if one is present."""
     path = _token_file()
     if not path.exists():
         return None
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with path.open(encoding="utf-8") as handle:
             return (json.load(handle) or {}).get("refresh_token") or None
     except (OSError, ValueError) as exc:
         logger.warning("Could not read Drive token file %s: %s", path, exc)
@@ -143,12 +144,10 @@ def save_refresh_token(refresh_token: str) -> Path:
     path = _token_file()
     payload = {"refresh_token": refresh_token, "saved_at": _now_iso()}
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
+    with path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
-    try:
-        os.chmod(path, 0o600)
-    except OSError:  # pragma: no cover - best effort on Windows
-        pass
+    with contextlib.suppress(OSError):  # pragma: no cover - best effort on Windows
+        path.chmod(0o600)
     return path
 
 
@@ -176,19 +175,25 @@ class DriveStore:
 
     def __init__(
         self,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        refresh_token: Optional[str] = None,
-        folder_id: Optional[str] = None,
-        session: Optional[Any] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        refresh_token: str | None = None,
+        folder_id: str | None = None,
+        session: Any | None = None,
     ) -> None:
         self.client_id = client_id or os.getenv("GDRIVE_CLIENT_ID", "").strip()
-        self.client_secret = client_secret or os.getenv("GDRIVE_CLIENT_SECRET", "").strip()
+        self.client_secret = (
+            client_secret or os.getenv("GDRIVE_CLIENT_SECRET", "").strip()
+        )
         self.refresh_token = (
-            refresh_token or _stored_token() or os.getenv("GDRIVE_REFRESH_TOKEN", "").strip()
+            refresh_token
+            or _stored_token()
+            or os.getenv("GDRIVE_REFRESH_TOKEN", "").strip()
         )
         self.folder_id = (
-            folder_id if folder_id is not None else os.getenv("GDRIVE_FOLDER_ID", "").strip()
+            folder_id
+            if folder_id is not None
+            else os.getenv("GDRIVE_FOLDER_ID", "").strip()
         )
         self.session = session or requests.Session()
 
@@ -198,7 +203,7 @@ class DriveStore:
                 "GDRIVE_CLIENT_SECRET and a refresh token. " + _REAUTH_HINT
             )
 
-        self._access_token: Optional[str] = None
+        self._access_token: str | None = None
         self._expires_at: float = 0.0
 
     # -- authentication ----------------------------------------------------
@@ -225,7 +230,7 @@ class DriveStore:
                 timeout=REQUEST_TIMEOUT,
             )
         except requests.RequestException as exc:
-            raise DriveError("Token refresh request failed: %s" % exc) from exc
+            raise DriveError(f"Token refresh request failed: {exc}") from exc
 
         body = _json_or_empty(response)
         if response.status_code >= 400:
@@ -235,9 +240,11 @@ class DriveStore:
             # the consent screen left in Testing status.
             if error in ("invalid_grant", "unauthorized_client", "invalid_client"):
                 raise DriveAuthError(
-                    "Google refused the stored grant (%s: %s). %s" % (error, detail, _REAUTH_HINT)
+                    f"Google refused the stored grant ({error}: {detail}). {_REAUTH_HINT}"
                 )
-            raise DriveError("Token refresh failed (HTTP %s): %s" % (response.status_code, detail))
+            raise DriveError(
+                f"Token refresh failed (HTTP {response.status_code}): {detail}"
+            )
 
         token = body.get("access_token")
         if not token:
@@ -250,7 +257,8 @@ class DriveStore:
             self.refresh_token = rotated
             try:
                 logger.info(
-                    "Drive refresh token rotated; persisted to %s", save_refresh_token(rotated)
+                    "Drive refresh token rotated; persisted to %s",
+                    save_refresh_token(rotated),
                 )
             except OSError as exc:
                 logger.warning("Could not persist rotated Drive refresh token: %s", exc)
@@ -267,24 +275,28 @@ class DriveStore:
             return self._access_token
         return self._refresh_access_token()
 
-    def _call(self, method: str, url: str, retry_auth: bool = True, **kwargs: Any) -> Dict[str, Any]:
+    def _call(
+        self, method: str, url: str, retry_auth: bool = True, **kwargs: Any
+    ) -> dict[str, Any]:
         """Issues an authorised Drive API call.
 
         A 401 is retried once against a freshly minted token, which covers an
         access token that lapsed mid-session.
         """
         headers = dict(kwargs.pop("headers", None) or {})
-        headers["Authorization"] = "Bearer %s" % self.access_token()
+        headers["Authorization"] = f"Bearer {self.access_token()}"
 
         try:
             response = self.session.request(
                 method, url, headers=headers, timeout=REQUEST_TIMEOUT, **kwargs
             )
         except requests.RequestException as exc:
-            raise DriveError("Drive request to %s failed: %s" % (url, exc)) from exc
+            raise DriveError(f"Drive request to {url} failed: {exc}") from exc
 
         if response.status_code == 401 and retry_auth:
-            logger.info("Drive returned 401; refreshing the access token and retrying once.")
+            logger.info(
+                "Drive returned 401; refreshing the access token and retrying once."
+            )
             self._access_token = None
             self._expires_at = 0.0
             return self._call(method, url, retry_auth=False, **kwargs)
@@ -294,27 +306,27 @@ class DriveStore:
             error = body.get("error")
             message = error.get("message") if isinstance(error, dict) else None
             raise DriveError(
-                "Drive %s %s failed (HTTP %s): %s"
-                % (method, url.split("?")[0], response.status_code, message or response.text[:200])
+                f"Drive {method} {url.split('?')[0]} failed "
+                f"(HTTP {response.status_code}): {message or response.text[:200]}"
             )
         return body
 
     # -- files -------------------------------------------------------------
 
-    def find_by_name(self, name: str) -> Optional[str]:
+    def find_by_name(self, name: str) -> str | None:
         """Returns the id of a non-trashed file with this name, if one exists.
 
         Drive permits duplicate names, so an upload that does not look for its
         predecessor accumulates a fresh copy of the report on every rebuild.
         """
         escaped = name.replace("\\", "\\\\").replace("'", "\\'")
-        clauses = ["name = '%s'" % escaped, "trashed = false"]
+        clauses = [f"name = '{escaped}'", "trashed = false"]
         if self.folder_id:
-            clauses.append("'%s' in parents" % self.folder_id)
+            clauses.append(f"'{self.folder_id}' in parents")
 
         body = self._call(
             "GET",
-            "%s/files" % API_BASE,
+            f"{API_BASE}/files",
             params={
                 "q": " and ".join(clauses),
                 "fields": "files(id,name)",
@@ -325,7 +337,9 @@ class DriveStore:
         files = body.get("files") or []
         return files[0].get("id") if files else None
 
-    def upload(self, pdf_path: Path, name: Optional[str] = None, share: bool = True) -> DriveFile:
+    def upload(
+        self, pdf_path: Path, name: str | None = None, share: bool = True
+    ) -> DriveFile:
         """Uploads a PDF, replacing any earlier copy of the same name.
 
         Args:
@@ -342,7 +356,7 @@ class DriveStore:
         """
         path = Path(pdf_path)
         if not path.exists():
-            raise DriveError("Cannot upload %s: file does not exist." % path)
+            raise DriveError(f"Cannot upload {path}: file does not exist.")
 
         target_name = name or path.name
         payload = path.read_bytes()
@@ -352,22 +366,25 @@ class DriveStore:
             logger.info("Replacing Drive file %s (%s)", target_name, existing_id)
             body = self._call(
                 "PATCH",
-                "%s/files/%s" % (UPLOAD_BASE, existing_id),
+                f"{UPLOAD_BASE}/files/{existing_id}",
                 params={"uploadType": "media", "fields": "id,name,webViewLink"},
                 headers={"Content-Type": "application/pdf"},
                 data=payload,
             )
         else:
             logger.info("Creating Drive file %s", target_name)
-            metadata: Dict[str, Any] = {"name": target_name, "mimeType": "application/pdf"}
+            metadata: dict[str, Any] = {
+                "name": target_name,
+                "mimeType": "application/pdf",
+            }
             if self.folder_id:
                 metadata["parents"] = [self.folder_id]
-            boundary = "grownxt-%s" % uuid.uuid4().hex
+            boundary = f"grownxt-{uuid.uuid4().hex}"
             body = self._call(
                 "POST",
-                "%s/files" % UPLOAD_BASE,
+                f"{UPLOAD_BASE}/files",
                 params={"uploadType": "multipart", "fields": "id,name,webViewLink"},
-                headers={"Content-Type": "multipart/related; boundary=%s" % boundary},
+                headers={"Content-Type": f"multipart/related; boundary={boundary}"},
                 data=_multipart_body(boundary, metadata, payload),
             )
 
@@ -379,9 +396,10 @@ class DriveStore:
         return DriveFile(
             file_id=file_id,
             name=body.get("name") or target_name,
-            view_link=body.get("webViewLink") or "https://drive.google.com/file/d/%s/view" % file_id,
-            preview_link="https://drive.google.com/file/d/%s/preview" % file_id,
-            direct_link="https://drive.google.com/uc?export=download&id=%s" % file_id,
+            view_link=body.get("webViewLink")
+            or f"https://drive.google.com/file/d/{file_id}/view",
+            preview_link=f"https://drive.google.com/file/d/{file_id}/preview",
+            direct_link=f"https://drive.google.com/uc?export=download&id={file_id}",
             shared=shared,
             uploaded_at=_now_iso(),
         )
@@ -398,7 +416,7 @@ class DriveStore:
         """
         body = self._call(
             "GET",
-            "%s/files/%s/permissions" % (API_BASE, file_id),
+            f"{API_BASE}/files/{file_id}/permissions",
             params={"fields": "permissions(id,type,role)"},
         )
         for permission in body.get("permissions") or []:
@@ -407,7 +425,7 @@ class DriveStore:
 
         self._call(
             "POST",
-            "%s/files/%s/permissions" % (API_BASE, file_id),
+            f"{API_BASE}/files/{file_id}/permissions",
             params={"fields": "id"},
             json={"role": "reader", "type": "anyone"},
         )
@@ -415,23 +433,25 @@ class DriveStore:
         return True
 
 
-def _multipart_body(boundary: str, metadata: Dict[str, Any], payload: bytes) -> bytes:
+def _multipart_body(boundary: str, metadata: dict[str, Any], payload: bytes) -> bytes:
     """Builds a ``multipart/related`` body: metadata part, then the PDF."""
-    marker = ("--%s" % boundary).encode("utf-8")
-    return b"\r\n".join([
-        marker,
-        b"Content-Type: application/json; charset=UTF-8",
-        b"",
-        json.dumps(metadata).encode("utf-8"),
-        marker,
-        b"Content-Type: application/pdf",
-        b"",
-        payload,
-        ("--%s--" % boundary).encode("utf-8"),
-    ])
+    marker = f"--{boundary}".encode()
+    return b"\r\n".join(
+        [
+            marker,
+            b"Content-Type: application/json; charset=UTF-8",
+            b"",
+            json.dumps(metadata).encode("utf-8"),
+            marker,
+            b"Content-Type: application/pdf",
+            b"",
+            payload,
+            f"--{boundary}--".encode(),
+        ]
+    )
 
 
-def _json_or_empty(response: Any) -> Dict[str, Any]:
+def _json_or_empty(response: Any) -> dict[str, Any]:
     """Parses a JSON body, tolerating empty and non-JSON responses."""
     try:
         parsed = response.json()
@@ -443,7 +463,7 @@ def _json_or_empty(response: Any) -> Dict[str, Any]:
 def _sha256(path: Path) -> str:
     """Returns the SHA-256 of a file's bytes."""
     digest = hashlib.sha256()
-    with open(path, "rb") as handle:
+    with path.open("rb") as handle:
         for block in iter(lambda: handle.read(1 << 20), b""):
             digest.update(block)
     return digest.hexdigest()
@@ -454,30 +474,30 @@ def sidecar_path(ticker: str) -> Path:
     return stock_dir(ticker) / SIDECAR_NAME
 
 
-def read_sidecar(ticker: str) -> Dict[str, Any]:
+def read_sidecar(ticker: str) -> dict[str, Any]:
     """Reads the upload record for one stock, or an empty mapping."""
     path = sidecar_path(ticker)
     if not path.exists():
         return {}
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with path.open(encoding="utf-8") as handle:
             return json.load(handle) or {}
     except (OSError, ValueError) as exc:
         logger.warning("Ignoring unreadable Drive sidecar %s: %s", path, exc)
         return {}
 
 
-def _write_sidecar(ticker: str, record: Dict[str, Any]) -> None:
+def _write_sidecar(ticker: str, record: dict[str, Any]) -> None:
     """Writes the upload record for one stock atomically."""
     path = sidecar_path(ticker)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
-    with open(temporary, "w", encoding="utf-8") as handle:
+    with temporary.open("w", encoding="utf-8") as handle:
         json.dump(record, handle, indent=2)
-    os.replace(temporary, path)
+    temporary.replace(path)
 
 
-_STORE: Optional[DriveStore] = None
+_STORE: DriveStore | None = None
 
 
 def get_store() -> DriveStore:
@@ -497,7 +517,7 @@ def reset_store() -> None:
 def ensure_uploaded(
     pdf_path: Path,
     ticker: str,
-    store: Optional[DriveStore] = None,
+    store: DriveStore | None = None,
     force: bool = False,
 ) -> DriveFile:
     """Returns the Drive copy of a report, uploading only what has changed.
@@ -531,7 +551,9 @@ def ensure_uploaded(
             uploaded_at=record.get("uploaded_at", ""),
         )
 
-    drive_file = (store or get_store()).upload(path, name="%s_report.pdf" % safe_ticker(ticker))
+    drive_file = (store or get_store()).upload(
+        path, name=f"{safe_ticker(ticker)}_report.pdf"
+    )
     payload = drive_file.as_dict()
     payload["pdf_sha256"] = digest
     _write_sidecar(ticker, payload)

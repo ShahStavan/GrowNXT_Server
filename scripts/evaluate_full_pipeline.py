@@ -14,18 +14,15 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from pathlib import Path
 import shutil
-import sys
 import time
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any
 
 from ingestion.chunker import (
     ELEMENT_FIGURE,
     ELEMENT_TABLE,
     ELEMENT_TEXT,
-    ChunkSet,
     chunk_document,
     write_chunk_cache,
 )
@@ -33,7 +30,9 @@ from ingestion.documents.content import ExtractedDocument
 from ingestion.documents.extract import Extractor
 from ingestion.documents.storage import DocumentStore
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 logger = logging.getLogger("evaluator")
 
 
@@ -47,26 +46,35 @@ def setup_stock_documents(ticker: str, root_dir: Path) -> DocumentStore:
     if direct_report.exists():
         target_doc = store.pdf("annual_report_FY2026")
         if not target_doc.exists():
-            logger.info("[%s] Copying %s to store documents as annual_report_FY2026.pdf", ticker, direct_report.name)
+            logger.info(
+                "[%s] Copying %s to store documents as annual_report_FY2026.pdf",
+                ticker,
+                direct_report.name,
+            )
             shutil.copy2(direct_report, target_doc)
 
     return store
 
 
-def evaluate_stock(ticker: str, root_dir: Path, max_pages_per_doc: int = 1000) -> list[dict[str, Any]]:
+def evaluate_stock(
+    ticker: str, root_dir: Path, max_pages_per_doc: int = 1000
+) -> list[dict[str, Any]]:
     """Runs extraction (Docling) and chunking (LlamaIndex) for all documents of a stock."""
     store = setup_stock_documents(ticker, root_dir)
     extractor = Extractor(ocr=False, figures=True)
     results: list[dict[str, Any]] = []
 
-    pdf_files = sorted(list(store.documents.glob("*.pdf")))
+    pdf_files = sorted(store.documents.glob("*.pdf"))
     if not pdf_files:
         logger.warning("[%s] No PDF documents found in %s", ticker, store.documents)
         return results
 
     for pdf_path in pdf_files:
         doc_id = pdf_path.stem
-        if doc_id.startswith("_probe") or (doc_id == "annual_report_FY2026" and (store.documents / "annual_report_FY2026_financials.pdf").exists()):
+        if doc_id.startswith("_probe") or (
+            doc_id == "annual_report_FY2026"
+            and (store.documents / "annual_report_FY2026_financials.pdf").exists()
+        ):
             continue
 
         doc_type = "annual_report"
@@ -84,10 +92,20 @@ def evaluate_stock(ticker: str, root_dir: Path, max_pages_per_doc: int = 1000) -
         try:
             extract_cache = store.extraction(doc_id)
             if extract_cache.exists():
-                logger.info("[%s] Loading existing extraction cache: %s", ticker, extract_cache.name)
-                doc_extracted = ExtractedDocument.from_dict(json.loads(extract_cache.read_text(encoding="utf-8")))
+                logger.info(
+                    "[%s] Loading existing extraction cache: %s",
+                    ticker,
+                    extract_cache.name,
+                )
+                doc_extracted = ExtractedDocument.from_dict(
+                    json.loads(extract_cache.read_text(encoding="utf-8"))
+                )
             else:
-                logger.info("[%s] Extracting layout with Docling (max_pages=%d)...", ticker, max_pages_per_doc)
+                logger.info(
+                    "[%s] Extracting layout with Docling (max_pages=%d)...",
+                    ticker,
+                    max_pages_per_doc,
+                )
                 start_ext = time.time()
                 doc_extracted = extractor.run(
                     pdf=pdf_path,
@@ -99,9 +117,15 @@ def evaluate_stock(ticker: str, root_dir: Path, max_pages_per_doc: int = 1000) -
                     max_pages=max_pages_per_doc,
                     write=True,
                 )
-                logger.info("[%s] Extracted %s in %.2fs (%d blocks, %d tables, %d figures)",
-                            ticker, doc_id, time.time() - start_ext, len(doc_extracted.blocks),
-                            len(doc_extracted.tables), len(doc_extracted.figures))
+                logger.info(
+                    "[%s] Extracted %s in %.2fs (%d blocks, %d tables, %d figures)",
+                    ticker,
+                    doc_id,
+                    time.time() - start_ext,
+                    len(doc_extracted.blocks),
+                    len(doc_extracted.tables),
+                    len(doc_extracted.figures),
+                )
 
             # 2. Chunking Phase (LlamaIndex)
             logger.info("[%s] Chunking elements via LlamaIndex...", ticker)
@@ -115,7 +139,9 @@ def evaluate_stock(ticker: str, root_dir: Path, max_pages_per_doc: int = 1000) -
         # 3. Save ChunkSet to output/<TICKER>/chunks/<doc_id>.json
         chunk_path = store.root / "chunks" / f"{doc_id}.json"
         write_chunk_cache(chunk_set, chunk_path)
-        logger.info("[%s] Saved %d chunks to %s", ticker, chunk_set.n_chunks, chunk_path)
+        logger.info(
+            "[%s] Saved %d chunks to %s", ticker, chunk_set.n_chunks, chunk_path
+        )
 
         # 4. Convert to native LlamaIndex nodes and verify graph integrity
         llama_nodes = chunk_set.to_nodes()
@@ -123,7 +149,6 @@ def evaluate_stock(ticker: str, root_dir: Path, max_pages_per_doc: int = 1000) -
         elem_counts = chunk_set.element_counts()
         tbl_chunks = [c for c in chunk_set.chunks if c.element_type == ELEMENT_TABLE]
         fig_chunks = [c for c in chunk_set.chunks if c.element_type == ELEMENT_FIGURE]
-        txt_chunks = [c for c in chunk_set.chunks if c.element_type == ELEMENT_TEXT]
 
         record = {
             "ticker": ticker,
@@ -141,7 +166,11 @@ def evaluate_stock(ticker: str, root_dir: Path, max_pages_per_doc: int = 1000) -
             "total_chars": chunk_set.n_chars,
             "avg_chunk_chars": round(chunk_set.n_chars / max(1, chunk_set.n_chunks), 1),
             "chunk_time_sec": round(chk_time, 3),
-            "table_header_preserved": all(c.metadata.get("header_rows", 0) > 0 for c in tbl_chunks if c.table and c.table.header_rows > 0),
+            "table_header_preserved": all(
+                c.metadata.get("header_rows", 0) > 0
+                for c in tbl_chunks
+                if c.table and c.table.header_rows > 0
+            ),
             "figure_paths_valid": all(bool(c.figure_path) for c in fig_chunks),
         }
         results.append(record)
@@ -170,8 +199,14 @@ def main() -> None:
     print("-" * len(header))
 
     for r in all_results:
-        status = "PASSED" if r["total_chunks"] > 0 and r["llama_nodes"] == r["total_chunks"] else "FAILED"
-        print(f"{r['ticker']:<10} | {r['doc_id']:<32} | {r['extracted_blocks']:<6} | {r['total_chunks']:<6} | {r['text_chunks']:<4} | {r['table_chunks']:<4} | {r['figure_chunks']:<4} | {r['llama_nodes']:<5} | {r['total_chars']:<7} | {status}")
+        status = (
+            "PASSED"
+            if r["total_chunks"] > 0 and r["llama_nodes"] == r["total_chunks"]
+            else "FAILED"
+        )
+        print(
+            f"{r['ticker']:<10} | {r['doc_id']:<32} | {r['extracted_blocks']:<6} | {r['total_chunks']:<6} | {r['text_chunks']:<4} | {r['table_chunks']:<4} | {r['figure_chunks']:<4} | {r['llama_nodes']:<5} | {r['total_chars']:<7} | {status}"
+        )
 
     print("=" * 80)
     print("All chunk files written to output/<TICKER>/chunks/")

@@ -21,10 +21,10 @@ Two properties of the upstream payload shape the code:
 Google Python Style Guide Compliant.
 """
 
-from dataclasses import dataclass, field
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any
 from urllib.parse import quote
 
 import requests
@@ -42,9 +42,19 @@ logger = logging.getLogger(__name__)
 DOCUMENTS_ENDPOINT: str = "/api/v1/stocks/{sym}/documents"
 
 # Month abbreviations used in concall period labels, e.g. "Jul 2026".
-_MONTHS: Dict[str, int] = {
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
-    "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+_MONTHS: dict[str, int] = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 
 _NON_ID_RE = re.compile(r"[^A-Za-z0-9]+")
@@ -70,7 +80,7 @@ class CatalogEntry:
     doc_type: str
     label: str
     source_url: str
-    period: Dict[str, Any] = field(default_factory=dict)
+    period: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -86,10 +96,10 @@ class Catalog:
 
     ticker: str
     company_name: str = ""
-    entries: List[CatalogEntry] = field(default_factory=list)
-    meta: Dict[str, Any] = field(default_factory=dict)
+    entries: list[CatalogEntry] = field(default_factory=list)
+    meta: dict[str, Any] = field(default_factory=dict)
 
-    def of_type(self, doc_type: str) -> List[CatalogEntry]:
+    def of_type(self, doc_type: str) -> list[CatalogEntry]:
         """Returns the entries of one document class."""
         return [entry for entry in self.entries if entry.doc_type == doc_type]
 
@@ -108,7 +118,7 @@ def _period_sort_key(date: str, period: str) -> str:
     """
     match = re.match(r"^(\d{4})-(\d{1,2})$", (date or "").strip())
     if match:
-        return "%s_%02d" % (match.group(1), int(match.group(2)))
+        return f"{match.group(1)}_{int(match.group(2)):02d}"
     parts = (period or "").replace(",", " ").split()
     month = 0
     year = 0
@@ -119,42 +129,44 @@ def _period_sort_key(date: str, period: str) -> str:
         elif part.isdigit() and len(part) == 4:
             year = int(part)
     if year:
-        return "%04d_%02d" % (year, month)
+        return f"{year:04d}_{month:02d}"
     return _slug(date or period) or "UNDATED"
 
 
-def _annual_entries(payload: Dict[str, Any]) -> List[CatalogEntry]:
+def _annual_entries(payload: dict[str, Any]) -> list[CatalogEntry]:
     """Builds entries for the annual reports in a catalogue payload."""
-    entries: List[CatalogEntry] = []
-    seen: Dict[str, int] = {}
+    entries: list[CatalogEntry] = []
+    seen: dict[str, int] = {}
     for item in payload.get("annual_reports") or []:
         url = str(item.get("url") or "").strip()
         if not url:
             continue
         year = _slug(str(item.get("financial_year") or "")) or "UNDATED"
         seen[year] = seen.get(year, 0) + 1
-        suffix = "" if seen[year] == 1 else "_%d" % seen[year]
-        entries.append(CatalogEntry(
-            doc_id="annual_report_" + year + suffix,
-            doc_type=DOC_TYPE_ANNUAL_REPORT,
-            label=str(item.get("financial_year") or year),
-            source_url=url,
-            period={
-                "financial_year": item.get("financial_year"),
-                "source": item.get("source"),
-            },
-        ))
+        suffix = "" if seen[year] == 1 else f"_{seen[year]}"
+        entries.append(
+            CatalogEntry(
+                doc_id="annual_report_" + year + suffix,
+                doc_type=DOC_TYPE_ANNUAL_REPORT,
+                label=str(item.get("financial_year") or year),
+                source_url=url,
+                period={
+                    "financial_year": item.get("financial_year"),
+                    "source": item.get("source"),
+                },
+            )
+        )
     return entries
 
 
-def _concall_entries(payload: Dict[str, Any]) -> List[CatalogEntry]:
+def _concall_entries(payload: dict[str, Any]) -> list[CatalogEntry]:
     """Builds transcript and presentation entries from concall records.
 
     Both document classes come from the same upstream record, and either URL
     may be empty for a given quarter.
     """
-    entries: List[CatalogEntry] = []
-    seen: Dict[Tuple[str, str], int] = {}
+    entries: list[CatalogEntry] = []
+    seen: dict[tuple[str, str], int] = {}
     for item in payload.get("concalls") or []:
         date = str(item.get("date") or "")
         label = str(item.get("period") or date)
@@ -168,18 +180,20 @@ def _concall_entries(payload: Dict[str, Any]) -> List[CatalogEntry]:
                 continue
             index = seen.get((doc_type, key), 0) + 1
             seen[(doc_type, key)] = index
-            suffix = "" if index == 1 else "_%d" % index
-            entries.append(CatalogEntry(
-                doc_id=prefix + key + suffix,
-                doc_type=doc_type,
-                label=label,
-                source_url=url,
-                period={"date": date, "period": label},
-            ))
+            suffix = "" if index == 1 else f"_{index}"
+            entries.append(
+                CatalogEntry(
+                    doc_id=prefix + key + suffix,
+                    doc_type=doc_type,
+                    label=label,
+                    source_url=url,
+                    period={"date": date, "period": label},
+                )
+            )
     return entries
 
 
-def parse_catalog(ticker: str, payload: Dict[str, Any]) -> Catalog:
+def parse_catalog(ticker: str, payload: dict[str, Any]) -> Catalog:
     """Turns a catalogue payload into a Catalog.
 
     Args:
@@ -192,7 +206,7 @@ def parse_catalog(ticker: str, payload: Dict[str, Any]) -> Catalog:
     """
     entries = _annual_entries(payload) + _concall_entries(payload)
     entries.sort(key=lambda entry: (entry.doc_type, entry.doc_id), reverse=True)
-    catalog = Catalog(
+    return Catalog(
         ticker=ticker.upper(),
         company_name=str(payload.get("company_name") or ""),
         entries=entries,
@@ -207,7 +221,6 @@ def parse_catalog(ticker: str, payload: Dict[str, Any]) -> Catalog:
             "entries_found": len(entries),
         },
     )
-    return catalog
 
 
 def fetch_catalog(
@@ -241,36 +254,57 @@ def fetch_catalog(
     # would otherwise terminate the path and start a query string.
     symbol = quote(ticker.strip().lower(), safe="")
     url = base_url.rstrip("/") + DOCUMENTS_ENDPOINT.format(sym=symbol)
-    params = {"annual_reports": int(annual_reports), "concall_years": int(concall_years)}
+    params = {
+        "annual_reports": int(annual_reports),
+        "concall_years": int(concall_years),
+    }
 
-    payload: Optional[Dict[str, Any]] = None
+    payload: dict[str, Any] | None = None
     last_error = ""
     for attempt in range(max_retries + 1):
         try:
-            response = requests.get(url, params=params, headers=HTTP_HEADERS, timeout=timeout)
+            response = requests.get(
+                url, params=params, headers=HTTP_HEADERS, timeout=timeout
+            )
             if response.ok:
                 body = response.json()
                 payload = body.get("data") if isinstance(body, dict) else None
                 if payload is None and isinstance(body, dict):
                     payload = body
                 break
-            last_error = "HTTP %d" % response.status_code
+            last_error = f"HTTP {response.status_code}"
             if 400 <= response.status_code < 500 and response.status_code != 429:
                 break
         except (requests.RequestException, ValueError) as exc:
             last_error = str(exc)
-        logger.warning("Catalogue request for %s failed (%s), attempt %d/%d",
-                       ticker, last_error, attempt + 1, max_retries + 1)
+        logger.warning(
+            "Catalogue request for %s failed (%s), attempt %d/%d",
+            ticker,
+            last_error,
+            attempt + 1,
+            max_retries + 1,
+        )
 
     if not isinstance(payload, dict):
-        raise CatalogError("Could not retrieve document catalogue for %s: %s"
-                           % (ticker, last_error or "empty response"))
+        raise CatalogError(
+            f"Could not retrieve document catalogue for {ticker}: "
+            f"{last_error or 'empty response'}"
+        )
 
     catalog = parse_catalog(ticker, payload)
     if not catalog.entries:
-        raise CatalogError("Catalogue for %s lists no documents." % ticker)
-    logger.info("[%s] catalogue: %d documents (%s)", ticker.upper(), len(catalog.entries),
-                ", ".join("%s=%d" % (t, len(catalog.of_type(t)))
-                          for t in (DOC_TYPE_ANNUAL_REPORT, DOC_TYPE_TRANSCRIPT,
-                                    DOC_TYPE_PRESENTATION)))
+        raise CatalogError(f"Catalogue for {ticker} lists no documents.")
+    logger.info(
+        "[%s] catalogue: %d documents (%s)",
+        ticker.upper(),
+        len(catalog.entries),
+        ", ".join(
+            f"{t}={len(catalog.of_type(t))}"
+            for t in (
+                DOC_TYPE_ANNUAL_REPORT,
+                DOC_TYPE_TRANSCRIPT,
+                DOC_TYPE_PRESENTATION,
+            )
+        ),
+    )
     return catalog

@@ -11,8 +11,8 @@ which is exactly what you need to know when deciding whether a change is
 salvageable.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple, Type
 
 RULE: str = "=" * 72
 DETAIL_LIMIT: int = 70
@@ -37,7 +37,7 @@ class Check:
     """
 
     name: str
-    passed: Optional[bool]
+    passed: bool | None
     detail: str = ""
 
     @property
@@ -50,7 +50,7 @@ class Check:
 class Report:
     """Accumulates checks and renders them as one listing."""
 
-    entries: List[Check] = field(default_factory=list)
+    entries: list[Check] = field(default_factory=list)
 
     # -- recording ---------------------------------------------------------
 
@@ -68,8 +68,13 @@ class Report:
         self.entries.append(Check(name, held, detail))
         return held
 
-    def raises(self, name: str, kind: Type[BaseException],
-               call: Callable[[], object], detail: str = "") -> bool:
+    def raises(
+        self,
+        name: str,
+        kind: type[BaseException],
+        call: Callable[[], object],
+        detail: str = "",
+    ) -> bool:
         """Records that `call` raises `kind`, and nothing else.
 
         A wrong exception type is a distinct failure from no exception at all,
@@ -80,9 +85,10 @@ class Report:
         except kind as exc:
             return self.check(name, True, detail or str(exc)[:DETAIL_LIMIT])
         except Exception as exc:  # noqa: BLE001 - the wrong type is the finding
-            return self.check(name, False,
-                              "raised %s instead: %s" % (type(exc).__name__, exc))
-        return self.check(name, False, "did not raise %s" % kind.__name__)
+            return self.check(
+                name, False, f"raised {type(exc).__name__} instead: {exc}"
+            )
+        return self.check(name, False, f"did not raise {kind.__name__}")
 
     def run(self, name: str, call: Callable[[], str]) -> bool:
         """Records a coarse check that returns its own detail, or raises.
@@ -95,7 +101,7 @@ class Report:
         except Failure as exc:
             return self.check(name, False, str(exc))
         except Exception as exc:  # noqa: BLE001 - report and keep going
-            return self.check(name, False, "%s: %s" % (type(exc).__name__, exc))
+            return self.check(name, False, f"{type(exc).__name__}: {exc}")
 
     def extend(self, other: "Report") -> None:
         """Absorbs another report's entries, preserving order."""
@@ -104,12 +110,12 @@ class Report:
     # -- reporting ---------------------------------------------------------
 
     @property
-    def results(self) -> List[Check]:
+    def results(self) -> list[Check]:
         """Every recorded check, headings excluded."""
         return [e for e in self.entries if not e.is_heading]
 
     @property
-    def failures(self) -> List[Check]:
+    def failures(self) -> list[Check]:
         """The checks that did not hold."""
         return [e for e in self.results if not e.passed]
 
@@ -121,23 +127,29 @@ class Report:
             if entry.is_heading:
                 lines.extend(["", entry.name])
             else:
-                lines.append("  [%s] %-*s  %s" % (
-                    "PASS" if entry.passed else "FAIL", width, entry.name, entry.detail))
+                lines.append(
+                    f"  [{'PASS' if entry.passed else 'FAIL'}] {entry.name:<{width}}  {entry.detail}"
+                )
         results, failed = self.results, self.failures
-        lines.extend(["", "  %d of %d checks passed."
-                      % (len(results) - len(failed), len(results))])
+        lines.extend(
+            [
+                "",
+                f"  {len(results) - len(failed)} of {len(results)} checks passed.",
+            ]
+        )
         return "\n".join(lines)
 
     def finish(self) -> int:
         """Prints the closing banner and returns a process exit code."""
         print("\n" + RULE)
         if not self.failures:
-            print("All %d checks passed." % len(self.results))
+            print(f"All {len(self.results)} checks passed.")
             return 0
-        print("FAILED: %d of %d checks did not hold."
-              % (len(self.failures), len(self.results)))
+        print(
+            f"FAILED: {len(self.failures)} of {len(self.results)} checks did not hold."
+        )
         for entry in self.failures:
-            print("  - %s: %s" % (entry.name, entry.detail))
+            print(f"  - {entry.name}: {entry.detail}")
         return 1
 
 

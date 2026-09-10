@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Sequence, Set
+from collections.abc import Sequence
 
 from ingestion.rag.probes import (
     PILLAR_CAPITAL_ALLOCATION,
@@ -27,13 +27,69 @@ logger = logging.getLogger(__name__)
 DEFAULT_FINAL_TOP_K: int = 5
 
 # Pillar-specific high-value section keywords
-SECTION_KEYWORDS: Dict[str, list[str]] = {
-    PILLAR_STRATEGY_GROWTH: ["strategy", "vision", "outlook", "growth", "roadmap", "capex", "investment", "future", "opportunity"],
-    PILLAR_SEGMENT_DYNAMICS: ["segment", "geography", "vertical", "business", "division", "market share", "revenue by", "products"],
-    PILLAR_MARGIN_COST: ["margin", "profit", "ebitda", "ebit", "cost", "raw material", "pricing", "inflation", "operating expense"],
-    PILLAR_CAPITAL_ALLOCATION: ["cash flow", "balance sheet", "debt", "working capital", "dividend", "liquidity", "borrowings", "payout"],
-    PILLAR_CONCALL_HIGHLIGHTS: ["conference call", "earnings", "transcript", "management", "q&a", "analyst", "discussion", "outlook"],
-    PILLAR_KEY_RISKS_AUDIT: ["audit", "risk", "internal control", "contingent", "legal", "compliance", "matter", "emphasis"],
+SECTION_KEYWORDS: dict[str, list[str]] = {
+    PILLAR_STRATEGY_GROWTH: [
+        "strategy",
+        "vision",
+        "outlook",
+        "growth",
+        "roadmap",
+        "capex",
+        "investment",
+        "future",
+        "opportunity",
+    ],
+    PILLAR_SEGMENT_DYNAMICS: [
+        "segment",
+        "geography",
+        "vertical",
+        "business",
+        "division",
+        "market share",
+        "revenue by",
+        "products",
+    ],
+    PILLAR_MARGIN_COST: [
+        "margin",
+        "profit",
+        "ebitda",
+        "ebit",
+        "cost",
+        "raw material",
+        "pricing",
+        "inflation",
+        "operating expense",
+    ],
+    PILLAR_CAPITAL_ALLOCATION: [
+        "cash flow",
+        "balance sheet",
+        "debt",
+        "working capital",
+        "dividend",
+        "liquidity",
+        "borrowings",
+        "payout",
+    ],
+    PILLAR_CONCALL_HIGHLIGHTS: [
+        "conference call",
+        "earnings",
+        "transcript",
+        "management",
+        "q&a",
+        "analyst",
+        "discussion",
+        "outlook",
+    ],
+    PILLAR_KEY_RISKS_AUDIT: [
+        "audit",
+        "risk",
+        "internal control",
+        "contingent",
+        "legal",
+        "compliance",
+        "matter",
+        "emphasis",
+    ],
 }
 
 # Regex to detect financial numbers and metrics
@@ -71,7 +127,11 @@ class EvidenceReranker:
 
         # 3. Structured Table & Figure Content Boost (+0.05 for tables in quantitative pillars)
         element_boost = 0.0
-        if chunk.element_type == "table" and pillar in (PILLAR_MARGIN_COST, PILLAR_CAPITAL_ALLOCATION, PILLAR_SEGMENT_DYNAMICS):
+        if chunk.element_type == "table" and pillar in (
+            PILLAR_MARGIN_COST,
+            PILLAR_CAPITAL_ALLOCATION,
+            PILLAR_SEGMENT_DYNAMICS,
+        ):
             element_boost = 0.05
 
         # 4. Transcript / Moderator Noise Penalty (-0.35)
@@ -80,13 +140,20 @@ class EvidenceReranker:
         # 5. Length Penalty for excessively short / snippet chunks (< 40 chars)
         length_penalty = -0.15 if len(content_text.strip()) < 40 else 0.0
 
-        return base_score + section_boost + metric_boost + element_boost + noise_penalty + length_penalty
+        return (
+            base_score
+            + section_boost
+            + metric_boost
+            + element_boost
+            + noise_penalty
+            + length_penalty
+        )
 
     def rerank_pillar_evidence(
         self,
         pillar: str,
         candidates: Sequence[EvidenceChunk],
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
     ) -> list[EvidenceChunk]:
         """Deduplicates and selects top ranked evidence chunks for a single research pillar."""
         if not candidates:
@@ -100,7 +167,9 @@ class EvidenceReranker:
         seen_texts: set[str] = set()
 
         for c in candidates:
-            norm_content = " ".join(c.content.strip().split()[:20])  # first 20 words signature
+            norm_content = " ".join(
+                c.content.strip().split()[:20]
+            )  # first 20 words signature
             if c.chunk_id in seen_ids or norm_content in seen_texts:
                 continue
             seen_ids.add(c.chunk_id)
@@ -109,8 +178,7 @@ class EvidenceReranker:
 
         # Score and rank
         scored_pairs = [
-            (self._score_chunk(chunk=c, pillar=pillar), c)
-            for c in unique_candidates
+            (self._score_chunk(chunk=c, pillar=pillar), c) for c in unique_candidates
         ]
         scored_pairs.sort(key=lambda pair: pair[0], reverse=True)
 
@@ -119,7 +187,7 @@ class EvidenceReranker:
     def rerank_all(
         self,
         evidence_map: dict[str, Sequence[EvidenceChunk]],
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
     ) -> dict[str, list[EvidenceChunk]]:
         """Reranks candidate evidence across all pillars."""
         reranked: dict[str, list[EvidenceChunk]] = {}

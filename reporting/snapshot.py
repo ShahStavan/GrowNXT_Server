@@ -14,9 +14,9 @@ absorbed once instead of in every table:
     - The `_comments` growth annotations are unusable, so growth is derived.
 """
 
-from dataclasses import dataclass, field
 import logging
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Any
 
 from reporting import fmt
 
@@ -32,7 +32,7 @@ QUARTERS_SHOWN: int = 12
 YEARS_SHOWN: int = 11
 
 
-def _f(value: Any) -> Optional[float]:
+def _f(value: Any) -> float | None:
     """Coerces a payload value to float, mapping absent/invalid to None."""
     if isinstance(value, bool) or value is None:
         return None
@@ -42,17 +42,23 @@ def _f(value: Any) -> Optional[float]:
     return None
 
 
-def _pct_from_fraction(value: Optional[float]) -> Optional[float]:
+def _pct_from_fraction(value: float | None) -> float | None:
     """Scales a 0-1 fraction into percentage points."""
     return None if value is None else value * 100.0
 
 
-def _rows(payload: Any) -> List[Dict[str, Any]]:
+def _rows(payload: Any) -> list[dict[str, Any]]:
     """Extracts a list of period dictionaries from a payload."""
     if isinstance(payload, list):
         return [r for r in payload if isinstance(r, dict)]
     if isinstance(payload, dict):
-        for key in ("quarterlyData", "annualData", "balancesheetData", "cashflowData", "data"):
+        for key in (
+            "quarterlyData",
+            "annualData",
+            "balancesheetData",
+            "cashflowData",
+            "data",
+        ):
             inner = payload.get(key)
             if isinstance(inner, list):
                 return [r for r in inner if isinstance(r, dict)]
@@ -64,20 +70,20 @@ class IncomePeriod:
     """One income-statement period, quarterly or annual."""
 
     period: str
-    revenue: Optional[float] = None
-    ebit: Optional[float] = None
-    pat: Optional[float] = None
-    eps: Optional[float] = None
-    depreciation: Optional[float] = None
-    interest: Optional[float] = None
-    pbt: Optional[float] = None
-    raw_materials: Optional[float] = None
-    sga: Optional[float] = None
-    dps: Optional[float] = None
-    payout_pct: Optional[float] = None
+    revenue: float | None = None
+    ebit: float | None = None
+    pat: float | None = None
+    eps: float | None = None
+    depreciation: float | None = None
+    interest: float | None = None
+    pbt: float | None = None
+    raw_materials: float | None = None
+    sga: float | None = None
+    dps: float | None = None
+    payout_pct: float | None = None
 
     @property
-    def raw_material_ratio(self) -> Optional[float]:
+    def raw_material_ratio(self) -> float | None:
         """Raw-material cost as a percentage of revenue.
 
         Note this is NOT cost of goods sold. The provider's `incRaw` field
@@ -94,22 +100,22 @@ class IncomePeriod:
         return fmt.margin(self.raw_materials, self.revenue)
 
     @property
-    def sga_ratio(self) -> Optional[float]:
+    def sga_ratio(self) -> float | None:
         """Selling, general and administrative cost over revenue."""
         return fmt.margin(self.sga, self.revenue)
 
     @property
-    def depreciation_ratio(self) -> Optional[float]:
+    def depreciation_ratio(self) -> float | None:
         """Depreciation and amortisation over revenue."""
         return fmt.margin(self.depreciation, self.revenue)
 
     @property
-    def ebitda_margin(self) -> Optional[float]:
+    def ebitda_margin(self) -> float | None:
         """EBITDA as a percentage of revenue."""
         return fmt.margin(self.ebitda, self.revenue)
 
     @property
-    def effective_tax_rate(self) -> Optional[float]:
+    def effective_tax_rate(self) -> float | None:
         """Tax as a percentage of pre-tax profit.
 
         Withheld against a pre-tax loss. A loss carrying a tax credit gives
@@ -121,19 +127,19 @@ class IncomePeriod:
         return None if retained is None else (1.0 - retained) * 100.0
 
     @property
-    def ebitda(self) -> Optional[float]:
+    def ebitda(self) -> float | None:
         """EBIT plus depreciation, when both are present."""
         if self.ebit is None or self.depreciation is None:
             return None
         return self.ebit + self.depreciation
 
     @property
-    def ebit_margin(self) -> Optional[float]:
+    def ebit_margin(self) -> float | None:
         """EBIT as a percentage of revenue."""
         return fmt.margin(self.ebit, self.revenue)
 
     @property
-    def pat_margin(self) -> Optional[float]:
+    def pat_margin(self) -> float | None:
         """PAT as a percentage of revenue."""
         return fmt.margin(self.pat, self.revenue)
 
@@ -143,46 +149,46 @@ class BalancePeriod:
     """One balance-sheet period."""
 
     period: str
-    equity: Optional[float] = None
-    debt: Optional[float] = None
-    cash: Optional[float] = None
-    total_assets: Optional[float] = None
-    current_assets: Optional[float] = None
-    current_liabilities: Optional[float] = None
-    inventory: Optional[float] = None
-    receivables: Optional[float] = None
-    net_ppe: Optional[float] = None
-    shares_cr: Optional[float] = None
-    payables: Optional[float] = None
-    goodwill_intangibles: Optional[float] = None
-    retained_earnings: Optional[float] = None
-    long_term_debt: Optional[float] = None
-    total_liabilities: Optional[float] = None
-    minority_interest: Optional[float] = None
+    equity: float | None = None
+    debt: float | None = None
+    cash: float | None = None
+    total_assets: float | None = None
+    current_assets: float | None = None
+    current_liabilities: float | None = None
+    inventory: float | None = None
+    receivables: float | None = None
+    net_ppe: float | None = None
+    shares_cr: float | None = None
+    payables: float | None = None
+    goodwill_intangibles: float | None = None
+    retained_earnings: float | None = None
+    long_term_debt: float | None = None
+    total_liabilities: float | None = None
+    minority_interest: float | None = None
 
     @property
-    def working_capital(self) -> Optional[float]:
+    def working_capital(self) -> float | None:
         """Current assets less current liabilities."""
         if self.current_assets is None or self.current_liabilities is None:
             return None
         return self.current_assets - self.current_liabilities
 
     @property
-    def short_term_debt(self) -> Optional[float]:
+    def short_term_debt(self) -> float | None:
         """Total debt less the long-term portion."""
         if self.debt is None or self.long_term_debt is None:
             return None
         return max(0.0, self.debt - self.long_term_debt)
 
     @property
-    def net_debt(self) -> Optional[float]:
+    def net_debt(self) -> float | None:
         """Total debt less cash and short-term investments."""
         if self.debt is None or self.cash is None:
             return None
         return self.debt - self.cash
 
     @property
-    def debt_to_equity(self) -> Optional[float]:
+    def debt_to_equity(self) -> float | None:
         """Total debt over shareholders' equity.
 
         Withheld against negative equity, where the ratio inverts its sign
@@ -192,7 +198,7 @@ class BalancePeriod:
         return fmt.pos_div(self.debt, self.equity)
 
     @property
-    def book_value_per_share(self) -> Optional[float]:
+    def book_value_per_share(self) -> float | None:
         """Equity per share, in rupees.
 
         Equity is in rupee crore and share count in crore, so the quotient
@@ -206,18 +212,18 @@ class CashflowPeriod:
     """One cash-flow period."""
 
     period: str
-    cfo: Optional[float] = None
-    capex: Optional[float] = None
-    fcf: Optional[float] = None
-    dividends_paid: Optional[float] = None
-    change_in_working_capital: Optional[float] = None
-    cash_from_financing: Optional[float] = None
-    cash_from_investing: Optional[float] = None
+    cfo: float | None = None
+    capex: float | None = None
+    fcf: float | None = None
+    dividends_paid: float | None = None
+    change_in_working_capital: float | None = None
+    cash_from_financing: float | None = None
+    cash_from_investing: float | None = None
     # The provider's own closing figure for the year's movement in cash.
     # Held so that `selfcheck` can test the statement's articulation -
     # operating plus investing plus financing must equal it - rather than
     # assuming it. Capital allocation is built on that identity.
-    net_change_in_cash: Optional[float] = None
+    net_change_in_cash: float | None = None
 
 
 @dataclass
@@ -226,12 +232,12 @@ class Peer:
 
     ticker: str
     name: str
-    market_cap_cr: Optional[float] = None
-    pe: Optional[float] = None
-    pb: Optional[float] = None
-    div_yield: Optional[float] = None
-    change_52w: Optional[float] = None
-    buy_reco_pct: Optional[float] = None
+    market_cap_cr: float | None = None
+    pe: float | None = None
+    pb: float | None = None
+    div_yield: float | None = None
+    change_52w: float | None = None
+    buy_reco_pct: float | None = None
     is_subject: bool = False
 
 
@@ -240,12 +246,12 @@ class Holding:
     """Shareholding pattern at one quarter end."""
 
     date: str
-    promoter: Optional[float] = None
-    fii: Optional[float] = None
-    dii: Optional[float] = None
-    mutual_fund: Optional[float] = None
-    insider: Optional[float] = None
-    retail_other: Optional[float] = None
+    promoter: float | None = None
+    fii: float | None = None
+    dii: float | None = None
+    mutual_fund: float | None = None
+    insider: float | None = None
+    retail_other: float | None = None
 
 
 @dataclass
@@ -253,7 +259,7 @@ class Dividend:
     """One declared dividend."""
 
     ex_date: str
-    amount: Optional[float] = None
+    amount: float | None = None
     kind: str = ""
 
 
@@ -266,50 +272,50 @@ class CompanySnapshot:
     sector: str = ""
     description: str = ""
 
-    quarters: List[IncomePeriod] = field(default_factory=list)
-    years: List[IncomePeriod] = field(default_factory=list)
-    ttm: Optional[IncomePeriod] = None
-    balance: List[BalancePeriod] = field(default_factory=list)
-    cashflow: List[CashflowPeriod] = field(default_factory=list)
+    quarters: list[IncomePeriod] = field(default_factory=list)
+    years: list[IncomePeriod] = field(default_factory=list)
+    ttm: IncomePeriod | None = None
+    balance: list[BalancePeriod] = field(default_factory=list)
+    cashflow: list[CashflowPeriod] = field(default_factory=list)
 
-    peers: List[Peer] = field(default_factory=list)
-    holdings: List[Holding] = field(default_factory=list)
-    dividends: List[Dividend] = field(default_factory=list)
+    peers: list[Peer] = field(default_factory=list)
+    holdings: list[Holding] = field(default_factory=list)
+    dividends: list[Dividend] = field(default_factory=list)
 
-    key_ratios: Dict[str, float] = field(default_factory=dict)
-    dupont: Dict[str, Any] = field(default_factory=dict)
-    solvency: Dict[str, Any] = field(default_factory=dict)
-    liquidity: Dict[str, Any] = field(default_factory=dict)
-    capital_efficiency: Dict[str, Any] = field(default_factory=dict)
-    cagr: Dict[str, Any] = field(default_factory=dict)
+    key_ratios: dict[str, float] = field(default_factory=dict)
+    dupont: dict[str, Any] = field(default_factory=dict)
+    solvency: dict[str, Any] = field(default_factory=dict)
+    liquidity: dict[str, Any] = field(default_factory=dict)
+    capital_efficiency: dict[str, Any] = field(default_factory=dict)
+    cagr: dict[str, Any] = field(default_factory=dict)
 
-    total_reco: Optional[int] = None
-    buy_reco_pct: Optional[float] = None
-    market_cap_cr: Optional[float] = None
-    warnings: List[str] = field(default_factory=list)
+    total_reco: int | None = None
+    buy_reco_pct: float | None = None
+    market_cap_cr: float | None = None
+    warnings: list[str] = field(default_factory=list)
 
     # --- derived -------------------------------------------------------
 
     @property
-    def latest_balance(self) -> Optional[BalancePeriod]:
+    def latest_balance(self) -> BalancePeriod | None:
         """Most recent balance-sheet period."""
         return self.balance[-1] if self.balance else None
 
     @property
-    def shares_cr(self) -> Optional[float]:
+    def shares_cr(self) -> float | None:
         """Share count in crore, from the latest balance sheet."""
         latest = self.latest_balance
         return latest.shares_cr if latest else None
 
     @property
-    def ttm_eps(self) -> Optional[float]:
+    def ttm_eps(self) -> float | None:
         """Trailing twelve-month earnings per share."""
         if self.ttm is not None and self.ttm.eps is not None:
             return self.ttm.eps
         return self.years[-1].eps if self.years else None
 
     @property
-    def implied_price(self) -> Optional[float]:
+    def implied_price(self) -> float | None:
         """Share price implied by the TTM P/E and TTM EPS.
 
         The collector exposes no live quote, so price is inferred. It is a
@@ -323,7 +329,7 @@ class CompanySnapshot:
         return pe * eps
 
     @property
-    def implied_market_cap_cr(self) -> Optional[float]:
+    def implied_market_cap_cr(self) -> float | None:
         """Market capitalisation implied by price times share count."""
         price = self.implied_price
         shares = self.shares_cr
@@ -332,7 +338,7 @@ class CompanySnapshot:
         return price * shares
 
     @property
-    def pe_discount_to_industry(self) -> Optional[float]:
+    def pe_discount_to_industry(self) -> float | None:
         """Percentage discount or premium of P/E against the industry."""
         pe = self.key_ratios.get("ttmPe")
         industry = self.key_ratios.get("indpe")
@@ -340,7 +346,7 @@ class CompanySnapshot:
         return None if relative is None else (relative - 1.0) * 100.0
 
 
-def _income_rows(payload: Any, prefix: str) -> List[IncomePeriod]:
+def _income_rows(payload: Any, prefix: str) -> list[IncomePeriod]:
     """Maps income payload rows to IncomePeriod objects.
 
     Args:
@@ -350,34 +356,36 @@ def _income_rows(payload: Any, prefix: str) -> List[IncomePeriod]:
     Returns:
         Periods in payload order (oldest first).
     """
-    out: List[IncomePeriod] = []
+    out: list[IncomePeriod] = []
     for row in _rows(payload):
-        out.append(IncomePeriod(
-            period=str(row.get("displayPeriod") or ""),
-            revenue=_f(row.get(prefix + "Trev")),
-            ebit=_f(row.get(prefix + "Ebi")),
-            pat=_f(row.get(prefix + "Ninc")),
-            eps=_f(row.get(prefix + "Eps")),
-            depreciation=_f(row.get(prefix + "Dep")),
-            interest=_f(row.get(prefix + "Ioi")),
-            pbt=_f(row.get(prefix + "Pbt")),
-            raw_materials=_f(row.get(prefix + "Raw")),
-            sga=_f(row.get(prefix + "Sga")),
-            dps=_f(row.get(prefix + "Dps")),
-            # `incPyr` arrives as a fraction, not percentage points:
-            # 0.8735 where DPS/EPS is 0.874. Scaled here so every ratio in
-            # the model is in the same units.
-            payout_pct=_pct_from_fraction(_f(row.get(prefix + "Pyr"))),
-        ))
+        out.append(
+            IncomePeriod(
+                period=str(row.get("displayPeriod") or ""),
+                revenue=_f(row.get(prefix + "Trev")),
+                ebit=_f(row.get(prefix + "Ebi")),
+                pat=_f(row.get(prefix + "Ninc")),
+                eps=_f(row.get(prefix + "Eps")),
+                depreciation=_f(row.get(prefix + "Dep")),
+                interest=_f(row.get(prefix + "Ioi")),
+                pbt=_f(row.get(prefix + "Pbt")),
+                raw_materials=_f(row.get(prefix + "Raw")),
+                sga=_f(row.get(prefix + "Sga")),
+                dps=_f(row.get(prefix + "Dps")),
+                # `incPyr` arrives as a fraction, not percentage points:
+                # 0.8735 where DPS/EPS is 0.874. Scaled here so every ratio in
+                # the model is in the same units.
+                payout_pct=_pct_from_fraction(_f(row.get(prefix + "Pyr"))),
+            )
+        )
     return out
 
 
-def _ratio_block(payload: Any, key: str) -> Dict[str, Any]:
+def _ratio_block(payload: Any, key: str) -> dict[str, Any]:
     """Extracts a named ratio sub-dictionary plus its period label."""
     if not isinstance(payload, dict):
         return {}
     block = payload.get(key)
-    result: Dict[str, Any] = dict(block) if isinstance(block, dict) else {}
+    result: dict[str, Any] = dict(block) if isinstance(block, dict) else {}
     if "period" in payload:
         result["period"] = payload["period"]
     raw = payload.get("raw_variables")
@@ -386,7 +394,7 @@ def _ratio_block(payload: Any, key: str) -> Dict[str, Any]:
     return result
 
 
-def _apply_income(snap: CompanySnapshot, payloads: Dict[str, Any]) -> None:
+def _apply_income(snap: CompanySnapshot, payloads: dict[str, Any]) -> None:
     """Fills the quarterly and annual income statements.
 
     The annual endpoint returns the trailing twelve months as one more row
@@ -408,7 +416,7 @@ def _apply_income(snap: CompanySnapshot, payloads: Dict[str, Any]) -> None:
         snap.warnings.append("annual income statement unavailable")
 
 
-def _balance_periods(payload: Any) -> List[BalancePeriod]:
+def _balance_periods(payload: Any) -> list[BalancePeriod]:
     """Parses the balance sheet endpoint into the periods shown."""
     return [
         BalancePeriod(
@@ -434,7 +442,7 @@ def _balance_periods(payload: Any) -> List[BalancePeriod]:
     ][-YEARS_SHOWN:]
 
 
-def _cashflow_periods(payload: Any) -> List[CashflowPeriod]:
+def _cashflow_periods(payload: Any) -> list[CashflowPeriod]:
     """Parses the cash flow endpoint into the periods shown."""
     return [
         CashflowPeriod(
@@ -452,17 +460,18 @@ def _cashflow_periods(payload: Any) -> List[CashflowPeriod]:
     ][-YEARS_SHOWN:]
 
 
-def _apply_ratios(snap: CompanySnapshot, payloads: Dict[str, Any]) -> None:
+def _apply_ratios(snap: CompanySnapshot, payloads: dict[str, Any]) -> None:
     """Fills the five ratio endpoints the provider computes itself."""
     snap.dupont = _ratio_block(payloads.get("dupont"), "dupont_5_factor")
     snap.solvency = _ratio_block(payloads.get("solvency"), "solvency_ratios")
     snap.liquidity = _ratio_block(payloads.get("liquidity"), "liquidity_ratios")
     snap.capital_efficiency = _ratio_block(
-        payloads.get("capital_efficiency"), "capital_efficiency")
+        payloads.get("capital_efficiency"), "capital_efficiency"
+    )
     snap.cagr = _ratio_block(payloads.get("cagr"), "cagr_metrics")
 
 
-def build_snapshot(ticker: str, payloads: Dict[str, Any]) -> CompanySnapshot:
+def build_snapshot(ticker: str, payloads: dict[str, Any]) -> CompanySnapshot:
     """Assembles a CompanySnapshot from raw collector payloads.
 
     Args:
@@ -501,7 +510,7 @@ def build_snapshot(ticker: str, payloads: Dict[str, Any]) -> CompanySnapshot:
     return snap
 
 
-def _apply_summary(snap: CompanySnapshot, summary: Dict[str, Any]) -> None:
+def _apply_summary(snap: CompanySnapshot, summary: dict[str, Any]) -> None:
     """Populates profile, ratios, peers, holdings and dividends."""
     about = summary.get("aboutAndPeers")
     if isinstance(about, list) and about:
@@ -515,18 +524,20 @@ def _apply_summary(snap: CompanySnapshot, summary: Dict[str, Any]) -> None:
                 continue
             ratios = item.get("ratios") if isinstance(item.get("ratios"), dict) else {}
             cap_mn = _f(ratios.get("marketCap"))
-            snap.peers.append(Peer(
-                ticker=str(item.get("ticker") or ""),
-                name=str(item.get("name") or ""),
-                # Peer caps arrive in rupee million; everything else is crore.
-                market_cap_cr=(cap_mn / MN_PER_CR) if cap_mn is not None else None,
-                pe=_f(ratios.get("ttmPe")),
-                pb=_f(ratios.get("pbr")),
-                div_yield=_f(ratios.get("divDps")),
-                change_52w=_f(ratios.get("52wpct")),
-                buy_reco_pct=_f(ratios.get("breco")),
-                is_subject=str(item.get("ticker") or "").upper() == snap.ticker,
-            ))
+            snap.peers.append(
+                Peer(
+                    ticker=str(item.get("ticker") or ""),
+                    name=str(item.get("name") or ""),
+                    # Peer caps arrive in rupee million; everything else is crore.
+                    market_cap_cr=(cap_mn / MN_PER_CR) if cap_mn is not None else None,
+                    pe=_f(ratios.get("ttmPe")),
+                    pb=_f(ratios.get("pbr")),
+                    div_yield=_f(ratios.get("divDps")),
+                    change_52w=_f(ratios.get("52wpct")),
+                    buy_reco_pct=_f(ratios.get("breco")),
+                    is_subject=str(item.get("ticker") or "").upper() == snap.ticker,
+                )
+            )
 
     for entry in summary.get("keyRatios") or []:
         if isinstance(entry, dict) and entry.get("backL") is not None:
@@ -546,15 +557,17 @@ def _apply_summary(snap: CompanySnapshot, summary: Dict[str, Any]) -> None:
         if not isinstance(entry, dict):
             continue
         data = entry.get("data") if isinstance(entry.get("data"), dict) else {}
-        snap.holdings.append(Holding(
-            date=str(entry.get("date") or "")[:10],
-            promoter=_f(data.get("pmPctT")),
-            fii=_f(data.get("fiPctT")),
-            dii=_f(data.get("diPctT")),
-            mutual_fund=_f(data.get("mfPctT")),
-            insider=_f(data.get("isPctT")),
-            retail_other=_f(data.get("rOthPctT")),
-        ))
+        snap.holdings.append(
+            Holding(
+                date=str(entry.get("date") or "")[:10],
+                promoter=_f(data.get("pmPctT")),
+                fii=_f(data.get("fiPctT")),
+                dii=_f(data.get("diPctT")),
+                mutual_fund=_f(data.get("mfPctT")),
+                insider=_f(data.get("isPctT")),
+                retail_other=_f(data.get("rOthPctT")),
+            )
+        )
     # The provider returns holdings oldest-first, which is already the order
     # charts and tables need. Verified against the payload; do not reverse.
 
@@ -562,11 +575,13 @@ def _apply_summary(snap: CompanySnapshot, summary: Dict[str, Any]) -> None:
     past = dividends_root.get("past") if isinstance(dividends_root, dict) else None
     for entry in past or []:
         if isinstance(entry, dict):
-            snap.dividends.append(Dividend(
-                ex_date=str(entry.get("exDate") or "")[:10],
-                amount=_f(entry.get("dividend")),
-                kind=str(entry.get("subType") or ""),
-            ))
+            snap.dividends.append(
+                Dividend(
+                    ex_date=str(entry.get("exDate") or "")[:10],
+                    amount=_f(entry.get("dividend")),
+                    kind=str(entry.get("subType") or ""),
+                )
+            )
 
     subject = next((p for p in snap.peers if p.is_subject), None)
     if subject is not None:
@@ -582,11 +597,13 @@ def _apply_peer_fallback(snap: CompanySnapshot, payload: Any) -> None:
     root = payload.get("peers") if isinstance(payload, dict) else payload
     for item in root or []:
         if isinstance(item, dict) and item.get("ticker"):
-            snap.peers.append(Peer(
-                ticker=str(item["ticker"]),
-                name=str(item.get("name") or ""),
-                is_subject=str(item["ticker"]).upper() == snap.ticker,
-            ))
+            snap.peers.append(
+                Peer(
+                    ticker=str(item["ticker"]),
+                    name=str(item.get("name") or ""),
+                    is_subject=str(item["ticker"]).upper() == snap.ticker,
+                )
+            )
     if snap.peers:
         snap.warnings.append("peer valuation ratios unavailable; identities only")
 
@@ -613,8 +630,7 @@ def _validate(snap: CompanySnapshot) -> None:
     drift = abs(implied - reported) / reported * 100.0
     if drift > 10.0:
         snap.warnings.append(
-            "share count disagrees by %.1f%% (balance sheet %.1f cr vs "
-            "PAT/EPS %.1f cr); per-share figures unreliable"
-            % (drift, reported, implied)
+            f"share count disagrees by {drift:.1f}% (balance sheet {reported:.1f} cr vs "
+            f"PAT/EPS {implied:.1f} cr); per-share figures unreliable"
         )
         logger.warning("[%s] share count drift %.1f%%", snap.ticker, drift)

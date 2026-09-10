@@ -13,13 +13,14 @@ route down to the happy path.
 import json
 import logging
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Dict, Generator, Tuple
+from typing import Any
 
+import requests
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, request, send_file, stream_with_context
 from flask_cors import CORS
-import requests
 
 from api.search import find
 from core.config import OUTPUT_DIR, REQUIRED_ENV_VARS, report_path
@@ -48,13 +49,13 @@ NO_DRIVE = (
 
 # Domain failure -> status. Most specific first: DriveAuthError is a DriveError,
 # and a lost grant needs re-consent (503) while a failed call may be retried.
-STATUSES: Tuple[Tuple[type, int], ...] = (
+STATUSES: tuple[tuple[type, int], ...] = (
     (ReportError, 404),
     (gdrive.DriveAuthError, 503),
     (gdrive.DriveError, 502),
 )
 
-Json = Tuple[Response, int]
+Json = tuple[Response, int]
 
 
 def check_env() -> bool:
@@ -79,10 +80,10 @@ def _sym(symbol: str) -> str:
 
 def _file_url(sym: str) -> str:
     """The endpoint serving the raw PDF for a symbol."""
-    return "/api/stocks/%s/report/file" % sym
+    return f"/api/stocks/{sym}/report/file"
 
 
-def _pdf(sym: str, refresh: bool) -> Tuple[Path, bool]:
+def _pdf(sym: str, refresh: bool) -> tuple[Path, bool]:
     """Returns the report PDF, and whether this call compiled it.
 
     Raises:
@@ -103,7 +104,7 @@ def _failed(exc: Exception) -> Json:
     sym = _sym((request.view_args or {}).get("symbol", ""))
     log.warning("%s (%d) for %s: %s", type(exc).__name__, status, sym or "-", exc)
 
-    body: Dict[str, Any] = {"success": False, "error": str(exc)}
+    body: dict[str, Any] = {"success": False, "error": str(exc)}
     if sym:
         body["symbol"] = sym
         # The report itself may still be reachable even when Drive is not.
@@ -114,10 +115,21 @@ def _failed(exc: Exception) -> Json:
 def create_app() -> Flask:
     """Builds the configured application."""
     app = Flask(__name__)
-    CORS(app, resources={
-        r"/api/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]},
-        r"/v1/*": {"origins": "*", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]},
-    })
+    CORS(
+        app,
+        resources={
+            r"/api/*": {
+                "origins": "*",
+                "methods": ["GET", "POST", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+            },
+            r"/v1/*": {
+                "origins": "*",
+                "methods": ["GET", "POST", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+            },
+        },
+    )
 
     @app.get("/api/search")
     @app.get("/search")
@@ -142,17 +154,27 @@ def create_app() -> Flask:
             return jsonify(dict(body, drive=None, drive_status=NO_DRIVE)), 200
 
         up = gdrive.ensure_uploaded(pdf, sym, force=refresh)
-        return jsonify(dict(body, drive=up.as_dict(),
-                            view_link=up.view_link,
-                            preview_link=up.preview_link)), 200
+        return jsonify(
+            dict(
+                body,
+                drive=up.as_dict(),
+                view_link=up.view_link,
+                preview_link=up.preview_link,
+            )
+        ), 200
 
     @app.get("/api/stocks/<symbol>/report/file")
     @app.get("/stocks/<symbol>/report/file")
     def report_file(symbol: str) -> Response:
         """The PDF itself. `?download=1` sends it as an attachment."""
         pdf, _ = _pdf(_sym(symbol), _flag("refresh"))
-        return send_file(pdf, mimetype=PDF_MIME, as_attachment=_flag("download"),
-                         download_name=pdf.name, max_age=0)
+        return send_file(
+            pdf,
+            mimetype=PDF_MIME,
+            as_attachment=_flag("download"),
+            download_name=pdf.name,
+            max_age=0,
+        )
 
     # --- OpenAI-Compatible Reverse Proxy Endpoints (Client / Frontend Safe) ---
     @app.get("/v1/models")
@@ -190,6 +212,7 @@ def create_app() -> Flask:
         endpoint = f"{API_URL}/chat/completions"
 
         if is_streaming:
+
             def generate_stream() -> Generator[str, None, None]:
                 try:
                     upstream_resp = requests.post(
@@ -208,7 +231,9 @@ def create_app() -> Flask:
                         if not line:
                             yield "\n"
                             continue
-                        line_str = line.decode("utf-8") if isinstance(line, bytes) else line
+                        line_str = (
+                            line.decode("utf-8") if isinstance(line, bytes) else line
+                        )
                         if not line_str.startswith("data:"):
                             yield f"{line_str}\n"
                             continue
@@ -290,7 +315,14 @@ def create_app() -> Flask:
 
             return jsonify(data), upstream_resp.status_code
         except requests.RequestException as exc:
-            return jsonify({"error": {"message": f"SLM upstream call failed: {exc}", "type": "upstream_error"}}), 502
+            return jsonify(
+                {
+                    "error": {
+                        "message": f"SLM upstream call failed: {exc}",
+                        "type": "upstream_error",
+                    }
+                }
+            ), 502
         except Exception as exc:
             return jsonify({"error": {"message": str(exc), "type": "proxy_error"}}), 500
 
@@ -313,8 +345,9 @@ app: Flask = create_app()
 
 def main() -> None:
     """Server entry point."""
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
     if not check_env():
         log.error("startup aborted: environment incomplete")
         return

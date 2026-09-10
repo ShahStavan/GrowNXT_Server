@@ -44,15 +44,14 @@ from __future__ import annotations
 import argparse
 import io
 import logging
-from pathlib import Path
-import shutil
 import sys
 import tempfile
-from typing import Any, Dict, Iterator, List, Optional, Sequence
+from collections.abc import Iterator, Sequence
+from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.checks import Report, banner, require  # noqa: E402
 from ingestion.documents import content as content_model  # noqa: E402
 from ingestion.documents.content import (  # noqa: E402
     Block,
@@ -62,15 +61,17 @@ from ingestion.documents.content import (  # noqa: E402
 )
 from ingestion.documents.download import (  # noqa: E402
     MIN_BYTES,
-    DownloadRequest,
     Downloader,
+    DownloadRequest,
 )
 from ingestion.documents.storage import DocumentStore  # noqa: E402
+from scripts.checks import Report, banner  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
 # --- Fixtures -----------------------------------------------------------------
+
 
 def _pdf_bytes(pages: int = 3, pad: int = 20000) -> bytes:
     """Builds a valid multi-page PDF in memory.
@@ -107,8 +108,8 @@ class _FakeResponse:
         self,
         status: int = 200,
         body: bytes = b"",
-        headers: Optional[Dict[str, str]] = None,
-        error: Optional[Exception] = None,
+        headers: dict[str, str] | None = None,
+        error: Exception | None = None,
     ) -> None:
         self.status_code = status
         self.headers = dict(headers or {})
@@ -125,9 +126,9 @@ class _FakeResponse:
         if self._error is not None:
             raise self._error
         for start in range(0, len(self._body), max(1, chunk_size)):
-            yield self._body[start:start + chunk_size]
+            yield self._body[start : start + chunk_size]
 
-    def __enter__(self) -> "_FakeResponse":
+    def __enter__(self) -> _FakeResponse:
         return self
 
     def __exit__(self, *_exc: object) -> bool:
@@ -141,18 +142,23 @@ class _StubDownloader(Downloader):
     atomic-rename paths under test -- only the socket is replaced.
     """
 
-    def __init__(self, store: DocumentStore, responses: Sequence[_FakeResponse],
-                 **kwargs: Any) -> None:
+    def __init__(
+        self, store: DocumentStore, responses: Sequence[_FakeResponse], **kwargs: Any
+    ) -> None:
         super().__init__(store, **kwargs)
-        self.queue: List[_FakeResponse] = list(responses)
-        self.calls: List[Dict[str, Any]] = []
+        self.queue: list[_FakeResponse] = list(responses)
+        self.calls: list[dict[str, Any]] = []
 
     @property
-    def _session(self) -> "_StubDownloader":  # type: ignore[override]
+    def _session(self) -> _StubDownloader:  # type: ignore[override]
         return self
 
-    def get(self, url: str, headers: Optional[Dict[str, str]] = None,
-            **kwargs: Any) -> _FakeResponse:
+    def get(
+        self,
+        url: str,
+        headers: dict[str, str] | None = None,
+        **kwargs: Any,  # noqa: ARG002 - mirrors the real session's signature
+    ) -> _FakeResponse:
         """Records the request and returns the next scripted response."""
         self.calls.append({"url": url, "headers": dict(headers or {})})
         if not self.queue:
@@ -161,6 +167,7 @@ class _StubDownloader(Downloader):
 
 
 # --- Storage checks -----------------------------------------------------------
+
 
 def check_storage(report: Report) -> None:
     """Asserts the on-disk layout is derived consistently."""
@@ -231,6 +238,7 @@ def check_storage(report: Report) -> None:
 
 # --- Content model checks -----------------------------------------------------
 
+
 def check_content(report: Report) -> None:
     """Asserts the extracted-content model preserves what retrieval needs."""
     report.section("Content model")
@@ -255,7 +263,7 @@ def check_content(report: Report) -> None:
     report.check(
         "body excludes the header rows",
         len(table.body) == 2 and table.body[0][0] == "Revenue from operations",
-        "%d body rows" % len(table.body),
+        f"{len(table.body)} body rows",
     )
 
     markdown = table.to_markdown()
@@ -294,16 +302,39 @@ def check_content(report: Report) -> None:
         n_source_pages=5,
         extractor="test",
         blocks=[
-            Block(kind=content_model.KIND_HEADING, text="Management Discussion",
-                  page=1, level=1, path=["Management Discussion"]),
-            Block(kind=content_model.KIND_TEXT, text="Revenue grew on large deals.",
-                  page=1, path=["Management Discussion", "Segment Review"]),
-            Block(kind=content_model.KIND_TABLE, text=markdown, page=2,
-                  path=["Management Discussion"], table=table),
-            Block(kind=content_model.KIND_FIGURE, text="", page=3,
-                  path=["Management Discussion"],
-                  figure=Figure(path="figures/d/p0003-01.png", kind="bar_chart",
-                                page=3, width=800, height=600)),
+            Block(
+                kind=content_model.KIND_HEADING,
+                text="Management Discussion",
+                page=1,
+                level=1,
+                path=["Management Discussion"],
+            ),
+            Block(
+                kind=content_model.KIND_TEXT,
+                text="Revenue grew on large deals.",
+                page=1,
+                path=["Management Discussion", "Segment Review"],
+            ),
+            Block(
+                kind=content_model.KIND_TABLE,
+                text=markdown,
+                page=2,
+                path=["Management Discussion"],
+                table=table,
+            ),
+            Block(
+                kind=content_model.KIND_FIGURE,
+                text="",
+                page=3,
+                path=["Management Discussion"],
+                figure=Figure(
+                    path="figures/d/p0003-01.png",
+                    kind="bar_chart",
+                    page=3,
+                    width=800,
+                    height=600,
+                ),
+            ),
         ],
     )
 
@@ -328,23 +359,25 @@ def check_content(report: Report) -> None:
     report.check(
         "pages that produced nothing are named",
         document.empty_pages() == [4, 5],
-        "empty pages: %s" % document.empty_pages(),
+        f"empty pages: {document.empty_pages()}",
     )
     # Page 3 holds a chart and no prose. That is a successful extraction of a
     # deck page, not a gap, so it must not be counted as empty.
     report.check(
         "a figure-only page counts as covered",
         3 not in document.empty_pages() and document.text_free_pages() == [3],
-        "text-free but covered: %s" % document.text_free_pages(),
+        f"text-free but covered: {document.text_free_pages()}",
     )
 
     restored = ExtractedDocument.from_dict(document.to_dict())
     report.check(
         "the document round-trips through JSON",
-        (restored.to_dict() == document.to_dict()
-         and restored.blocks[2].table is not None
-         and restored.blocks[2].table.header_rows == 2),
-        "%d blocks, header rows preserved" % len(restored.blocks),
+        (
+            restored.to_dict() == document.to_dict()
+            and restored.blocks[2].table is not None
+            and restored.blocks[2].table.header_rows == 2
+        ),
+        f"{len(restored.blocks)} blocks, header rows preserved",
     )
     report.check(
         "markdown rendering is readable",
@@ -354,6 +387,7 @@ def check_content(report: Report) -> None:
 
 
 # --- Download checks ----------------------------------------------------------
+
 
 def check_download(report: Report) -> None:
     """Asserts what does and does not reach the documents directory."""
@@ -382,11 +416,12 @@ def check_download(report: Report) -> None:
         report.check(
             "the page count is read back",
             result.n_pages == 3,
-            "%d pages" % result.n_pages,
+            f"{result.n_pages} pages",
         )
         report.check(
             "a same-origin referer is sent",
-            stub.calls[0]["headers"].get("Referer") == "https://nsearchives.example.com/",
+            stub.calls[0]["headers"].get("Referer")
+            == "https://nsearchives.example.com/",
             stub.calls[0]["headers"].get("Referer", "(none)"),
         )
         report.check(
@@ -405,7 +440,9 @@ def check_download(report: Report) -> None:
         )
 
         forced = _StubDownloader(store, [_FakeResponse(200, pdf)])
-        refetched = forced.fetch(DownloadRequest("annual_report_FY2026", url), force=True)
+        refetched = forced.fetch(
+            DownloadRequest("annual_report_FY2026", url), force=True
+        )
         report.check(
             "force re-downloads regardless",
             refetched.ok and not refetched.reused and len(forced.calls) == 1,
@@ -416,7 +453,9 @@ def check_download(report: Report) -> None:
     with tempfile.TemporaryDirectory() as raw:
         store = store_in(Path(raw))
         html = b"<html><body>Document not found</body></html>" * 300
-        stub = _StubDownloader(store, [_FakeResponse(200, html, {"Content-Type": "text/html"})])
+        stub = _StubDownloader(
+            store, [_FakeResponse(200, html, {"Content-Type": "text/html"})]
+        )
         result = stub.fetch(DownloadRequest("transcript_2026_07", url))
         report.check(
             "a 200 carrying HTML is refused",
@@ -459,7 +498,7 @@ def check_download(report: Report) -> None:
         report.check(
             "a stub response is refused",
             not result.ok and "too small" in result.error,
-            "floor is %d bytes" % MIN_BYTES,
+            f"floor is {MIN_BYTES} bytes",
         )
 
     # Permanent versus transient status handling.
@@ -470,7 +509,7 @@ def check_download(report: Report) -> None:
         report.check(
             "a 404 is not retried",
             not result.ok and result.attempts == 1 and len(stub.calls) == 1,
-            "%d attempt(s) for HTTP 404" % result.attempts,
+            f"{result.attempts} attempt(s) for HTTP 404",
         )
 
     with tempfile.TemporaryDirectory() as raw:
@@ -484,7 +523,7 @@ def check_download(report: Report) -> None:
         report.check(
             "a 503 is retried and can succeed",
             result.ok and result.attempts == 2,
-            "%d attempts" % result.attempts,
+            f"{result.attempts} attempts",
         )
 
     with tempfile.TemporaryDirectory() as raw:
@@ -516,11 +555,12 @@ def check_download(report: Report) -> None:
         report.check(
             "every request yields exactly one result",
             len(results) == len(wanted),
-            "%d results for %d requests" % (len(results), len(wanted)),
+            f"{len(results)} results for {len(wanted)} requests",
         )
         report.check(
             "a failure among successes does not abort the batch",
-            sum(1 for r in results if r.ok) == 2 and sum(1 for r in results if not r.ok) == 1,
+            sum(1 for r in results if r.ok) == 2
+            and sum(1 for r in results if not r.ok) == 1,
             "2 stored, 1 failed",
         )
         report.check(
@@ -531,6 +571,7 @@ def check_download(report: Report) -> None:
 
 
 # --- Extraction checks --------------------------------------------------------
+
 
 def check_extraction(report: Report) -> None:
     """Asserts Docling extraction against a generated PDF.
@@ -561,57 +602,65 @@ def check_extraction(report: Report) -> None:
 
         extractor = Extractor(ocr=False, figures=True)
         document = extractor.run(
-            source, store, doc_id="fixture", doc_type="annual_report",
-            ticker="TESTCO", label="FY2026",
+            source,
+            store,
+            doc_id="fixture",
+            doc_type="annual_report",
+            ticker="TESTCO",
+            label="FY2026",
+            # The harness asserts what Docling produces, so it must never be
+            # handed a cached extraction from an earlier check.
+            reuse=False,
         )
 
         report.check(
             "text is recovered",
             document.n_chars > 0,
-            "%d chars across %d blocks" % (document.n_chars, len(document.blocks)),
+            f"{document.n_chars} chars across {len(document.blocks)} blocks",
         )
         report.check(
             "the source page count is recorded",
             document.n_source_pages >= 1,
-            "%d source pages" % document.n_source_pages,
+            f"{document.n_source_pages} source pages",
         )
         report.check(
             "a heading was found",
             len(document.headings) >= 1,
-            "%d heading(s): %s" % (
-                len(document.headings),
-                ", ".join(h.text[:24] for h in document.headings[:3]),
-            ),
+            f"{len(document.headings)} heading(s): "
+            f"{', '.join(h.text[:24] for h in document.headings[:3])}",
         )
         report.check(
             "blocks carry a heading trail",
             any(block.path for block in document.blocks),
-            "deepest trail: %s" % max(
-                (block.heading_trail for block in document.blocks), key=len, default="",
-            )[:60],
+            "deepest trail: "
+            f"{max((block.heading_trail for block in document.blocks), key=len, default='')[:60]}",
         )
         tables = document.tables
         report.check(
             "a table is recovered as a table",
             len(tables) >= 1,
-            "%d table(s)" % len(tables),
+            f"{len(tables)} table(s)",
         )
         if tables:
             first = tables[0]
             report.check(
                 "the table keeps its header row",
                 first.header_rows >= 1 and any("FY" in cell for cell in first.header),
-                "header: %s" % " / ".join(first.header)[:60],
+                f"header: {' / '.join(first.header)[:60]}",
             )
             report.check(
                 "the table keeps its figures",
-                any("926,163" in cell or "926163" in cell
-                    for row in first.rows for cell in row),
+                any(
+                    "926,163" in cell or "926163" in cell
+                    for row in first.rows
+                    for cell in row
+                ),
                 "row values survived extraction",
             )
         report.check(
             "the extraction round-trips through its cache",
-            ExtractedDocument.from_dict(document.to_dict()).to_dict() == document.to_dict(),
+            ExtractedDocument.from_dict(document.to_dict()).to_dict()
+            == document.to_dict(),
             store.relative(store.extraction("fixture")),
         )
         report.check(
@@ -621,7 +670,7 @@ def check_extraction(report: Report) -> None:
         )
 
 
-def _table_pdf() -> Optional[bytes]:
+def _table_pdf() -> bytes | None:
     """Renders a one-page PDF holding a heading and a small financial table.
 
     Built with matplotlib because it is already a dependency and can lay out
@@ -630,9 +679,10 @@ def _table_pdf() -> Optional[bytes]:
     """
     try:
         import matplotlib
+
         matplotlib.use("Agg")
-        from matplotlib.backends.backend_pdf import PdfPages
         import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_pdf import PdfPages
     except ImportError:
         return None
 
@@ -644,13 +694,17 @@ def _table_pdf() -> Optional[bytes]:
     buffer = io.BytesIO()
     with PdfPages(buffer) as pages:
         figure = plt.figure(figsize=(8.27, 11.69))
-        figure.suptitle("Management Discussion and Analysis", fontsize=24, fontweight="bold", y=0.96)
-        figure.text(0.1, 0.90, "Consolidated results for the year, Rs in millions.",
-                    fontsize=12)
+        figure.suptitle(
+            "Management Discussion and Analysis", fontsize=24, fontweight="bold", y=0.96
+        )
+        figure.text(
+            0.1, 0.90, "Consolidated results for the year, Rs in millions.", fontsize=12
+        )
         table = figure.add_axes([0.1, 0.55, 0.8, 0.25])
         table.axis("off")
-        rendered = table.table(cellText=[list(r) for r in rows[1:]],
-                               colLabels=list(rows[0]), loc="center")
+        rendered = table.table(
+            cellText=[list(r) for r in rows[1:]], colLabels=list(rows[0]), loc="center"
+        )
         rendered.auto_set_font_size(False)
         rendered.set_fontsize(11)
         pages.savefig(figure)
@@ -660,12 +714,17 @@ def _table_pdf() -> Optional[bytes]:
 
 # --- Entry point --------------------------------------------------------------
 
-def main(argv: Optional[List[str]] = None) -> int:
+
+def main(argv: list[str] | None = None) -> int:
     """Runs the suite and returns a process exit code."""
     parser = argparse.ArgumentParser(
-        description="Verify the document acquisition and extraction layer.")
-    parser.add_argument("--offline", action="store_true",
-                        help="Skip the checks that need Docling and its weights.")
+        description="Verify the document acquisition and extraction layer."
+    )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Skip the checks that need Docling and its weights.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Debug logging.")
     args = parser.parse_args(argv)
 

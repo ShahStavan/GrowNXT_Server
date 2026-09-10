@@ -1,0 +1,51 @@
+ticker,tickertape_sid,tickertape_name,tickertape_slug,screener_slug,screener_name,screener_url,sector,status,verified_at
+ADANIENT,ADEL,Adani Enterprises Limited,/stocks/adani-enterprises-ADEL,ADANIENT,Adani Enterprises Ltd,https://www.screener.in/company/ADANIENT/consolidated/,Industrials,ok,2026-08-20
+ADANIPORTS,APSE,Adani Ports and Special Economic Zone Ltd,/stocks/adani-ports-and-special-economic-zone-APSE,ADANIPORTS,Adani Ports & Special Economic Zone Ltd,https://www.screener.in/company/ADANIPORTS/consolidated/,Industrials,ok,2026-08-20
+APOLLOHOSP,APLH,Apollo Hospitals Enterprise Limited,/stocks/apollo-hospitals-enterprise-APLH,APOLLOHOSP,Apollo Hospitals Enterprise Ltd,https://www.screener.in/company/APOLLOHOSP/consolidated/,Health Care,ok,2026-08-20
+ASIANPAINT,ASPN,Asian Paints Limited,/stocks/asian-paints-ASPN,ASIANPAINT,Asian Paints Ltd,https://www.screener.in/company/ASIANPAINT/consolidated/,Materials,ok,2026-08-20
+AXISBANK,AXBK,Axis Bank Limited,/stocks/axis-bank-AXBK,AXISBANK,Axis Bank Ltd,https://www.screener.in/company/AXISBANK/consolidated/,Financials,ok,2026-08-20
+BAJAJ-AUTO,BAJA,Bajaj Auto Ltd,/stocks/bajaj-auto-BAJA,BAJAJ-AUTO,Bajaj Auto Ltd,https://www.screener.in/company/BAJAJ-AUTO/consolidated/,Consumer Discretionary,ok,2026-08-20
+BAJAJFINSV,BJFS,Bajaj Finserv Ltd,/stocks/bajaj-finserv-BJFS,BAJAJFINSV,Bajaj Finserv Ltd,https://www.screener.in/company/BAJAJFINSV/consolidated/,Financials,ok,2026-08-20
+BAJFINANCE,BJFN,Bajaj Finance Ltd,/stocks/bajaj-finance-BJFN,BAJFINANCE,Bajaj Finance Ltd,https://www.screener.in/company/BAJFINANCE/consolidated/,Financials,ok,2026-08-20
+BEL,BAJE,Bharat Electronics Ltd,/stocks/bharat-electronics-BAJE,BEL,Bharat Electronics Ltd,https://www.screener.in/company/BEL/consolidated/,Information Technology,ok,2026-08-20
+BHARTIARTL,BRTI,Bharti Airtel Ltd,/stocks/bharti-airtel-BRTI,BHARTIARTL,Bharti Airtel Ltd,https://www.screener.in/company/BHARTIARTL/consolidated/,Communication Services,ok,2026-08-20
+CIPLA,CIPL,Cipla Ltd,/stocks/cipla-CIPL,CIPLA,Cipla Ltd,https://www.screener.in/company/CIPLA/consolidated/,Health Care,ok,2026-08-20
+COALINDIA,COAL,Coal India Limited,/stocks/coal-india-COAL,COALINDIA,Coal India Ltd,https://www.screener.in/company/COALINDIA/consolidated/,Materials,ok,2026-08-20
+DRREDDY,REDY,Dr Reddy's Laboratories Ltd,/stocks/drreddys-laboratories-REDY,DRREDDY,Dr Reddys Laboratories Ltd,https://www.screener.in/company/DRREDDY/consolidated/,Health Care,ok,2026-08-20
+EICHERMOT,EICH,Eicher Motors Ltd,/stocks/eicher-motors-EICH,EICHERMOT,Eicher Motors Ltd,https://www.screener.in/company/EICHERMOT/consolidated/,Industrials,ok,2026-08-20
+ETERNAL,ZOM,Eternal Limited,/stocks/zomato-ZOM,ETERNAL,Eternal Ltd,https://www.screener.in/company/ETERNAL/consolidated/,Communication Services,ok,2026-08-20
+GRASIM,GRAS,Grasim Industries Ltd,/stocks/grasim-industries-GRAS,GRASIM,Grasim Industries Ltd,https://www.screener.in/company/GRASIM/consolidated/,Materials,ok,2026-08-20
+HCLTECH,HCLT,HCL Technologies Ltd,/stocks/hcl-technologies-HCLT,HCLTECH,HCL Technologies Ltd,https://www.screener.in/company/HCLTECH/consolidated/,Information Technology,ok,2026-08-20
+HDFCBANK,HDBK,HDFC Bank Limited,/stocks/hdfc-bank-HDBK,HDFCBANK,HDFC Bank Ltd,https://www.screener.in/company/HDFCBANK/consolidated/,Financials,ok,2026-08-20
+HDFCLIFE,HDFL,HDFC Life Insurance Company Ltd,/stocks/hdfc-life-insurance-company-HDFL,HDFCLIFE,HDFC Life Insurance Company Ltd,https://www.screener.in/company/HDFCLIFE/consolidated/,Financials,ok,2026-08-20
+HINDALCO,HALC,Hindalco Industries Ltd,/stocks/hindalco-industries-HALC,HINDALCO,Hindalco Industries Ltd,https://www.screener.in/company/HINDALCO/consolidated/,Materials,ok,2026-08-20
+HINDUNILVR,HLL,Hindustan Unilever Ltd,/stocks/hindustan-unilever-HLL,HINDUNILVR,Hindustan Unilever Ltd,https://www.screener.in/company/HINDUNILVR/consolidated/,Consumer Staples,ok,2026-08-20
+ICICIBANK,ICBK,ICICI Bank Limited,/stocks/icici-bank-ICBK,ICICIBANK,ICICI Bank Ltd,https://www.screener.in/company/ICICIBANK/consolidated/,Financials,ok,2026-08-20
+INDIGO,INGL,Interglobe Aviation Ltd,/stocks/interglobe-aviation-INGL,INDIGO,Interglobe Aviation Ltd,https://www.screener.in/company/INDIGO/consolidated/,Industrials,ok,2026-08-20
+INFY,INFY,Infosys Limited,/stocks/infosys-INFY,INFY,Infosys Ltd,https://www.screener.in/company/INFY/consolidated/,Information Technology,ok,2026-08-20
+ITC,ITC,ITC Ltd,/stocks/itc-ITC,ITC,ITC Ltd,https://www.screener.in/company/ITC/consolidated/,Consumer Staples,ok,2026-08-20
+JIOFIN,JIO,Jio Financial Services Limited,/stocks/jio-financial-services-JIO,JIOFIN,Jio Financial Services Ltd,https://www.screener.in/company/JIOFIN/consolidated/,Financials,ok,2026-08-20
+JSWSTEEL,JSTL,JSW Steel Limited,/stocks/jsw-steel-JSTL,JSWSTEEL,JSW Steel Ltd,https://www.screener.in/company/JSWSTEEL/consolidated/,Materials,ok,2026-08-20
+KOTAKBANK,KTKM,Kotak Mahindra Bank Limited,/stocks/kotak-mahindra-bank-KTKM,KOTAKBANK,Kotak Mahindra Bank Ltd,https://www.screener.in/company/KOTAKBANK/consolidated/,Financials,ok,2026-08-20
+LT,LART,Larsen & Toubro Ltd,/company/LT/consolidated/,LT,Larsen & Toubro Ltd,https://www.screener.in/company/LT/consolidated/,Equity,ok,2026-08-20
+M&M,MAHM,Mahindra and Mahindra Ltd,/stocks/mahindra-and-mahindra-MAHM,M&M,Mahindra & Mahindra Ltd,https://www.screener.in/company/M&M/consolidated/,Consumer Discretionary,ok,2026-08-20
+MARUTI,MRTI,Maruti Suzuki India Ltd,/stocks/maruti-suzuki-india-MRTI,MARUTI,Maruti Suzuki India Ltd,https://www.screener.in/company/MARUTI/consolidated/,Consumer Discretionary,ok,2026-08-20
+MAXHEALTH,MAXE,Max Healthcare Institute Limited,/stocks/max-healthcare-institute-MAXE,MAXHEALTH,Max Healthcare Institute Ltd,https://www.screener.in/company/MAXHEALTH/consolidated/,Health Care,ok,2026-08-20
+NESTLEIND,NEST,Nestle India Ltd,/stocks/nestle-india-NEST,NESTLEIND,Nestle India Ltd,https://www.screener.in/company/NESTLEIND/consolidated/,Consumer Staples,ok,2026-08-20
+NTPC,NTPC,NTPC Ltd,/stocks/ntpc-NTPC,NTPC,NTPC Ltd,https://www.screener.in/company/NTPC/consolidated/,Utilities,ok,2026-08-20
+ONGC,ONGC,Oil and Natural Gas Corporation Ltd,/stocks/oil-and-natural-gas-corporation-ONGC,ONGC,Oil & Natural Gas Corpn Ltd,https://www.screener.in/company/ONGC/consolidated/,Energy,ok,2026-08-20
+POWERGRID,PGRD,Power Grid Corporation of India Limited,/stocks/power-grid-corporation-of-india-PGRD,POWERGRID,Power Grid Corporation of India Ltd,https://www.screener.in/company/POWERGRID/consolidated/,Utilities,ok,2026-08-20
+RELIANCE,RELI,Reliance Industries Ltd,/stocks/reliance-industries-RELI,RELIANCE,Reliance Industries Ltd,https://www.screener.in/company/RELIANCE/consolidated/,Energy,ok,2026-08-20
+SBILIFE,SBIL,SBI Life Insurance Company Ltd,/stocks/sbi-life-insurance-company-SBIL,SBILIFE,SBI Life Insurance Company Ltd,https://www.screener.in/company/SBILIFE/consolidated/,Financials,ok,2026-08-20
+SBIN,SBI,State Bank of India,/stocks/state-bank-of-india-SBI,SBIN,State Bank of India,https://www.screener.in/company/SBIN/consolidated/,Financials,ok,2026-08-20
+SHRIRAMFIN,SRTR,Shriram Finance Limited,/stocks/shriram-transport-finance-company-SRTR,SHRIRAMFIN,Shriram Finance Ltd,https://www.screener.in/company/SHRIRAMFIN/consolidated/,Financials,ok,2026-08-20
+SUNPHARMA,SUN,Sun Pharmaceutical Industries Ltd,/stocks/sun-pharmaceutical-industries-SUN,SUNPHARMA,Sun Pharmaceutical Industries Ltd,https://www.screener.in/company/SUNPHARMA/consolidated/,Health Care,ok,2026-08-20
+TATACONSUM,TACN,Tata Consumer Products Ltd,/stocks/tata-consumer-products-TACN,TATACONSUM,Tata Consumer Products Ltd,https://www.screener.in/company/TATACONSUM/consolidated/,Consumer Staples,ok,2026-08-20
+TATASTEEL,TISC,Tata Steel Ltd,/stocks/tata-steel-TISC,TATASTEEL,Tata Steel Ltd,https://www.screener.in/company/TATASTEEL/consolidated/,Materials,ok,2026-08-20
+TCS,TCS,Tata Consultancy Services Ltd,/stocks/tata-consultancy-services-TCS,TCS,Tata Consultancy Services Ltd,https://www.screener.in/company/TCS/consolidated/,Information Technology,ok,2026-08-20
+TECHM,TEML,Tech Mahindra Limited,/stocks/tech-mahindra-TEML,TECHM,Tech Mahindra Ltd,https://www.screener.in/company/TECHM/consolidated/,Information Technology,ok,2026-08-20
+TITAN,TITN,Titan Company Ltd,/stocks/titan-company-TITN,TITAN,Titan Company Ltd,https://www.screener.in/company/TITAN/consolidated/,Consumer Discretionary,ok,2026-08-20
+TMPV,TAMO,Tata Motors Passenger Vehicles Ltd,/stocks/tata-motors-TAMO,TMPV,Tata Motors Passenger Vehicles Ltd,https://www.screener.in/company/TMPV/consolidated/,Consumer Discretionary,ok,2026-08-20
+TRENT,TREN,Trent Ltd,/stocks/trent-TREN,TRENT,Trent Ltd,https://www.screener.in/company/TRENT/consolidated/,Consumer Discretionary,ok,2026-08-20
+ULTRACEMCO,ULTC,UltraTech Cement Ltd,/stocks/ultratech-cement-ULTC,ULTRACEMCO,UltraTech Cement Ltd,https://www.screener.in/company/ULTRACEMCO/consolidated/,Materials,ok,2026-08-20
+WIPRO,WIPR,Wipro Limited,/stocks/wipro-WIPR,WIPRO,Wipro Ltd,https://www.screener.in/company/WIPRO/consolidated/,Information Technology,ok,2026-08-20

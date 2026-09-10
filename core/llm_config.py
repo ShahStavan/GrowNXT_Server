@@ -14,10 +14,11 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, Final, Generator, Optional, Tuple
+from collections.abc import Generator
+from typing import Any, Final
 
-from dotenv import load_dotenv
 import requests
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -25,21 +26,33 @@ load_dotenv()
 
 # Upstream SLM Configuration loaded from environment (.env)
 DEFAULT_BASE_URL: Final[str] = (
-    os.getenv("DEFAULT_BASE_URL")
-    or os.getenv("GROWNXT_LLM_API_URL")
-    or "https://llm.maqsoftware.net/v1"
-).strip().rstrip("/")
+    (
+        os.getenv("DEFAULT_BASE_URL")
+        or os.getenv("GROWNXT_LLM_API_URL")
+        or "https://llm.maqsoftware.net/v1"
+    )
+    .strip()
+    .rstrip("/")
+)
 
 DEFAULT_CHAT_MODEL: Final[str] = os.getenv("DEFAULT_CHAT_MODEL", "qwen-3.8-27b").strip()
 DEFAULT_CHAT_MODELS: Final[str] = os.getenv(
     "DEFAULT_CHAT_MODELS", "qwen-3.8-27b,gemma-4-31b"
 ).strip()
-DEFAULT_EMBED_MODEL: Final[str] = os.getenv("DEFAULT_EMBED_MODEL", "qwen3-embed").strip()
-DEFAULT_RERANK_MODEL: Final[str] = os.getenv("DEFAULT_RERANK_MODEL", "bge-reranker").strip()
+DEFAULT_EMBED_MODEL: Final[str] = os.getenv(
+    "DEFAULT_EMBED_MODEL", "qwen3-embed"
+).strip()
+DEFAULT_RERANK_MODEL: Final[str] = os.getenv(
+    "DEFAULT_RERANK_MODEL", "bge-reranker"
+).strip()
 
 # Configured API Base URL (defaults to upstream SLM endpoint from .env)
-_raw_api_url: str = os.getenv("GROWNXT_LLM_API_URL", DEFAULT_BASE_URL).strip().rstrip("/")
-API_URL: Final[str] = _raw_api_url if _raw_api_url.endswith("/v1") else f"{_raw_api_url}/v1"
+_raw_api_url: str = (
+    os.getenv("GROWNXT_LLM_API_URL", DEFAULT_BASE_URL).strip().rstrip("/")
+)
+API_URL: Final[str] = (
+    _raw_api_url if _raw_api_url.endswith("/v1") else f"{_raw_api_url}/v1"
+)
 
 # Active chat model selection
 ACTIVE_MODEL: Final[str] = os.getenv("GROWNXT_LLM_MODEL", DEFAULT_CHAT_MODEL).strip()
@@ -77,7 +90,7 @@ def clean_thinking_tokens(text: str) -> str:
     return cleaned.strip()
 
 
-def extract_thinking_and_content(text: str) -> Tuple[str, str]:
+def extract_thinking_and_content(text: str) -> tuple[str, str]:
     """Separates thinking reasoning trace from the final synthesized content.
 
     Args:
@@ -96,16 +109,16 @@ def extract_thinking_and_content(text: str) -> Tuple[str, str]:
     return thinking_trace, clean_content
 
 
-def _headers() -> Dict[str, str]:
+def _headers() -> dict[str, str]:
     """Builds request headers, attaching the API key only when one is set."""
     headers = {"Content-Type": "application/json"}
     api_key = os.getenv("GROWNXT_LLM_API_KEY", "").strip()
     if api_key:
-        headers["Authorization"] = "Bearer %s" % api_key
+        headers["Authorization"] = f"Bearer {api_key}"
     return headers
 
 
-def _completion_text(payload: Any) -> Optional[str]:
+def _completion_text(payload: Any) -> str | None:
     """Extracts and sanitizes the assistant message from a chat-completions response."""
     if not isinstance(payload, dict):
         return None
@@ -122,9 +135,9 @@ def _completion_text(payload: Any) -> Optional[str]:
 def generate_llm_response(
     prompt: str,
     context: str = "",
-    model: Optional[str] = None,
+    model: str | None = None,
     temperature: float = 0.2,
-    max_tokens: Optional[int] = None,
+    max_tokens: int | None = None,
 ) -> str:
     """Generates a completion for ``prompt``, grounded in ``context``.
 
@@ -142,13 +155,11 @@ def generate_llm_response(
         LLMError: If the request fails or the response carries no content.
     """
     full_prompt = (
-        "%s\n\nGround Truth Context Data:\n%s" % (prompt, context)
-        if context
-        else prompt
+        f"{prompt}\n\nGround Truth Context Data:\n{context}" if context else prompt
     )
     selected_model = model or ACTIVE_MODEL
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "model": selected_model,
         "messages": [{"role": "user", "content": full_prompt}],
         "temperature": temperature,
@@ -169,9 +180,9 @@ def generate_llm_response(
         response.raise_for_status()
         content = _completion_text(response.json())
     except requests.RequestException as exc:
-        raise LLMError("SLM endpoint request failed (%s): %s" % (endpoint, exc)) from exc
+        raise LLMError(f"SLM endpoint request failed ({endpoint}): {exc}") from exc
     except ValueError as exc:
-        raise LLMError("SLM endpoint returned a malformed response: %s" % exc) from exc
+        raise LLMError(f"SLM endpoint returned a malformed response: {exc}") from exc
 
     if not content:
         raise LLMError("SLM endpoint returned an empty completion.")
@@ -183,7 +194,7 @@ def generate_llm_response(
 def stream_llm_response(
     prompt: str,
     context: str = "",
-    model: Optional[str] = None,
+    model: str | None = None,
     temperature: float = 0.2,
     strip_thinking: bool = True,
 ) -> Generator[str, None, None]:
@@ -200,13 +211,11 @@ def stream_llm_response(
         str: Individual text token chunks as they arrive from the SLM.
     """
     full_prompt = (
-        "%s\n\nGround Truth Context Data:\n%s" % (prompt, context)
-        if context
-        else prompt
+        f"{prompt}\n\nGround Truth Context Data:\n{context}" if context else prompt
     )
     selected_model = model or ACTIVE_MODEL
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "model": selected_model,
         "messages": [{"role": "user", "content": full_prompt}],
         "temperature": temperature,
@@ -225,7 +234,7 @@ def stream_llm_response(
         )
         response.raise_for_status()
     except requests.RequestException as exc:
-        raise LLMError("SLM streaming request failed (%s): %s" % (endpoint, exc)) from exc
+        raise LLMError(f"SLM streaming request failed ({endpoint}): {exc}") from exc
 
     inside_thinking = False
     buffer = ""
@@ -276,4 +285,3 @@ def stream_llm_response(
             buffer = ""
         except Exception:
             continue
-

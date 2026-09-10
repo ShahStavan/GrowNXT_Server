@@ -6,9 +6,10 @@ in one place: the reason for the console fix is worth stating once, and three
 named formats are easier to choose between than six ad-hoc ones.
 """
 
+import contextlib
 import logging
 import sys
-from typing import Optional, TextIO
+from typing import TextIO
 
 # Level with no name, for a terse one-shot command.
 PLAIN: str = "%(levelname)s %(message)s"
@@ -29,17 +30,17 @@ def console_utf8() -> None:
     """
     if not hasattr(sys.stdout, "reconfigure"):
         return
-    try:
+    with contextlib.suppress(
+        ValueError, OSError
+    ):  # pragma: no cover - redirected stdout
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    except (ValueError, OSError):  # pragma: no cover - redirected stdout
-        pass
 
 
 def setup(
     level: int = logging.INFO,
     fmt: str = PLAIN,
-    stream: Optional[TextIO] = None,
-    datefmt: Optional[str] = None,
+    stream: TextIO | None = None,
+    datefmt: str | None = None,
 ) -> None:
     """Prepares the console and root logging for a command-line run.
 

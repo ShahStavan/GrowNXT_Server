@@ -37,8 +37,14 @@ A minimal ingest of one company's filings::
     extractor = Extractor()
     for result in batch.completed():
         if result.ok:
-            extractor.run(result.path, store, result.doc_id,
-                          doc_type="annual_report", ticker="WIPRO", label="FY2026")
+            extractor.run(
+                result.path,
+                store,
+                result.doc_id,
+                doc_type="annual_report",
+                ticker="WIPRO",
+                label="FY2026",
+            )
 
 Google Python Style Guide Compliant.
 """
@@ -61,13 +67,15 @@ from ingestion.documents.storage import DocumentStore
 # `extract` pulls in Docling, which loads torch. Importing it eagerly would make
 # every consumer of the package -- the downloader included -- pay seconds of
 # import time for models they may never use, so it is imported on demand.
-_LAZY = frozenset({
-    "EXTRACT_VERSION",
-    "ExtractionError",
-    "Extractor",
-    "read_extraction",
-    "write_extraction",
-})
+_LAZY = frozenset(
+    {
+        "EXTRACT_VERSION",
+        "ExtractionError",
+        "Extractor",
+        "read_extraction",
+        "write_extraction",
+    }
+)
 
 __all__ = [
     "Block",
@@ -92,5 +100,6 @@ def __getattr__(name: str) -> object:
     """
     if name in _LAZY:
         from ingestion.documents import extract
+
         return getattr(extract, name)
-    raise AttributeError("module %r has no attribute %r" % (__name__, name))
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
