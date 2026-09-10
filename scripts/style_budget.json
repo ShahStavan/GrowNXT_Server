@@ -156,9 +156,9 @@
       "docstring": 8
     },
     "reporting/fmt.py": {
-      "lines": 219,
-      "prose": 35,
-      "docstring": 52
+      "lines": 192,
+      "prose": 20,
+      "docstring": 37
     },
     "reporting/selfcheck.py": {
       "lines": 663,
@@ -211,8 +211,8 @@
       "docstring": 7
     },
     "scripts/parity_gate.py": {
-      "lines": 255,
-      "prose": 35,
+      "lines": 258,
+      "prose": 37,
       "docstring": 34
     },
     "scripts/verify_documents.py": {
@@ -231,9 +231,9 @@
       "docstring": 43
     },
     "scripts/verify_style.py": {
-      "lines": 371,
-      "prose": 22,
-      "docstring": 32
+      "lines": 385,
+      "prose": 26,
+      "docstring": 34
     },
     "storage/__init__.py": {
       "lines": 21,
@@ -241,13 +241,13 @@
       "docstring": 1
     },
     "storage/gdrive.py": {
-      "lines": 567,
-      "prose": 38,
-      "docstring": 56
+      "lines": 552,
+      "prose": 27,
+      "docstring": 41
     }
   },
   "findings": {
-    "docstring": 60,
+    "docstring": 58,
     "annotations": 9,
     "generics": 0,
     "history": 5,

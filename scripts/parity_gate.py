@@ -69,9 +69,12 @@ SCRIPTS: tuple[str, ...] = (
 KNOWN_BROKEN: dict[str, str] = {}
 
 # Verification suites, slowest last. Skipped by `--quick`.
+# All four run offline. verify_gdrive fakes its HTTP responses, so 581 lines
+# of storage/ are covered without credentials -- it was simply never wired in.
 SUITES: tuple[str, ...] = (
     "scripts/verify_style.py",
     "scripts/verify_reporting.py",
+    "scripts/verify_gdrive.py",
     "scripts/verify_documents.py",
 )
 

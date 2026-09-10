@@ -1,29 +1,10 @@
 """Google Drive delivery for generated PDF reports.
 
-A report is uploaded once, shared as readable by anyone with the link, and
-addressed thereafter by the links Drive hands back. State lives in a small
-sidecar beside the PDF (``drive.json``) keyed by the PDF's content hash, so a
-report that has not been rebuilt is never re-uploaded.
-
-Implemented directly against the Drive REST API with ``requests``: the official
-client would pull in httplib2, protobuf and uritemplate to move a 700 KB file
-in one request, and this way the whole path is testable without credentials.
-
-Authentication
---------------
-An OAuth 2.0 refresh token belonging to a real Google account, because a
-service account has no storage quota of its own and cannot own files -- it can
-only write into a Shared Drive, which requires Workspace.
-
-Access tokens last about an hour and are refreshed here automatically, so a
-long-running server keeps working without intervention. What cannot be
-automated is re-consent: if the refresh token itself is revoked or expires,
-Google requires a human at the consent screen, and ``DriveAuthError`` says so.
-A refresh token expires on a 7-day clock only while the OAuth consent screen is
-in *Testing* status; publishing the app to *Production* removes that clock,
-which is the fix for "it stopped working after a week".
-
-Google Python Style Guide Compliant.
+Uploaded once, link-shared, and tracked in a ``drive.json`` sidecar keyed by
+the PDF's content hash, so an unchanged report is never re-uploaded. Written
+against the REST API with ``requests`` rather than the official client, which
+would add httplib2, protobuf and uritemplate to move one 700 KB file -- and
+this way the whole path is testable without credentials.
 """
 
 import contextlib
@@ -58,6 +39,10 @@ REQUEST_TIMEOUT: int = 120
 # Refresh a little early rather than racing the expiry on a slow upload.
 _EXPIRY_MARGIN_SECONDS: int = 120
 
+# An OAuth refresh token for a real account, not a service account: a service
+# account has no storage quota and cannot own files, only write into a Shared
+# Drive, which needs Workspace. Access tokens are refreshed automatically;
+# re-consent cannot be, which is what DriveAuthError reports.
 _REAUTH_HINT: str = (
     "Re-authorise with: venv/Scripts/python.exe -m scripts.gdrive_auth . "
     "If this recurs weekly, publish the OAuth consent screen to Production -- "

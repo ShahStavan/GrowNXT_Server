@@ -1,20 +1,9 @@
 """Number and text formatting rules for GrowNXT reports.
 
-Every figure that reaches a page passes through this module. Centralising it
-is what makes precision consistent: ragged decimals across a table are the
-clearest signal that a financial document was generated rather than
-designed.
-
-Conventions applied here:
-
-    - International digit grouping (1,234,567), never lakh-crore grouping.
-      Both reference broker notes use this, and mixing the two within one
-      document is worse than either choice.
-    - Units are declared in column headers, never repeated per cell.
-    - Negatives render in parentheses, the long-standing finance
-      convention; a bare minus sign is easy to miss at 7pt.
-    - Absent data renders as an em-dash, which must stay visually distinct
-      from a real zero. A rendered 0.00 for missing data is a factual error.
+Every figure that reaches a page passes through here, which is what makes
+precision consistent. Digit grouping, negatives in parentheses, and the
+em-dash for absent data -- never a rendered 0.00, which would be a factual
+error: `.claude/specs/reporting-quantitative-engine.md` section 1.
 """
 
 from typing import Any
@@ -146,29 +135,13 @@ def safe_div(numerator: Any, denominator: Any) -> float | None:
 def pos_div(numerator: Any, denominator: Any) -> float | None:
     """Divides only when the denominator is strictly positive.
 
-    This is the house rule for any ratio whose denominator can legitimately
-    go negative: equity, EBITDA, EBIT, pre-tax profit, profit after tax,
-    invested capital, capital employed, cost of goods sold. Each of those
-    produces an arithmetically valid quotient against a negative base and a
-    meaningless one. Negative equity divided into a negative profit yields a
-    POSITIVE return on equity, which reads as strength on the page, and a
-    typeset PDF lends that false authority.
-
-    The numerator's sign is never restricted, because a negative numerator
-    over a positive base is real information.
-
-    Args:
-        numerator: Value on top, any sign.
-        denominator: Value underneath; must be strictly positive.
-
-    Returns:
-        The quotient, or None when either input is missing or the
-        denominator is zero or negative.
-
+    The numerator's sign is unrestricted; a negative over a positive base is
+    real information. Why: `.claude/specs/reporting-quantitative-engine.md`
+    section 2.
     """
     if not _is_number(numerator) or not _is_number(denominator):
         return None
-    if float(denominator) <= 0:
+    if float(denominator) <= 0:  # negative equity would flip ROE positive
         return None
     return float(numerator) / float(denominator)
 
