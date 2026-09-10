@@ -120,36 +120,35 @@ def generate_report(
         prod = charts_module.render_all(snap, der, comp, work_dir)
         return snap, der, comp, chk, prod
 
-    # Define Track 2: Qualitative RAG research synthesis
+    # Define Track 2: Qualitative findings.
+    #
+    # The vector RAG pipeline that used to generate these was removed ahead of
+    # the vectorless qualitative rebuild (see
+    # `.claude/specs/vectorless-qualitative-rag.md`). It is commented out
+    # rather than deleted so the call shape is on record for the replacement,
+    # which restores this seam with the same signature and the same
+    # `findings.json` schema.
+    #
+    # Removing it costs nothing today: the pipeline retrieved 0 chunks across
+    # all 5 pillars on its last run, because the vector store is in-memory and
+    # empty unless QDRANT_API_URL is set. It was synthesising findings from no
+    # evidence.
+    #
+    # from ingestion.rag.pipeline import extract_ticker_findings
+    #
+    # dossier = extract_ticker_findings(
+    #     ticker=symbol, company_name=symbol, force=refresh
+    # )
+    # findings_data = dossier.to_dict()
+    #
+    # Until then Track 2 reads a findings.json already on disk and renders
+    # nothing when there is none. `refresh` no longer regenerates it, because
+    # nothing can.
     def _run_qualitative_track():
         findings_path = work_dir / "findings" / "findings.json"
         findings_data = None
 
-        if not findings_path.exists() or refresh:
-            try:
-                logger.info(
-                    "[%s] [Track 2] Running RAG pipeline to generate institutional findings...",
-                    symbol,
-                )
-                from ingestion.rag.pipeline import extract_ticker_findings
-
-                dossier = extract_ticker_findings(
-                    ticker=symbol,
-                    company_name=symbol,
-                    force=refresh,
-                )
-                findings_data = dossier.to_dict()
-                logger.info(
-                    "[%s] [Track 2] Qualitative RAG synthesis complete (%d pillars).",
-                    symbol,
-                    len(dossier.pillars),
-                )
-            except Exception as exc:
-                logger.warning(
-                    "[%s] RAG qualitative extraction skipped: %s", symbol, exc
-                )
-
-        if findings_path.exists() and not findings_data:
+        if findings_path.exists():
             try:
                 import json
 

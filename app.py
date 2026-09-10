@@ -57,7 +57,6 @@ except Exception:
     pass
 
 from api.app import create_app
-from api.embeddings import router as embeddings_router
 from api.search import find
 from core.config import OUTPUT_DIR, report_path, safe_ticker
 from core.llm_config import (
@@ -141,8 +140,9 @@ def api_report_file(symbol: str, download: bool = False):
     )
 
 
-# Nifty 50 batch embedding trigger + status (detached process; token-gated)
-fastapi_app.include_router(embeddings_router)
+# The Nifty 50 batch embedding routes were removed with the vector pipeline
+# ahead of the vectorless qualitative rebuild; see
+# .claude/specs/vectorless-qualitative-rag.md.
 
 
 # Mount Flask WSGI App on /v1 for full OpenAI-compatible reverse proxy with streaming & think sanitization
@@ -302,7 +302,7 @@ with gr.Blocks(
                     )
                     gr.Markdown("""
                     > **Note**: Cold-run reports (new ticker) execute the full 14-endpoint financial normalization,
-                    > Docling layout parsing, Snowflake Arctic vector embeddings, and LLM thematic synthesis.
+                    > Docling layout parsing and LLM thematic synthesis.
                     """)
                 with gr.Column(scale=6):
                     status_out = gr.Markdown(label="Generation Status")
@@ -388,8 +388,6 @@ with gr.Blocks(
             * `GET /api/stocks/<symbol>/report/file` — Direct PDF file download
             * `POST /v1/chat/completions` — OpenAI-compatible SLM chat completions (Streaming supported)
             * `GET /v1/models` — List available SLM models
-            * `POST /api/embeddings/nifty50/run` — Start the Nifty 50 embedding batch (detached; bearer token required)
-            * `GET /api/embeddings/nifty50/status[/{{run_id}}]` — Progress of the latest / a given embedding run
 
             ### Upstream Configuration:
             * **Active Model**: `{ACTIVE_MODEL}`

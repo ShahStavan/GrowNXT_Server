@@ -1,8 +1,39 @@
 # GrowNXT Server - Claude Developer Guide
 
-Autonomous financial intelligence and institutional equity research platform. Combines live financial statement extraction (14 Vercel REST endpoints), Docling document layout parsing, Snowflake Arctic vector RAG, 20 deterministic accounting self-checks, and Typst PDF publication.
+Autonomous financial intelligence and institutional equity research platform. Combines live financial statement extraction (14 Vercel REST endpoints), Docling document layout parsing, 20 deterministic accounting self-checks, and Typst PDF publication.
 
 - **Live Hugging Face Space**: https://huggingface.co/spaces/StavanShah01/grownxt-server
+
+---
+
+## ⚠️ Status: the vector pipeline was removed on 2026-09-10
+
+The qualitative half of this platform is **mid-rebuild**. The Snowflake Arctic / Qdrant vector
+pipeline, the Nifty 50 batch orchestrator and the LangGraph RAG pipeline were deleted ahead of a
+vectorless replacement. **Large parts of this file below still describe that removed code.**
+
+- **Design**: `.claude/specs/vectorless-qualitative-rag.md`
+- **Implementation plan**: `.claude/plans/vectorless-qualitative-rag.md`
+- **Recover any deleted file from**: the commit before `refactor(ingestion)!: remove the vector
+  pipeline`, on branch `feat/vectorless-qualitative-rag`.
+
+**Gone**: `ingestion/{batch,chunker,stages,indexer,nifty50,notify,runlog}.py`,
+`ingestion/graph/`, `ingestion/rag/`, `api/embeddings.py`, `scripts/{embed_nifty50,
+verify_nifty50_embeddings,verify_chunker,evaluate_full_pipeline,ingest_documents,
+verify_ingestion}.py`. With them: the `/api/embeddings/nifty50/*` routes, every `QDRANT_*` and
+`GROWNXT_EMBED_*` variable, and the `python -m scripts.embed_nifty50` command family.
+
+**Survives, and is the base for the rebuild**: `ingestion/catalog.py`, `ingestion/fetcher.py`,
+`ingestion/documents/` (download, Docling extraction, storage, page sections), all of
+`reporting/`, `core/`, `api/app.py`, `storage/`.
+
+**Track 2 is commented out**, not deleted, in `reporting/engine.py` — the call shape is on
+record for the replacement, which restores the same seam and the same `findings.json` schema. A
+`findings.json` already on disk still renders; nothing regenerates one today.
+
+**Current gate**: `python scripts/parity_gate.py` — 12 of 14, with two pre-existing failures
+(`import app` on a Gradio 6 / Gradio 5 mismatch, and 2 of 51 Docling heading checks in
+`verify_documents.py`). See the plan's F11.
 
 ---
 
@@ -94,20 +125,6 @@ python api/app.py
 python scripts/generate_report.py WIPRO
 python scripts/generate_report.py WIPRO INFY --refresh --keep-build
 
-# Embed Nifty 50 filings into Qdrant (incremental; re-runs are no-ops)
-python -m scripts.embed_nifty50                       # all 50 constituents
-python -m scripts.embed_nifty50 --tickers TCS INFY    # a subset
-python -m scripts.embed_nifty50 --limit 3 --dry-run   # catalogue + diff only, no network beyond that
-python -m scripts.embed_nifty50 --background          # detach; prints run_id
-python -m scripts.embed_nifty50 --status [--json] [--run-id ID] [--tail 20]
-python -m scripts.embed_nifty50 --force TCS           # re-extract/re-embed TCS's known filings
-python -m scripts.embed_nifty50 --no-ticker-notify    # end-of-run notification only
-
-# Compute: what device/threads/batch a run would resolve to, before running it
-python -m scripts.embed_nifty50 --hardware [--json]
-python -m scripts.embed_nifty50 --device cuda --threads 8 --embed-batch-size 64
-python -m scripts.embed_nifty50 --fast-tables         # TableFormer fast mode (re-extracts; see below)
-python -m scripts.embed_nifty50 --page-filter         # convert only an annual report's financial section
 ```
 
 ---
@@ -117,30 +134,20 @@ python -m scripts.embed_nifty50 --page-filter         # convert only an annual r
 Run specialized verification suites in `scripts/` (built on `scripts/checks.py`):
 
 ```powershell
+# The parity gate: import sweeps, lint, and every suite below in one command.
+# Baseline is 12 of 14 -- see the status banner at the top of this file.
+python scripts/parity_gate.py
+python scripts/parity_gate.py --quick   # imports and lint only
+
 # Verify reporting engine, analytics, and self-checks
 python scripts/verify_reporting.py
 
 # Verify document download, caching, and storage contracts
 python scripts/verify_documents.py
 
-# Verify Docling layout parsing and chunking
-python scripts/verify_chunker.py
-
-# Verify the Nifty 50 batch embedding pipeline, including hardware resolution,
-# GPU worker capping, and the extractor-version/table-mode contract
-# (offline; --live SYM adds a real two-run check)
-python scripts/verify_nifty50_embeddings.py
-python scripts/verify_nifty50_embeddings.py --live WIPRO
-
-# NOTE: scripts/ingest_documents.py and scripts/verify_ingestion.py import
-# names removed in the Docling refactor and raise ImportError. Use
-# scripts/embed_nifty50.py and scripts/verify_nifty50_embeddings.py instead.
-
 # Verify Google Drive authentication and upload flow
 python scripts/verify_gdrive.py
 
-# Run end-to-end multi-stock pipeline evaluation
-python scripts/evaluate_full_pipeline.py
 ```
 
 ---

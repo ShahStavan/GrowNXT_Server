@@ -7,20 +7,20 @@ means, in one command.
 
 Three kinds of gate, in ascending cost:
 
-1. **Import sweeps.** `ingestion/__init__.py` re-exports the entire surface
-   being deleted, so a partial removal breaks it first (plan F5). Scripts are
-   swept separately because `import ingestion` does not reach them -- the gap
-   that hid two already-broken scripts until a full-tree grep found them
-   (plan F10).
+1. **Import sweeps.** `ingestion/__init__.py` re-exports the package surface,
+   so an incomplete removal breaks it first (plan F5). Scripts are swept
+   separately because `import ingestion` does not reach them -- the gap that
+   hid two already-broken scripts until a full-tree grep found them (plan
+   F10).
 2. **Lint and format**, because the repository is checked in formatted and a
    stop hook enforces it.
 3. **Verification suites**, which are the real behavioural gate and also the
    slow part.
 
 Known-broken modules are declared in `KNOWN_BROKEN` rather than omitted, so
-the gate reports them as expected failures. A module that starts importing
-again is reported too: the plan deletes those two files, and silently passing
-on them would hide the deletion never happening.
+the gate reports them as expected failures rather than passing silently, and
+reports a module that starts importing again. The dict is empty since the
+vector-pipeline removal deleted both files it named.
 
 Google Python Style Guide Compliant.
 """
@@ -45,8 +45,7 @@ from scripts.checks import Report, banner  # noqa: E402
 # the one that actually catches an incomplete deletion.
 PACKAGES: tuple[str, ...] = (
     "ingestion",
-    "ingestion.rag",
-    "ingestion.graph",
+    "ingestion.documents",
     "reporting",
     "core.config",
     "api.app",
@@ -56,29 +55,22 @@ PACKAGES: tuple[str, ...] = (
 # Entry points in `scripts/`. Not reachable from `import ingestion`, which is
 # exactly why they get their own sweep.
 SCRIPTS: tuple[str, ...] = (
-    "scripts.embed_nifty50",
     "scripts.generate_report",
-    "scripts.evaluate_full_pipeline",
-    "scripts.verify_nifty50_embeddings",
     "scripts.verify_documents",
-    "scripts.verify_chunker",
     "scripts.verify_reporting",
     "scripts.verify_gdrive",
 )
 
 # Modules already broken before this work started, with the error each raises.
-# CLAUDE.md documents both; the plan deletes them in Phase 5 (F10).
-KNOWN_BROKEN: dict[str, str] = {
-    "scripts.ingest_documents": "ImportError",
-    "scripts.verify_ingestion": "ModuleNotFoundError",
-}
+# Empty since the vector-pipeline removal deleted both entries it held
+# (`scripts.ingest_documents`, `scripts.verify_ingestion`). Kept as the
+# mechanism: a module that is expected to be broken belongs here, not omitted.
+KNOWN_BROKEN: dict[str, str] = {}
 
 # Verification suites, slowest last. Skipped by `--quick`.
 SUITES: tuple[str, ...] = (
     "scripts/verify_reporting.py",
     "scripts/verify_documents.py",
-    "scripts/verify_chunker.py",
-    "scripts/verify_nifty50_embeddings.py",
 )
 
 LINTS: tuple[tuple[str, tuple[str, ...]], ...] = (

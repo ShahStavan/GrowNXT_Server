@@ -1,9 +1,19 @@
-"""Document ingestion & Qualitative RAG layer for GrowNXT.
+"""Document acquisition layer for GrowNXT.
 
-Turns a company's published filings into extracted, multimodal citable evidence
-and institutional-grade equity research findings:
+Turns a company's published filings into extracted, citable document content:
 
-    catalog -> download -> extract -> chunk -> embed (Qdrant + Snowflake-Arctic) -> RAG (LangGraph)
+    catalog -> download -> extract (Docling)
+
+**What used to be here.** This package also carried chunking, Snowflake Arctic
+embedding into Qdrant, the Nifty 50 batch orchestrator and a LangGraph RAG
+pipeline. All of it was removed ahead of the vectorless qualitative rebuild
+described in `.claude/specs/vectorless-qualitative-rag.md`; the replacement is
+a section map and a typed evidence ledger, not a vector index. The removal
+commit is the place to recover any of it from.
+
+What survives is the half that was never about vectors: fetching a document
+catalogue, downloading filings, and converting them with Docling. The new
+qualitative pipeline builds directly on these.
 
 Google Python Style Guide Compliant.
 """
@@ -11,18 +21,6 @@ Google Python Style Guide Compliant.
 from __future__ import annotations
 
 from ingestion.catalog import Catalog, CatalogEntry, CatalogError, fetch_catalog
-from ingestion.chunker import (
-    CHUNKER_VERSION,
-    ELEMENT_FIGURE,
-    ELEMENT_TABLE,
-    ELEMENT_TEXT,
-    ELEMENT_TYPES,
-    Chunk,
-    ChunkSet,
-    chunk_document,
-    read_chunk_cache,
-    write_chunk_cache,
-)
 from ingestion.documents.content import (
     Block,
     ExtractedDocument,
@@ -55,87 +53,36 @@ from ingestion.fetcher import (
     sha256_text,
     utc_now,
 )
-from ingestion.indexer import (
-    DEFAULT_COLLECTION_NAME,
-    DEFAULT_EMBEDDING_MODEL,
-    DEFAULT_MODEL_ALIAS,
-    DEFAULT_VECTOR_SIZE,
-    DocumentIndexState,
-    IndexerConfig,
-    IndexResult,
-    QdrantVectorIndexer,
-    TickerState,
-    index_ticker_documents,
-)
-from ingestion.rag import (
-    EvidenceChunk,
-    EvidenceReranker,
-    InstitutionalRAGPipeline,
-    InstitutionalSynthesizer,
-    ParallelVectorRetriever,
-    ResearchDossier,
-    ThematicFinding,
-    ThematicProbe,
-    build_adaptive_probes,
-    extract_ticker_findings,
-    get_default_probes,
-)
 
 __all__ = [
+    # Catalogue
     "Catalog",
     "CatalogEntry",
     "CatalogError",
     "fetch_catalog",
-    "download_document",
-    "DocumentStore",
+    # Document content model
+    "Block",
+    "ExtractedDocument",
+    "Figure",
+    "Table",
+    # Acquisition
     "Downloader",
     "DownloadRequest",
+    "DocumentStore",
+    # Extraction
     "Extractor",
     "read_extraction",
     "write_extraction",
-    "Block",
-    "Table",
-    "Figure",
-    "ExtractedDocument",
-    "Chunk",
-    "ChunkSet",
-    "chunk_document",
-    "read_chunk_cache",
-    "write_chunk_cache",
-    "CHUNKER_VERSION",
-    "ELEMENT_TEXT",
-    "ELEMENT_TABLE",
-    "ELEMENT_FIGURE",
-    "ELEMENT_TYPES",
-    "DocumentRecord",
-    "StageState",
-    "FetchResult",
-    "DOC_TYPES",
+    # Fetcher contracts
     "DOC_TYPE_ANNUAL_REPORT",
-    "DOC_TYPE_TRANSCRIPT",
     "DOC_TYPE_PRESENTATION",
+    "DOC_TYPE_TRANSCRIPT",
+    "DOC_TYPES",
     "STAGES",
-    "DEFAULT_COLLECTION_NAME",
-    "DEFAULT_EMBEDDING_MODEL",
-    "DEFAULT_MODEL_ALIAS",
-    "DEFAULT_VECTOR_SIZE",
-    "DocumentIndexState",
-    "IndexerConfig",
-    "IndexResult",
-    "QdrantVectorIndexer",
-    "TickerState",
-    "index_ticker_documents",
-    "ThematicProbe",
-    "EvidenceChunk",
-    "ThematicFinding",
-    "ResearchDossier",
-    "ParallelVectorRetriever",
-    "EvidenceReranker",
-    "InstitutionalSynthesizer",
-    "InstitutionalRAGPipeline",
-    "extract_ticker_findings",
-    "build_adaptive_probes",
-    "get_default_probes",
+    "DocumentRecord",
+    "FetchResult",
+    "StageState",
+    "download_document",
     "sha256_file",
     "sha256_text",
     "utc_now",
