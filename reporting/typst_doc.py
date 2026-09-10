@@ -1,25 +1,8 @@
 """Typst source generation for GrowNXT institutional reports.
 
-Tables are emitted as native Typst markup rather than routed through an
-intermediate format. Typst's `table` gives column spanners, per-column
-alignment and explicit stroke control directly, so there is nothing to gain
-from generating HTML or LaTeX first and everything to lose in fidelity.
-
-Structural conventions, taken from how sell-side research is actually set:
-
-    - Every table and chart is a numbered EXHIBIT with a caption above and
-      a source line below. Numbering is what lets body text refer to a
-      figure, and it is the clearest marker of research-grade structure.
-    - Sections are SEMANTIC, not incidental: each answers one question, and
-      an exhibit only appears in the section whose question it addresses.
-      The margin table sits with the income statement it decomposes; the
-      leverage series sits with the balance sheet it is drawn from; the
-      cash cycle sits with earnings quality because both ask whether
-      reported profit is real.
-    - Content is paired two-up wherever both halves are narrow, so a page
-      fills instead of leaving a column of white beside a short table.
-    - Booktabs discipline: no vertical rules, three horizontal ones — above
-      the header, below the header, below the body.
+Tables are emitted as native Typst markup rather than through an
+intermediate format. Numbered exhibits, semantic sections and booktabs
+discipline: `.claude/specs/reporting-quantitative-engine.md` section 8.
 """
 
 import json
@@ -2124,17 +2107,11 @@ def build_document(
 ) -> str:
     """Assembles the complete Typst source for one report.
 
-    Section order follows the argument the report is making rather than the
-    order the data arrives in. Earnings power and near-term trajectory
-    establish what the business earns; returns on capital and financial
-    position establish what it earns that on and how it is funded; cash
-    generation tests whether the profit is real; capital allocation traces
-    where that cash went and whether the reinvested share earned its keep;
-    the composite scores then pass two standard frameworks over everything
-    established so far, which is why they cannot come earlier. Valuation
-    prices the result, ownership says who holds it, qualitative research
-    findings extract management and strategic filing disclosures, and verification
-    shows the arithmetic.
+    Section order follows the report's argument, not the order data arrives:
+    earnings power, then returns and financial position, then cash generation
+    to test whether the profit is real, then capital allocation. The composite
+    scores pass two frameworks over everything established so far, which is
+    why they cannot come earlier. Valuation, ownership and verification close.
 
     Args:
         snap: Populated company snapshot.

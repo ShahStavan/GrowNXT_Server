@@ -131,24 +131,24 @@
       "docstring": 3
     },
     "reporting/analytics.py": {
-      "lines": 456,
-      "prose": 56,
-      "docstring": 50
+      "lines": 436,
+      "prose": 39,
+      "docstring": 33
     },
     "reporting/charts.py": {
-      "lines": 1331,
-      "prose": 116,
-      "docstring": 120
+      "lines": 1315,
+      "prose": 102,
+      "docstring": 106
     },
     "reporting/client.py": {
-      "lines": 209,
-      "prose": 14,
-      "docstring": 14
+      "lines": 206,
+      "prose": 12,
+      "docstring": 12
     },
     "reporting/composites.py": {
-      "lines": 1652,
-      "prose": 213,
-      "docstring": 236
+      "lines": 1605,
+      "prose": 172,
+      "docstring": 195
     },
     "reporting/engine.py": {
       "lines": 257,
@@ -161,24 +161,24 @@
       "docstring": 37
     },
     "reporting/selfcheck.py": {
-      "lines": 663,
-      "prose": 63,
-      "docstring": 58
+      "lines": 636,
+      "prose": 41,
+      "docstring": 36
     },
     "reporting/snapshot.py": {
-      "lines": 638,
-      "prose": 58,
-      "docstring": 83
+      "lines": 625,
+      "prose": 46,
+      "docstring": 71
     },
     "reporting/tokens.py": {
-      "lines": 186,
-      "prose": 44,
-      "docstring": 18
+      "lines": 170,
+      "prose": 31,
+      "docstring": 5
     },
     "reporting/typst_doc.py": {
-      "lines": 2171,
-      "prose": 136,
-      "docstring": 139
+      "lines": 2148,
+      "prose": 115,
+      "docstring": 118
     },
     "run.py": {
       "lines": 56,
@@ -231,8 +231,8 @@
       "docstring": 65
     },
     "scripts/verify_style.py": {
-      "lines": 385,
-      "prose": 26,
+      "lines": 392,
+      "prose": 31,
       "docstring": 34
     },
     "storage/__init__.py": {
@@ -241,13 +241,13 @@
       "docstring": 1
     },
     "storage/gdrive.py": {
-      "lines": 552,
-      "prose": 27,
-      "docstring": 41
+      "lines": 551,
+      "prose": 26,
+      "docstring": 40
     }
   },
   "findings": {
-    "docstring": 58,
+    "docstring": 14,
     "annotations": 10,
     "generics": 0,
     "history": 5,

@@ -1,24 +1,8 @@
 """Design tokens for GrowNXT institutional reports.
 
-Every colour, size and typeface used by the report originates here. Chart
-code and Typst templates both read these values, which is what keeps a
-matplotlib figure and the surrounding typeset page looking like one
-document rather than two.
-
-Colour policy, in order of importance:
-
-    1. BRAND is never a data colour. It marks the masthead, section rules
-       and page furniture only. The moment it encodes a series, the reader
-       loses the ability to distinguish branding from meaning.
-    2. POSITIVE and NEGATIVE encode direction and nothing else.
-    3. The chart series ramp steps lightness rather than hue, so ordering
-       survives greyscale printing.
-
-Typeface policy: every face used must have LINING figures. Georgia and
-Constantia were both rejected despite being otherwise good print serifs
-because they default to old-style (text) figures, where digits sit at
-varying heights. In a column of financials that reads as broken. Cambria
-and Segoe UI both ship lining figures and support tabular widths.
+Every colour, size and typeface the report uses originates here, which is
+what keeps a matplotlib figure and the typeset page around it looking like
+one document. Colour and typeface policy: `.claude/specs/reporting-quantitative-engine.md` section 7.
 """
 
 from typing import Final

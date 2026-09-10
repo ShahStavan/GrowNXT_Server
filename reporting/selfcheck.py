@@ -1,35 +1,8 @@
 """Arithmetic self-verification for a generated report.
 
-Every figure in a GrowNXT report is either something the provider said or
-something this codebase computed. The computed ones are only as trustworthy
-as the arithmetic behind them, and a typeset PDF gives a wrong number the
-same authority as a right one. This module re-derives what can be re-derived
-by an independent route and reports where the two answers disagree.
-
-Three kinds of check run here, in descending order of what a failure means:
-
-    IDENTITIES must hold to floating-point precision, because they are
-    definitions rather than estimates. The five DuPont factors multiplied
-    together are ROE. Operating plus investing plus financing cash flow is
-    the movement in cash. Sources equal uses. A failure here is a defect in
-    this codebase, not a data problem, and it is reported as such.
-
-    RECONCILIATIONS compare a figure computed here against the provider's
-    own published value for the same quantity. These are expected to agree
-    to within rounding: the provider publishes its DuPont factors to four
-    decimals, so a product rebuilt from them lands a few thousandths of a
-    percentage point away from its stated ROE. A wide gap means a
-    methodology difference worth knowing about.
-
-    GUARDRAILS assert the report's own editorial rules held in practice -
-    that no ratio was published against a non-positive denominator, and that
-    no composite reached the page without its components. These cannot be
-    proven by inspecting the code alone, because whether the path was taken
-    depends on the company's numbers.
-
-The result is rendered as an exhibit rather than kept in a log. A report
-that states its own arithmetic was verified, and shows the residuals, is
-making a checkable claim; one that stays silent is asking for trust.
+Re-derives what can be re-derived by an independent route and reports where
+the two answers disagree. Three kinds of check in descending severity --
+identities, reconciliations, guardrails: `.claude/specs/reporting-quantitative-engine.md` section 6.
 """
 
 import logging

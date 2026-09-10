@@ -1,47 +1,9 @@
 """Tier 2 composites: scored frameworks and identity-based decompositions.
 
-Tier 1 (see `analytics`) turns the provider's single trailing ratios into
-series. This module builds the composites that sit on top of those series:
-two published scoring frameworks, two cash-allocation identities, and the
-DuPont decomposition extended across every reported year.
-
-One rule governs every exhibit here, and it is the reason the module is
-shaped the way it is:
-
-    A COMPOSITE IS NEVER REPORTED AS A BARE NUMBER.
-
-"F-Score 7" is not analysis. The nine sub-tests are the analysis; the total
-is a convenience for sorting. So every composite here carries its own
-components as data - `Piotroski.tests` holds nine `ScoreTest` records with
-the inputs, the threshold and the verdict for each; `Altman.components`
-holds five, each with its ratio, its published weight and the contribution
-that weight produced. The score is a derived PROPERTY of a structure that
-contains its parts, so the renderer cannot print a total without having the
-parts in hand.
-
-The second rule is inherited from Tier 1 and enforced through
-`fmt.pos_div` / `fmt.pos_margin`: no ratio is computed against a
-non-positive denominator. Total assets, total liabilities, equity, revenue,
-EBIT, pre-tax profit and NOPAT can all arrive at or below zero, and each
-would otherwise yield an arithmetically clean, analytically empty figure.
-
-Three deliberate departures from the textbook, each surfaced in the report
-rather than buried here:
-
-    - Piotroski's eighth signal needs GROSS margin, which this provider
-      cannot support: `incGpro` is null for every ticker tested and
-      `incRaw` carries raw materials only (64% of revenue at Reliance,
-      0.6% at Wipro). EBITDA margin is substituted, and the substitution is
-      recorded in `Piotroski.substitutions` so the page can declare it.
-    - Piotroski scales profitability by OPENING total assets, as the 2000
-      paper specifies. That differs from the period-end convention the
-      returns section uses to match the provider's own endpoints. The
-      framework's definition wins inside the framework's own exhibit, and
-      every test states the base it used.
-    - Altman and the reinvestment identity are withheld entirely for
-      financials. Working capital, and the ratio of sales to assets, do not
-      describe a bank; a Z-Score computed from a deposit book is a number
-      with no meaning attached to it.
+Two published scoring frameworks, two cash-allocation identities, and DuPont
+across every reported year. One rule shapes the module: **a composite is
+never reported as a bare number** -- each carries its own components as data,
+and the score is a derived property of them. `.claude/specs/reporting-quantitative-engine.md` section 5.
 """
 
 import logging
@@ -544,18 +506,14 @@ def is_financial(snap: CompanySnapshot) -> bool:
 def _non_cash_working_capital(balance: BalancePeriod) -> float | None:
     """Operating working capital, excluding cash and short-term debt.
 
-    Both exclusions are deliberate. Cash and short-term borrowing are
-    financing decisions rather than operating ones, and leaving them in
-    makes the reinvestment figure move with treasury activity instead of
-    with the business.
+    Both exclusions are deliberate: cash and short-term borrowing are
+    financing decisions, and leaving them in makes reinvestment move with
+    treasury activity rather than the business.
 
-    The provider's own `cafCiwc` field is NOT used for this. It was tested
-    against the balance sheet and does not reconcile: TCS reports roughly
-    -17,000 crore in every one of the last four years against a
-    balance-sheet movement of +168 to +4,781 crore, and a genuine
-    working-capital delta oscillates rather than repeating one large
-    negative. Whatever that field aggregates, it is not the year's change
-    in working capital.
+    The provider's `cafCiwc` is NOT used -- it does not reconcile. TCS reports
+    about -17,000 crore in each of the last four years against a balance-sheet
+    movement of +168 to +4,781 crore, and a real working-capital delta
+    oscillates rather than repeating one large negative.
     """
     if balance.current_assets is None or balance.current_liabilities is None:
         return None
@@ -1211,18 +1169,13 @@ def _balance_corroboration(
 def _sources_and_uses(snap: CompanySnapshot, window: int) -> SourcesAndUses:
     """Aggregates the cash-flow statement into a sources-and-uses statement.
 
-    The construction rests on the statement's own articulation: operating
-    plus investing plus financing equals the change in cash. Rearranged,
-    every inflow is a source and every outflow a use, and the change in the
-    cash balance closes the difference. Because that is an identity rather
-    than an estimate, the two columns balance exactly, and `selfcheck`
-    asserts it for every report.
+    Rests on the statement's own articulation -- operating plus investing plus
+    financing equals the change in cash -- so the two columns balance by
+    identity, which `selfcheck` asserts for every report.
 
-    Two lines are residuals rather than reported figures, and are labelled as
-    such on the page: investing beyond capital expenditure, and financing
-    beyond dividends. Neither can be decomposed further, because the provider
-    publishes no debt-raised, debt-repaid or buyback line - only the net
-    financing and net investing totals.
+    Two lines are residuals, labelled as such on the page: investing beyond
+    capex, and financing beyond dividends. Neither decomposes further, because
+    the provider publishes no debt-raised, debt-repaid or buyback line.
 
     Args:
         snap: Populated company snapshot.

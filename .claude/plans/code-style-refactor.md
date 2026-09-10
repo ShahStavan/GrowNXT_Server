@@ -264,16 +264,43 @@ gate. Wired in; **gate baseline is now 15/17.**
 *Gate*: 15/17, both failures pre-existing. Byte-identical 719,879-byte PDF, 20/20 self-checks,
 and an AST symbol comparison shows 25 → 25 and 84 → 84 — nothing lost.
 
-### Phase 3 — `reporting/` (2 days) — **checks before edits**
+### Phase 3 — `reporting/` ✅ **done 2026-09-10**
 
-Open by creating `.claude/specs/reporting-quantitative-engine.md` (F6) as the destination.
-Then, in this order:
+**`verify_reporting.py` went from 7 checks to 23**, which was the phase. 7,761 lines behind 7
+checks is not a net you can refactor 1,646 lines of `composites.py` against. Sixteen new
+behavioural checks: Altman coefficients and both zone pairs pinned with Z asserted as the sum of
+its five terms; the F-Score as nine numbered binary signals each carrying a definition and each
+absence a reason; a financial issuer's Altman withheld with a stated reason; DuPont's five
+factors multiplying back to ROE; `_div_positive` mirroring `pos_div`; the EV identity; unit
+conversion and period caps; the tolerance ordering; all 15 chart functions returning `None`
+rather than raising on empty data; and every colour token a valid triple with `BRAND` absent from
+the series palette. Committed separately, before the refactor it protects.
 
-1. Raise `verify_reporting.py` from 7 checks to ~25, targeting `composites.py`, `analytics.py`,
-   `charts.py` and `tokens.py` directly. **This is most of the phase, and it is the point** —
-   1,646 lines of composites behind a shared 7 checks is not refactorable.
-2. Only then shorten `composites.py` (363 doc lines), `selfcheck.py`, `snapshot.py`, `charts.py`,
-   and `typst_doc.py`'s `build_document` docstring per C.2.
+`.claude/specs/reporting-quantitative-engine.md` grew from 2 sections to 8, receiving all eight
+module docstrings' rationale — the Wipro calibration table (ROIC 30.81%, DSO 50.2 days), the
+three deliberate Piotroski/Altman departures from the textbook, the five collector quirks
+including peer `marketCap` arriving in millions, and the lining-figures typeface policy that
+rejected Georgia and Constantia.
+
+**Tree-wide narrative prose is now 8% — the target — down from 21%.**
+
+**Finding: the 5-line summary cap is right for modules and wrong for functions.** Previewing a
+mechanical trim of the 27 remaining function summaries showed every dropped paragraph was
+substantive: a rejected 0–100 stacked area chart, a caption that overflowed a three-line bar,
+`_piotroski_at` needing three consecutive balance sheets rather than two, and — the one that
+would have hurt most — `_altman` versus `_altman_series` documenting that the historical series
+must use the **1983 Z-prime revision** because no past share price exists, with different
+coefficients and cut-offs. Also `cafCiwc` being unusable, verified: TCS reports about −17,000
+crore in each of the last four years against a balance-sheet movement of +168 to +4,781 crore.
+
+That rationale is too granular for a spec to hold usefully and belongs exactly where a maintainer
+will change the code. So the cap is now **5 lines for modules, 10 for classes and functions**.
+Four `reporting/` docstrings sat at 11–12 lines and were tightened by wording rather than by
+dropping content. `reporting/` and `storage/` are now fully within cap.
+
+*Gate*: 15/17. 23/23 reporting checks, byte-identical 719,879-byte PDF, 20/20 self-checks, and an
+AST symbol comparison across all nine `reporting/` modules plus `storage/gdrive.py` shows no
+drift.
 
 ### Phase 4 — `core/` (1 day) — zero coverage today
 
@@ -330,7 +357,8 @@ six of the skill's top ten.
 - [ ] Phase 1 — `ingestion/documents/` five modules; 53/53 checks hold
 - [x] Phase 2 — `storage/gdrive.py` (within budget), `reporting/fmt.py`; reporting spec created;
       `verify_gdrive.py` wired into the gate; C.1 resolved
-- [ ] Phase 3 — reporting spec created; `verify_reporting.py` 7 → ~25 checks; then the big files
+- [x] Phase 3 — spec grown to 8 sections; `verify_reporting.py` 7 → 23 checks; all eight module
+      docstrings trimmed; summary cap split 5 module / 10 local; tree-wide prose at 8%
 - [ ] Phase 4 — `verify_core.py` added; `core/` three modules
 - [ ] Phase 5 — `api/`, `app.py`, `scripts/cli.py`
 - [ ] Tree-wide prose ratio ≤8%, from 21%

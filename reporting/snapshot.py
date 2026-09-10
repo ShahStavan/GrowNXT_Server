@@ -1,17 +1,8 @@
 """Normalised domain model assembled from collector payloads.
 
-The report templates read only this model, never raw JSON. That boundary is
-where the unit contract is enforced and where the collector's quirks are
-absorbed once instead of in every table:
-
-    - `income/annual` appends a 'TTM' row that is not a fiscal year. It is
-      split out rather than plotted alongside FY columns.
-    - Series arrive oldest-first and of varying length (15 quarters, 11
-      annual rows), so windows are taken from the tail.
-    - `balTcso` is share count in crore, cross-checked against PAT / EPS.
-    - Peer `marketCap` is denominated in rupee MILLION while every other
-      figure is rupee CRORE. Converted on ingest; see MN_PER_CR.
-    - The `_comments` growth annotations are unusable, so growth is derived.
+The templates read only this model, never raw JSON. That boundary is where
+the unit contract is enforced and where five upstream quirks are absorbed
+once -- including peer marketCap arriving in millions: `.claude/specs/reporting-quantitative-engine.md` section 3.
 """
 
 import logging
@@ -86,16 +77,12 @@ class IncomePeriod:
     def raw_material_ratio(self) -> float | None:
         """Raw-material cost as a percentage of revenue.
 
-        Note this is NOT cost of goods sold. The provider's `incRaw` field
-        carries raw materials only: verified at 64.3% of revenue for
-        Reliance but 0.6% for Wipro and 0.0% for TCS, whose costs are
-        overwhelmingly people rather than materials. Subtracting it from
-        revenue therefore does not yield gross profit, and a "gross margin"
-        built that way reads as ~99% for any services business. Gross
-        margin is deliberately absent from this model for that reason;
-        EBITDA margin is the comparable profitability measure across
-        sectors. `incGpro` would have been the correct source but is null
-        for every ticker tested.
+        NOT cost of goods sold. `incRaw` carries raw materials only -- 64.3%
+        of revenue at Reliance, 0.6% at Wipro, 0.0% at TCS, whose costs are
+        people. Subtracting it does not yield gross profit, and a "gross
+        margin" built that way reads ~99% for any services business. Gross
+        margin is therefore absent from this model; `incGpro` would have been
+        correct but is null for every ticker tested.
         """
         return fmt.margin(self.raw_materials, self.revenue)
 

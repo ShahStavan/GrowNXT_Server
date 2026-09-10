@@ -1,10 +1,9 @@
 """Google Drive delivery for generated PDF reports.
 
-Uploaded once, link-shared, and tracked in a ``drive.json`` sidecar keyed by
-the PDF's content hash, so an unchanged report is never re-uploaded. Written
-against the REST API with ``requests`` rather than the official client, which
-would add httplib2, protobuf and uritemplate to move one 700 KB file -- and
-this way the whole path is testable without credentials.
+Uploaded once, link-shared, tracked in a ``drive.json`` sidecar keyed by the
+PDF's content hash so an unchanged report is never re-uploaded. Written on the
+REST API with ``requests``: the official client would add httplib2, protobuf
+and uritemplate to move one 700 KB file, and this way the path is testable.
 """
 
 import contextlib

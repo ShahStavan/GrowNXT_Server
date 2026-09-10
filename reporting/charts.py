@@ -1,24 +1,8 @@
 """Chart rendering for GrowNXT reports.
 
-Every chart is emitted as SVG so that Typst embeds it as vector artwork and
-it stays sharp in print. Text is converted to paths on save, which makes
-output independent of the fonts installed on the rendering host.
-
-House style, applied through `tokens.matplotlib_rc`:
-
-    - Charts carry NO title. The Typst exhibit caption titles them, so the
-      document's own typeface and hierarchy apply rather than matplotlib's.
-      A chart title set in a different face is the clearest sign that a
-      figure was pasted into a report rather than designed with it.
-    - Bars always start at zero. A truncated bar axis misstates magnitude.
-    - Horizontal gridlines only, hairline, behind the data. No left spine:
-      the gridlines already carry the scale.
-    - The latest period is emphasised, since that is what a reader looks
-      for first.
-    - Series colours come from a stepped-lightness ramp, so ordering
-      survives greyscale printing.
-    - No label may overlap another. Where a scatter would collide, the
-      chart form is changed rather than the labels shrunk.
+SVG so Typst embeds vector artwork; text converted to paths so output does
+not depend on the host's fonts. House style -- no chart titles, bars from
+zero, no overlapping labels: `.claude/specs/reporting-quantitative-engine.md` section 7.
 """
 
 import logging

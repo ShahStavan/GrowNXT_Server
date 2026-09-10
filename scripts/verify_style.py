@@ -38,7 +38,13 @@ BUDGET_FILE = ROOT / "scripts" / "style_budget.json"
 TARGET_RATIO = 0.08
 MAX_RATIO = 0.15
 TARGET_FLOOR = 12  # A small module still deserves a docstring.
-MAX_SUMMARY = 5  # Docstring lines before the first Args:/Returns: block.
+# Docstring summary lines before the first Args:/Returns: block. Modules get 5
+# because a module's rationale belongs in a spec. Classes and functions get 10:
+# theirs is granular design history -- a rejected chart form, why Altman's
+# historical series must use the 1983 revision -- which a spec cannot hold
+# usefully and which a maintainer needs at the function. Plan Phase 3.
+MAX_SUMMARY = 5
+MAX_LOCAL_SUMMARY = 10
 MAX_FUNCTION = 40  # Statements' line span, docstring excluded.
 
 SKIP_DIRS = ("venv", "__pycache__", ".git", ".mypy_cache", ".ruff_cache", "output")
@@ -171,9 +177,10 @@ def analyse(path: Path) -> ModuleStats | None:
                 stats.docstring += summary_length(doc)
                 stats.documented += 1
                 head = summary_length(doc)
-                if head > MAX_SUMMARY:
+                cap = MAX_SUMMARY if isinstance(node, ast.Module) else MAX_LOCAL_SUMMARY
+                if head > cap:
                     name = getattr(node, "name", "<module>")
-                    stats.add("docstring", f"{name} {head}L summary")
+                    stats.add("docstring", f"{name} {head}L summary (cap {cap})")
 
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             if _public(node.name):
@@ -259,7 +266,7 @@ def check_findings(report: Report, modules: list[ModuleStats], budget: dict) -> 
     report.section("Ratchet - findings must not grow")
     recorded = budget.get("findings", {})
     labels = {
-        "docstring": f"docstring summaries over {MAX_SUMMARY} lines",
+        "docstring": f"summaries over {MAX_SUMMARY}L module / {MAX_LOCAL_SUMMARY}L local",
         "annotations": "public defs missing an annotation",
         "generics": "typing.Dict-style generics",
         "history": "history comments",

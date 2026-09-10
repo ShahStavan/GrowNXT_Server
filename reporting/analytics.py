@@ -1,28 +1,8 @@
 """Derived analytics computed from a CompanySnapshot.
 
-The collector's ratio endpoints each return a single trailing-twelve-month
-point. The statement endpoints return ten years and twelve quarters. This
-module turns the former into the latter: the same ratios as time series,
-which is where the analysis actually lives — a level tells you where a
-company is, a series tells you which way it is going and how steadily.
-
-Methodology is verified against the provider rather than assumed. Every
-formula here reproduces the corresponding endpoint's own TTM figure exactly
-for Wipro — ROIC 30.81%, ROE 14.98%, interest coverage 14.03x, net
-debt/EBITDA -1.36x, DSO 50.2 days — so the trailing column of each series
-agrees with the endpoint it extends.
-
-Two conventions worth stating:
-
-    - Returns use PERIOD-END equity and invested capital, not two-point
-      averages, because that is what the provider's DuPont and
-      capital-efficiency endpoints do. Matching them matters more than
-      textbook preference; a report that disagrees with its own source
-      data is worse than one using a slightly cruder denominator.
-    - Any ratio with a non-positive or missing denominator returns None,
-      never a number. Negative equity and negative EBITDA both produce
-      arithmetically valid but analytically meaningless ratios, and a
-      typeset PDF lends them false authority.
+Turns the collector's single trailing ratio points into series, which is
+where the analysis lives. Every formula reproduces the provider's own TTM
+figure for Wipro; those calibration values are in `.claude/specs/reporting-quantitative-engine.md` section 4.
 """
 
 import logging

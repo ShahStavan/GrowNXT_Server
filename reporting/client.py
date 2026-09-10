@@ -1,12 +1,9 @@
 """Typed client for the Financial Data Collector REST service.
 
-Wraps the collector's endpoints for report generation, returning parsed
-values with their absence made explicit -- a typeset report has to distinguish
-a reported zero from a figure the collector does not carry.
-
-Responses are cached on disk per ticker so that iterating on layout costs
-no network traffic — a full report build re-reads one directory instead of
-issuing fourteen requests.
+Returns parsed values with their absence made explicit: a typeset report has
+to distinguish a reported zero from a figure the collector does not carry.
+Responses are cached per ticker, so a full build re-reads one directory
+instead of issuing fourteen requests.
 """
 
 import json
