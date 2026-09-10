@@ -1,17 +1,9 @@
 """Style budget enforcement for the code-style refactor.
 
-Ruff has no rule that caps a docstring's length or measures a prose ratio, so
-the `code-style` skill's budget needs its own check or it drifts back.
-
-"Prose" is narrative only: comments, plus docstring summary lines beyond the
-one line per definition the skill mandates. `Args:`/`Returns:` blocks and that
-mandated line are excluded -- counting either would penalise compliance.
-
-Runs as a ratchet: `scripts/style_budget.json` records where each module
-stands today, and a module that gets worse fails. `--strict` enforces the
-final target instead, and `--update` lowers the ratchet after a refactor.
-
-See `.claude/plans/code-style-refactor.md` Phase 0.
+Ruff caps no docstring length and measures no prose ratio, so the budget needs
+its own check. A ratchet against `style_budget.json`: a module that gets worse
+fails. ``--strict`` gates on the ceiling, ``--update`` lowers the ratchet.
+Prose is narrative only -- see `ModuleStats.prose` for the two exclusions.
 """
 
 from __future__ import annotations

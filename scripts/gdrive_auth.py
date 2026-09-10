@@ -1,23 +1,9 @@
-"""One-time Google Drive authorisation, and a health check for the stored grant.
+"""One-time Google Drive authorisation, and a health check for the grant.
 
-Run once to mint a refresh token:
-
-    venv/Scripts/python.exe -m scripts.gdrive_auth
-
-The browser opens Google's consent screen, the code comes back to a loopback
-server on this machine, and the refresh token is written to ``.gdrive_token.json``
-(git-ignored). The server picks it up from there on its next request -- nothing
-has to be pasted into an environment variable.
-
-Check an existing grant without touching the consent screen:
-
-    venv/Scripts/python.exe -m scripts.gdrive_auth --check
-
-Why this exists at all: access tokens are refreshed silently by
-``storage/gdrive.py``, but a *refresh* token can only be minted with a human at
-the consent screen. Google issues refresh tokens with a 7-day life while the
-OAuth app is in Testing status, so publish the consent screen to Production and
-this command becomes a once-ever step rather than a weekly chore.
+``python -m scripts.gdrive_auth`` opens the consent screen and writes the
+refresh token to ``.gdrive_token.json``; ``--check`` tests the stored grant
+without it. Access tokens refresh silently in `storage/gdrive.py`, but a
+refresh token needs a human -- see that module on the 7-day Testing clock.
 """
 
 import argparse

@@ -46,9 +46,9 @@
       "docstring": 1
     },
     "api/app.py": {
-      "lines": 362,
-      "prose": 14,
-      "docstring": 21
+      "lines": 358,
+      "prose": 11,
+      "docstring": 18
     },
     "api/search.py": {
       "lines": 59,
@@ -56,9 +56,9 @@
       "docstring": 7
     },
     "app.py": {
-      "lines": 407,
-      "prose": 31,
-      "docstring": 13
+      "lines": 404,
+      "prose": 29,
+      "docstring": 11
     },
     "core/__init__.py": {
       "lines": 28,
@@ -66,29 +66,29 @@
       "docstring": 1
     },
     "core/config.py": {
-      "lines": 95,
-      "prose": 21,
-      "docstring": 19
-    },
-    "core/hardware.py": {
-      "lines": 458,
-      "prose": 78,
-      "docstring": 69
-    },
-    "core/llm_config.py": {
-      "lines": 291,
-      "prose": 15,
+      "lines": 90,
+      "prose": 17,
       "docstring": 15
     },
-    "ingestion/__init__.py": {
-      "lines": 89,
-      "prose": 17,
+    "core/hardware.py": {
+      "lines": 428,
+      "prose": 54,
+      "docstring": 45
+    },
+    "core/llm_config.py": {
+      "lines": 288,
+      "prose": 13,
       "docstring": 13
     },
+    "ingestion/__init__.py": {
+      "lines": 77,
+      "prose": 9,
+      "docstring": 5
+    },
     "ingestion/catalog.py": {
-      "lines": 314,
-      "prose": 24,
-      "docstring": 32
+      "lines": 299,
+      "prose": 12,
+      "docstring": 20
     },
     "ingestion/documents/__init__.py": {
       "lines": 57,
@@ -191,19 +191,19 @@
       "docstring": 1
     },
     "scripts/checks.py": {
-      "lines": 160,
-      "prose": 18,
-      "docstring": 32
+      "lines": 154,
+      "prose": 13,
+      "docstring": 27
     },
     "scripts/cli.py": {
-      "lines": 55,
-      "prose": 10,
-      "docstring": 10
+      "lines": 54,
+      "prose": 9,
+      "docstring": 9
     },
     "scripts/gdrive_auth.py": {
-      "lines": 289,
-      "prose": 17,
-      "docstring": 27
+      "lines": 275,
+      "prose": 8,
+      "docstring": 18
     },
     "scripts/generate_report.py": {
       "lines": 124,
@@ -211,29 +211,34 @@
       "docstring": 7
     },
     "scripts/parity_gate.py": {
-      "lines": 258,
-      "prose": 37,
-      "docstring": 34
+      "lines": 241,
+      "prose": 22,
+      "docstring": 19
+    },
+    "scripts/verify_core.py": {
+      "lines": 257,
+      "prose": 12,
+      "docstring": 18
     },
     "scripts/verify_documents.py": {
-      "lines": 805,
-      "prose": 69,
-      "docstring": 61
+      "lines": 772,
+      "prose": 45,
+      "docstring": 37
     },
     "scripts/verify_gdrive.py": {
-      "lines": 580,
-      "prose": 12,
-      "docstring": 22
+      "lines": 574,
+      "prose": 8,
+      "docstring": 18
     },
     "scripts/verify_reporting.py": {
-      "lines": 930,
-      "prose": 58,
-      "docstring": 65
+      "lines": 910,
+      "prose": 44,
+      "docstring": 51
     },
     "scripts/verify_style.py": {
-      "lines": 392,
-      "prose": 31,
-      "docstring": 34
+      "lines": 384,
+      "prose": 26,
+      "docstring": 29
     },
     "storage/__init__.py": {
       "lines": 21,
@@ -247,7 +252,7 @@
     }
   },
   "findings": {
-    "docstring": 14,
+    "docstring": 0,
     "annotations": 10,
     "generics": 0,
     "history": 5,

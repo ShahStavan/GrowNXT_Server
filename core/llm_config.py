@@ -1,11 +1,8 @@
-"""Hosted model invocation and SLM integration for GrowNXT Server.
+"""Hosted SLM invocation for GrowNXT Server.
 
-Routes OpenAI-compatible chat completions directly to the upstream SLM endpoint
-(https://llm.maqsoftware.net/v1 or configured reverse proxy) using direct requests,
-with support for token-by-token streaming, configurable chat models (qwen-3.8-27b,
-gemma-4-31b), and automatic sanitization of <think> reasoning tokens.
-
-Google Python Style Guide Compliant.
+OpenAI-compatible chat completions against the upstream endpoint, with
+token-by-token streaming and mandatory sanitisation of ``<think>`` reasoning
+tokens -- which must never reach a report or a stream.
 """
 
 from __future__ import annotations

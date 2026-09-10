@@ -1,14 +1,9 @@
-"""System-wide configuration for GrowNXT Server.
+"""System-wide configuration: paths, the collector base URL, HTTP headers.
 
-Paths are derived from this file's own location, so a checkout works unchanged
-on any machine, with environment overrides (``GROWNXT_OUTPUT_DIR``) for
-containerised deployments.
-
-Every artifact belonging to a stock -- the filings ingested for it, the parse
-and vector caches, the extracted findings, and the typeset PDF report -- lives
-under one directory per symbol: ``OUTPUT_DIR/<TICKER>/``. One root keeps a
-company's evidence and its report together, and makes a stock's entire
-footprint removable in a single step.
+Paths derive from this file's location, so a checkout works unchanged on any
+machine, with ``GROWNXT_OUTPUT_DIR`` for containers. Every artefact for a
+stock lives under ``OUTPUT_DIR/<TICKER>/``, which makes a company's whole
+footprint removable in one step. Always fold a symbol with `safe_ticker`.
 """
 
 import os

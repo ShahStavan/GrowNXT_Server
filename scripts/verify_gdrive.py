@@ -1,15 +1,9 @@
-"""Verification harness for the Google Drive delivery path.
+"""Verification for the Google Drive delivery path.
 
-Every check runs against an in-memory stand-in for Drive, so the whole upload,
-sharing, token-refresh and caching path is verified with no credentials, no
-network, and nothing uploaded to a real account:
-
-    venv/Scripts/python.exe -m scripts.verify_gdrive
-
-The invariants here are the ones that would otherwise fail quietly in
-production -- a second copy of every report accumulating in Drive, a report
-uploaded but never shared, a link that stops resolving after a rebuild, or a
-revoked grant reported as a transient error and retried forever.
+Runs against an in-memory stand-in, so upload, sharing, token refresh and
+caching are verified with no credentials. The invariants are those that fail
+quietly: a second copy of every report accumulating, one uploaded but never
+shared, a link dead after a rebuild, a revoked grant retried forever.
 """
 
 import json

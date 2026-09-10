@@ -1,42 +1,9 @@
-"""Verification harness for the document acquisition and extraction layer.
+"""Verification for the document acquisition and extraction layer.
 
-Two modules are asserted here, and the checks are chosen to mirror the ways
-each one could appear to work while being wrong.
-
-For **acquisition** (``ingestion/documents/download.py``) the hazards are all
-about what lands on disk:
-
-* An investor-relations host answers a moved document with an HTML error page
-  and a 200 status. Filed as a filing, that page is extracted into nonsense
-  that reads like a real absence of evidence.
-* A transfer cut off halfway still begins with a PDF header, so the magic bytes
-  alone cannot tell a complete filing from a truncated one.
-* A 404 retried three times spends nine seconds proving what the first response
-  said, and a 503 not retried at all throws away a document that was merely
-  briefly unavailable. The two must be told apart.
-* A failed attempt must leave nothing behind, or the next run finds a partial
-  file and treats it as the document.
-
-For **extraction** (``ingestion/documents/extract.py``) the hazard is subtler:
-an extraction that returns *something* for every page looks successful. So the
-checks assert structure rather than volume -- that tables keep their header
-rows, that blocks carry the heading trail they sit under, and that a page which
-yielded no text is named rather than silently absent.
-
-The acquisition checks use a scripted HTTP session and a PDF built in memory, so
-they need no network and no model weights. Extraction runs Docling against a
-generated PDF, which needs the models present but still no network after the
-first run.
-
-Run everything::
-
-    python -m scripts.verify_documents
-
-Run only the checks that need neither Docling nor its weights::
-
-    python -m scripts.verify_documents --offline
-
-Google Python Style Guide Compliant.
+Checks mirror how each module could appear to work while being wrong: an HTML
+error page served with a 200, a truncated transfer that still starts with a PDF
+header, a 404 retried as transient, a failed attempt leaving a partial file, an
+extraction returning something for every page. ``--offline`` skips Docling.
 """
 
 from __future__ import annotations

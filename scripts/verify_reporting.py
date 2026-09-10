@@ -1,29 +1,9 @@
-"""Verification harness for the reporting engine.
+"""Verification for the reporting engine. Exits non-zero, so it can gate.
 
-Run this after changing anything under `reporting/`:
-
-    venv/Scripts/python.exe scripts/verify_reporting.py
-
-It exits non-zero if any check fails, so it can gate a commit.
-
-Three things are checked, and the first is the reason this file exists.
-
-The denominator guardrail cannot be verified against real cached data,
-because none of the companies in the cache has negative equity, negative
-EBITDA or a negative cost base. Every ratio in those reports takes the happy
-path, so a passing report proves nothing about what happens when a balance
-sheet turns. This harness therefore builds a synthetic company that fails on
-every axis at once and asserts that each affected ratio comes back absent
-rather than merely wrong.
-
-It also asserts the opposite direction: that the guardrail detector inside
-`selfcheck` reports a breach when one is planted. A check that cannot fail is
-not evidence, and a self-verification suite that only ever passes is the
-thing it is supposed to protect against.
-
-The composite-integrity checks assert the editorial rule that a score is
-never available without its components, by reaching for the total and the
-parts through the same object and comparing them.
+The denominator guardrail cannot be checked against cached data -- no cached
+company has negative equity, EBITDA or cost base, so every ratio takes the
+happy path. A synthetic company failing on every axis supplies the rest, and
+the detector is asserted to *fire*: a check that cannot fail is not evidence.
 """
 
 import logging

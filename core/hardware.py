@@ -1,39 +1,9 @@
 """Resolves the compute this machine can actually give the ingestion pipeline.
 
-Three stages of the batch are compute-bound and each one asks a different
-library for its hardware, with defaults chosen for a laptop rather than for the
-machine in front of it:
-
-* **Docling** (layout + TableFormer) reads ``AcceleratorOptions``, whose
-  ``num_threads`` is **4 on every machine** and whose ``device`` is ``auto``.
-  Four threads is a floor, not a ceiling, and ``auto`` silently means CPU when
-  torch was installed from the CPU wheel index.
-* **SentenceTransformers** picks its own device and takes whatever
-  ``batch_size`` the caller passes, with no idea how much VRAM exists.
-* **torch** itself defaults its intra-op thread pool to the *logical* core
-  count, which oversubscribes a 4-core laptop running two model stacks.
-
-This module answers all three from one place. `profile()` reports what the
-machine has and what each stage should therefore be given; `configure()` puts
-that into effect -- environment variables for the libraries that read them,
-direct calls for the ones that do not -- and returns the profile it applied, so
-a run log can record the hardware a run actually used rather than the hardware
-it was asked for.
-
-Nothing here imports torch at module scope: the API server, the report engine
-and the verification suites all import `core.config` siblings on paths that must
-stay fast and must not fail when the ML extras are absent.
-
-Every decision is overridable, because a profile is a guess about a machine:
-
-| Variable | Effect |
-| :--- | :--- |
-| ``GROWNXT_DEVICE`` | ``auto``/``cuda``/``cuda:1``/``cpu``/``mps``/``xpu`` |
-| ``GROWNXT_NUM_THREADS`` | Threads for Docling and torch intra-op |
-| ``GROWNXT_EMBED_BATCH_SIZE`` | Texts per ``model.encode`` call |
-| ``GROWNXT_EMBED_FP16`` | ``0`` keeps the embedding model in float32 |
-
-Google Python Style Guide Compliant.
+`profile()` reports what the host has; `configure()` applies it and returns
+what it applied. Exists because Docling pins 4 threads on any machine and
+resolves ``device="auto"`` to CPU on a CPU-only torch wheel, silently:
+`.claude/specs/vectorless-qualitative-rag.md` section 11.
 """
 
 from __future__ import annotations

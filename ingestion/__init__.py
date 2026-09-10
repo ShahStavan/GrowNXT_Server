@@ -1,21 +1,9 @@
-"""Document acquisition layer for GrowNXT.
+"""Document acquisition layer: catalogue, download, Docling extraction.
 
-Turns a company's published filings into extracted, citable document content:
-
-    catalog -> download -> extract (Docling)
-
-**What used to be here.** This package also carried chunking, Snowflake Arctic
-embedding into Qdrant, the Nifty 50 batch orchestrator and a LangGraph RAG
-pipeline. All of it was removed ahead of the vectorless qualitative rebuild
-described in `.claude/specs/vectorless-qualitative-rag.md`; the replacement is
-a section map and a typed evidence ledger, not a vector index. The removal
-commit is the place to recover any of it from.
-
-What survives is the half that was never about vectors: fetching a document
-catalogue, downloading filings, and converting them with Docling. The new
-qualitative pipeline builds directly on these.
-
-Google Python Style Guide Compliant.
+Chunking, Arctic/Qdrant embedding, the Nifty 50 batch orchestrator and the
+LangGraph RAG pipeline were removed ahead of the vectorless qualitative
+rebuild; recover any of it from the commit before that. What survives is
+the half that was never about vectors, and the rebuild builds on it.
 """
 
 from __future__ import annotations

@@ -1,9 +1,8 @@
-"""Command-line plumbing shared by the entry points in this package.
+"""Command-line plumbing shared by this package's entry points.
 
-Each script had its own `logging.basicConfig` call and its own format string,
-and two of them separately re-encoded stdout for the same reason. Both belong
-in one place: the reason for the console fix is worth stating once, and three
-named formats are easier to choose between than six ad-hoc ones.
+One place for logging setup and the stdout re-encoding, and three named
+formats to choose between. `console_utf8` is not optional: a Windows
+console defaults to cp1252 and raises on the first rupee sign.
 """
 
 import contextlib

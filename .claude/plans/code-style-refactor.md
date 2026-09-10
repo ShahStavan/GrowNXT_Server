@@ -1,6 +1,6 @@
 # Plan: Refactor the Codebase to the `code-style` Skill
 
-- **Status**: Ready for implementation, pending the 3 decisions in §C
+- **Status**: ✅ Complete. All five phases done 2026-09-10.
 - **Skill**: [`.agents/skills/code-style/SKILL.md`](../../.agents/skills/code-style/SKILL.md)
 - **Author**: Claude, for @jenish.gajera
 - **Date**: 2026-09-10
@@ -302,17 +302,54 @@ dropping content. `reporting/` and `storage/` are now fully within cap.
 AST symbol comparison across all nine `reporting/` modules plus `storage/gdrive.py` shows no
 drift.
 
-### Phase 4 — `core/` (1 day) — zero coverage today
+### Phase 4 — `core/` ✅ **done 2026-09-10**
 
-`config.py` (#2), `hardware.py` (#10), `llm_config.py`. Add `scripts/verify_core.py` first —
-`safe_ticker` folding of `M&M`, `report_path`, and `hardware.profile()`/`resolve_workers()`
-resolution are all testable and currently untested. `hardware.py`'s rationale goes to the
-vectorless spec §5, which already covers `idle_gpu`.
+`scripts/verify_core.py` written first, since `core/` had **no coverage at all** — which made it
+the riskiest place in the tree to refactor: `safe_ticker` builds every artefact path and
+`clean_thinking_tokens` is the last thing between a model's reasoning and a published page.
+**40 checks, all passing**, wired into the gate.
 
-### Phase 5 — `api/`, `app.py`, `scripts/` helpers (half day)
+Covers `safe_ticker` folding (`M&M` → `M_M`, idempotent, no path separators survive), path
+derivation, hardware resolution, the `idle_gpu` detector in all four directions, and the
+thinking-token sanitiser — including the unclosed `<think>` case, which is the one that matters
+because a truncated stream ends mid-thought and a paired-tag regex would leave the whole tail.
 
-Lowest prose ratios (6-10%), so mostly `D`-rule cleanup. `scripts/cli.py` (#5, 43%) is small and
-its `setup` docstring is 8 lines for 2 statements.
+All three module docstrings trimmed; `hardware.py`'s 29-line docstring moved to
+`vectorless-qualitative-rag.md` §11.
+
+**Two findings.**
+
+`hardware.py`'s docstring still described a **SentenceTransformers** stage that no longer exists,
+and documented `GROWNXT_EMBED_BATCH_SIZE` / `GROWNXT_EMBED_FP16` — dead since the vector removal,
+exactly as F2 predicted. The `embed_batch_size` / `embed_fp16` fields on `HardwareProfile` are
+dead with them. **Removing them changes a public dataclass, so it is a behaviour change and not
+part of a style refactor** — recorded in §11 as follow-up rather than done here.
+
+**`resolve_workers()` does not exist.** This plan's Phase 4 asked for a test of it, and
+`vectorless-qualitative-rag.md` F2 argues the GPU worker cap must survive the vector removal —
+but the function lived in `ingestion/batch.py` and went with it in `949240d`. The argument was
+written after the code was already deleted. CLAUDE.md's gotcha and the spec are corrected; the
+cap must be reintroduced wherever the qualitative pipeline gains concurrency.
+
+*Gate*: 17/19 with `verify_core.py` added.
+
+### Phase 5 — `api/`, `app.py`, `scripts/` helpers ✅ **done 2026-09-10**
+
+Twelve module docstrings trimmed to the 5-line cap: `api/app.py`, `app.py`,
+`ingestion/catalog.py`, `ingestion/__init__.py`, `scripts/cli.py`, `checks.py`, and the six
+`verify_*` / `parity_gate` harnesses. `ingestion/catalog.py` and `ingestion/__init__.py` were
+outside Phase 1's `ingestion/documents/` scope and are picked up here.
+
+These were verbose rather than dense, so they compressed without content loss — no third
+relaxation of the cap was needed. `app.py`'s docstring also claimed "Gradio 5" while the lockfile
+pins Gradio 6; corrected, though the underlying `import app` failure is still the pre-existing
+F11 issue.
+
+**Criterion 2 is now met tree-wide: no docstring summary exceeds its cap anywhere.**
+Tree-wide narrative prose is **7%**, under the 8% target, from 21% at Phase 0.
+
+*Gate*: 17/19, both failures pre-existing. Byte-identical 719,879-byte PDF, 20/20 self-checks,
+and an AST symbol comparison across all nine modules touched shows no drift.
 
 **Total: ~5.5 days**, of which Phase 3's test-writing is ~1.5. Phases 0-2 are ~2 days and cover
 six of the skill's top ten.
@@ -359,7 +396,8 @@ six of the skill's top ten.
       `verify_gdrive.py` wired into the gate; C.1 resolved
 - [x] Phase 3 — spec grown to 8 sections; `verify_reporting.py` 7 → 23 checks; all eight module
       docstrings trimmed; summary cap split 5 module / 10 local; tree-wide prose at 8%
-- [ ] Phase 4 — `verify_core.py` added; `core/` three modules
-- [ ] Phase 5 — `api/`, `app.py`, `scripts/cli.py`
-- [ ] Tree-wide prose ratio ≤8%, from 21%
-- [ ] Skill updated: refactor order corrected to coverage-first, `verify_style.py` referenced
+- [x] Phase 4 — `verify_core.py` added (40 checks, first ever coverage of `core/`); three
+      modules trimmed; `resolve_workers()` found missing and the docs corrected
+- [x] Phase 5 — twelve module docstrings trimmed; criterion 2 met tree-wide
+- [x] Tree-wide prose ratio **7%**, from 21%
+- [x] Skill updated: refactor order corrected to coverage-first, `verify_style.py` referenced

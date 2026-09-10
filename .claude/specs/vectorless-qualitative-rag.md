@@ -602,3 +602,48 @@ how phase 3 resolves, which is why they are ordered first.
    likely adequate for schema-constrained extraction, where the quote-verbatim check catches
    drift mechanically. Worth a bake-off against `gemma-4-31b` on ten fixture sections before
    committing 50 tickers to it.
+
+---
+
+## 11. `core/hardware.py` — why compute resolution exists at all
+
+Relocated from that module's docstring by
+[`code-style-refactor.md`](../plans/code-style-refactor.md) Phase 4.
+
+**Each library defaults badly on its own, and two of them fail silently.**
+
+- **Docling** (layout + TableFormer) reads `AcceleratorOptions`, whose `num_threads` is
+  **4 on every machine** and whose `device` is `auto`. Four threads is a floor, not a ceiling,
+  and `auto` silently means CPU whenever torch was installed from the CPU wheel index.
+- **torch** defaults its intra-op thread pool to the *logical* core count, which oversubscribes a
+  4-core laptop.
+
+`profile()` reports what the machine has and what each stage should therefore be given;
+`configure()` puts that into effect — environment variables for the libraries that read them,
+direct calls for those that do not — and returns the profile it applied, so a run log records the
+hardware a run *actually used* rather than the hardware it was asked for.
+
+**Nothing here imports torch at module scope.** The API server, the report engine and the
+verification suites all import `core.config` siblings on paths that must stay fast and must not
+fail when the ML extras are absent.
+
+`idle_gpu` is the detector for the silent case: an NVIDIA driver present, `torch.version.cuda`
+empty, and the resolved device `cpu`. See §5 — `requirements.txt` pins the CPU wheel
+deliberately, for the Space.
+
+| Variable | Effect |
+| :--- | :--- |
+| `GROWNXT_DEVICE` | `auto` / `cuda` / `cuda:1` / `cpu` / `mps` / `xpu` |
+| `GROWNXT_NUM_THREADS` | Threads for Docling and torch intra-op |
+
+Guarded by `scripts/verify_core.py` (`check_hardware_resolution`, `check_idle_gpu_detector`).
+
+> **Two knobs are now dead.** `GROWNXT_EMBED_BATCH_SIZE` and `GROWNXT_EMBED_FP16`, and the
+> `embed_batch_size` / `embed_fp16` fields on `HardwareProfile`, sized a `SentenceTransformer`
+> that no longer exists. F2 predicted this. Removing them changes a public dataclass, so it is a
+> behaviour change and not part of the style refactor — tracked as follow-up.
+
+> **`resolve_workers()` no longer exists.** F2 argued the GPU worker cap must survive the vector
+> removal, but the function lived in `ingestion/batch.py` and went with it in `949240d`. The cap
+> will have to be reintroduced wherever the qualitative pipeline gains concurrency; the reasoning
+> stands, the code does not. CLAUDE.md's gotcha and this spec's F2 are corrected accordingly.

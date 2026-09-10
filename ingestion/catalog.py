@@ -1,24 +1,9 @@
 """Document catalogue from the Financial Data Collector service.
 
-``GET /api/v1/stocks/<symbol>/documents`` returns the Screener.in document
-catalogue for a company: annual reports by financial year, and concall entries
-that each carry a transcript URL and, when the issuer published one, a
-presentation URL. This module turns that payload into a flat list of documents
-with stable identifiers, which is what the registry needs to decide what has
-already been ingested.
-
-Two properties of the upstream payload shape the code:
-
-* The response is a catalogue of *links*, not of content. A link changing is
-  the only reliable signal that the issuer has published a new version of a
-  document, so identifiers are derived from the period rather than from the
-  URL, and the URL is carried alongside as the field that drives re-ingestion.
-* Concall entries are not unique by date. An issuer routinely publishes two
-  entries for one quarter -- the exchange filing and the copy on its own
-  investor-relations site -- so identifiers are disambiguated by occurrence
-  within a period rather than assumed unique.
-
-Google Python Style Guide Compliant.
+Turns ``GET /api/v1/stocks/<symbol>/documents`` into a flat list with stable
+identifiers. The response is a catalogue of *links*, so a `doc_id` derives
+from the period rather than the URL, and concall entries are disambiguated
+by occurrence -- a quarter routinely appears twice, exchange and IR copies.
 """
 
 import logging

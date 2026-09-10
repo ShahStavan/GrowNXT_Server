@@ -1,28 +1,9 @@
-"""The parity gate for the vectorless-qualitative-rag replacement.
+"""The parity gate: one command that says whether the tree still works.
 
-Phase 0 of `.claude/plans/vectorless-qualitative-rag.md`. Every phase of that
-plan replaces or deletes part of the retrieval stack, and each one has to leave
-the rest of the tree working. This script is what "leaves the rest working"
-means, in one command.
-
-Three kinds of gate, in ascending cost:
-
-1. **Import sweeps.** `ingestion/__init__.py` re-exports the package surface,
-   so an incomplete removal breaks it first (plan F5). Scripts are swept
-   separately because `import ingestion` does not reach them -- the gap that
-   hid two already-broken scripts until a full-tree grep found them (plan
-   F10).
-2. **Lint and format**, because the repository is checked in formatted and a
-   stop hook enforces it.
-3. **Verification suites**, which are the real behavioural gate and also the
-   slow part.
-
-Known-broken modules are declared in `KNOWN_BROKEN` rather than omitted, so
-the gate reports them as expected failures rather than passing silently, and
-reports a module that starts importing again. The dict is empty since the
-vector-pipeline removal deleted both files it named.
-
-Google Python Style Guide Compliant.
+Import sweeps first -- packages, then `scripts/` separately, because
+``import ingestion`` does not reach them and that gap once hid two broken
+scripts. Then lint, then the verification suites. `KNOWN_BROKEN` holds
+modules expected to fail, so they are reported rather than omitted.
 """
 
 from __future__ import annotations
@@ -57,6 +38,7 @@ PACKAGES: tuple[str, ...] = (
 SCRIPTS: tuple[str, ...] = (
     "scripts.generate_report",
     "scripts.verify_style",
+    "scripts.verify_core",
     "scripts.verify_documents",
     "scripts.verify_reporting",
     "scripts.verify_gdrive",
@@ -73,6 +55,7 @@ KNOWN_BROKEN: dict[str, str] = {}
 # of storage/ are covered without credentials -- it was simply never wired in.
 SUITES: tuple[str, ...] = (
     "scripts/verify_style.py",
+    "scripts/verify_core.py",
     "scripts/verify_reporting.py",
     "scripts/verify_gdrive.py",
     "scripts/verify_documents.py",

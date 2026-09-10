@@ -1,11 +1,8 @@
-"""GrowNXT Institutional Equity Research Platform -- Hugging Face Spaces & Local Entrypoint.
+"""GrowNXT platform entry point, for Hugging Face Spaces and local runs.
 
-Combines FastAPI, Flask WSGI Middleware (a2wsgi), and Gradio 5 into a single production server:
-  1. REST API Endpoints on /api/* and /v1/* (Flask via WSGIMiddleware mounted directly onto Gradio's FastAPI app)
-  2. Native Gradio 5 UI on / (Report Generator, Stock Search, Live SLM Chat)
-  3. Direct in-process execution for zero internal latency.
-
-Google Python Style Guide Compliant.
+One server: Flask WSGI on ``/api/*`` and ``/v1/*`` via a2wsgi, mounted onto
+the FastAPI app that Gradio builds, with the Gradio UI on ``/``. In-process
+throughout, so no route pays a network hop to reach another.
 """
 
 from __future__ import annotations

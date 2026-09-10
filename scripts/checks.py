@@ -1,14 +1,8 @@
 """Shared harness for the verification scripts.
 
-Three suites -- reporting, ingestion and Drive delivery -- each accumulated
-pass/fail, padded a listing and printed a banner in its own way, one of them
-through module-level counters. The mechanics were identical, so they live here
-and each suite is left holding only its own assertions.
-
-A check records rather than raises. A verification run should report every
-finding in one pass: stopping at the first failure hides how much else broke,
-which is exactly what you need to know when deciding whether a change is
-salvageable.
+A check *records* rather than raises, because a run should report every
+finding in one pass. Stopping at the first failure hides how much else
+broke, which is exactly what decides whether a change is salvageable.
 """
 
 from collections.abc import Callable

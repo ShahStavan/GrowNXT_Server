@@ -1,13 +1,9 @@
 """Flask API for the GrowNXT platform: find a stock, get its report.
 
-`/api/search` resolves a query to listed companies. `/api/stocks/<sym>/report`
-returns the Google Drive link to that company's typeset PDF, compiling and
-uploading it the first time it is asked for; `/report/file` serves the bytes
-for clients that would rather not go through Drive.
-
-Domain failures are raised, not branched on. The handlers registered in
-`create_app` map each exception type to its status, which is what keeps every
-route down to the happy path.
+`/api/search` resolves a query to listed companies;
+`/api/stocks/<sym>/report` returns the Drive link, compiling on first ask;
+`/report/file` serves the bytes. Domain failures are raised, not branched
+on -- `create_app` maps each exception type to its status.
 """
 
 import json
