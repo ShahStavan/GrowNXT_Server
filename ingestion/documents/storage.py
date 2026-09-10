@@ -1,24 +1,9 @@
-"""Every path the document stages read or write.
+"""Every path the document stages read or write, under ``OUTPUT_DIR/<TICKER>/``.
 
-One module owns the layout, so "where did that document go?" has one answer
-regardless of which stage is asking, and nothing else builds a path by string
-concatenation.
-
-Layout, rooted at ``OUTPUT_DIR`` (overridden by ``GROWNXT_OUTPUT_DIR``)::
-
-    output/<TICKER>/
-    |-- registry.json                    per-document, per-stage ingestion state
-    |-- documents/<doc_id>.pdf           the filing as published, never rewritten
-    |-- extracted/<doc_id>.json          text, tables, figure manifest
-    |-- figures/<doc_id>/p0142-03.png    page 142, third figure on the page
-    `-- chunks/ vectors/ findings/       later stages, owned by their own modules
-
-Two invariants make a re-run safe. A document's identity is its ``doc_id``,
-derived from the period rather than the URL, so a re-ingest overwrites in place
-instead of accumulating copies. And extraction never writes into ``documents/``,
-so it cannot corrupt the source it is reading.
-
-Google Python Style Guide Compliant.
+documents/<doc_id>.pdf            as published, never rewritten
+extracted/<doc_id>.json           text, tables, figure manifest
+figures/<doc_id>/p0142-03.png     page 142, third figure on the page
+registry.json, chunks/, findings/ later stages own these
 """
 
 from __future__ import annotations
@@ -57,13 +42,8 @@ PART_FILE_TTL_HOURS: float = 6.0
 class DocumentStore:
     """The on-disk home of one ticker's filings.
 
-    Frozen because a store is an address, not a state: two stages handed the
-    same store must resolve every path identically.
-
-    Attributes:
-        ticker: Directory-safe ticker symbol.
-        root: The stock's directory, ``<data_dir>/<TICKER>``.
-
+    Frozen: a store is an address, not a state, so two stages handed the same
+    store resolve every path identically.
     """
 
     ticker: str
@@ -73,15 +53,7 @@ class DocumentStore:
     def open(cls, ticker: str, data_dir: Path | None = None) -> DocumentStore:
         """Returns the store for one ticker, without touching the filesystem.
 
-        Args:
-            ticker: Exchange symbol, in any case and with any punctuation.
-            data_dir: Root artefact directory. Defaults to OUTPUT_DIR; tests
-                pass a temporary directory.
-
-        Returns:
-            The store. Directories are created by `ensure`, so naming a path
-            cannot leave empty directories behind.
-
+        `ensure` creates the directories, so naming a path leaves none behind.
         """
         symbol = safe_ticker(ticker)
         base = Path(data_dir) if data_dir is not None else OUTPUT_DIR
@@ -117,17 +89,10 @@ class DocumentStore:
         return self
 
     def sweep_partials(self, ttl_hours: float = PART_FILE_TTL_HOURS) -> int:
-        """Removes abandoned download temporaries, returning the bytes reclaimed.
+        """Removes abandoned download temporaries, returning bytes reclaimed.
 
-        Args:
-            ttl_hours: Minimum age before a temporary is presumed abandoned. A
-                concurrent worker may be mid-transfer on this same ticker, so a
-                fresh temporary is left alone.
-
-        Returns:
-            Bytes reclaimed. Never raises: an un-deletable temporary is a
-            wasted megabyte, not a failed run.
-
+        A temporary younger than `ttl_hours` is left alone -- a concurrent
+        worker may be mid-transfer. Never raises.
         """
         cutoff = time.time() - max(0.0, ttl_hours) * 3600.0
         reclaimed = 0
@@ -169,15 +134,8 @@ class DocumentStore:
     def figure(self, doc_id: str, page: int, index: int) -> Path:
         """Returns ``figures/<doc_id>/p<page>-<index>.png`` for one figure.
 
-        Args:
-            doc_id: Owning document.
-            page: 1-based page the figure was cropped from.
-            index: 1-based position of the figure on that page.
-
-        Returns:
-            The path, zero-padded so a directory listing sorts into document
-            order -- what makes a figure directory reviewable by eye.
-
+        `page` and `index` are both 1-based. Zero-padded so a directory
+        listing sorts into document order.
         """
         name = f"p{max(0, page):04d}-{max(0, index):02d}{FIGURE_SUFFIX}"
         return self.figure_dir(doc_id) / name
@@ -187,10 +145,8 @@ class DocumentStore:
     def relative(self, path: Path) -> str:
         """Returns `path` relative to the stock directory, for the registry.
 
-        Portable paths keep recorded state valid when the output directory is
-        moved or mounted elsewhere. A path outside the store is recorded whole
-        rather than forced: a silently wrong relative path is harder to diagnose
-        than an absolute one.
+        A path outside the store is returned whole rather than forced -- a
+        silently wrong relative path is harder to diagnose than an absolute one.
         """
         try:
             return Path(path).resolve().relative_to(self.root.resolve()).as_posix()

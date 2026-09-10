@@ -713,6 +713,57 @@ def _table_pdf() -> bytes | None:
     return buffer.getvalue()
 
 
+def check_page_filter(report: Report) -> None:
+    """Guards the page-filter anchors and its fail-open rule.
+
+    Restores the `check_page_filter` guard that CLAUDE.md credits and that was
+    deleted with `verify_nifty50_embeddings.py`. The anchor set is the whole
+    point: page 191 of the ADANIENT FY2026 filing opens "INDEPENDENT AUDITOR'S
+    CERTIFICATE ON COMPLIANCE WITH THE CORPORATE GOVERNANCE REQUIREMENTS", and
+    an anchor matching bare "independent auditor" fires there, dragging in 31
+    pages of the governance report the filter exists to drop.
+    """
+    from ingestion.documents import sections
+
+    report.section("Page filter")
+
+    certificate = (
+        "INDEPENDENT AUDITOR'S CERTIFICATE ON COMPLIANCE WITH THE "
+        "CORPORATE GOVERNANCE REQUIREMENTS"
+    )
+    report.check(
+        "governance certificate does not anchor",
+        not any(p.search(certificate) for p in sections._ANCHOR_RE),
+        "an anchor matching bare 'independent auditor' would fire here",
+    )
+    for heading in (
+        "INDEPENDENT AUDITOR'S REPORT",
+        "INDEPENDENT AUDITORS' REPORT",
+        "Management Discussion and Analysis",
+        "Notes forming part of the financial statements",
+        "Consolidated Balance Sheet",
+    ):
+        report.check(
+            f"anchors on {heading[:38]!r}",
+            any(p.search(heading) for p in sections._ANCHOR_RE),
+        )
+
+    report.check(
+        "PAGE_FILTER_SUFFIX is '+fin-pages'",
+        sections.PAGE_FILTER_SUFFIX == "+fin-pages",
+        "folded into the extraction cache key",
+    )
+    report.check(
+        "a short document is never filtered",
+        sections.financial_page_range(__file__, min_pages=60) is None,
+        "fails toward keeping pages",
+    )
+    report.check(
+        "an unreadable file yields no opinion",
+        sections.page_texts(Path(__file__).parent / "does-not-exist.pdf") == [],
+    )
+
+
 # --- Entry point --------------------------------------------------------------
 
 
@@ -739,6 +790,7 @@ def main(argv: list[str] | None = None) -> int:
     check_storage(report)
     check_content(report)
     check_download(report)
+    check_page_filter(report)
     if not args.offline:
         check_extraction(report)
     else:

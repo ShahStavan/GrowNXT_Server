@@ -7,199 +7,247 @@
   "modules": {
     ".claude/hooks/post_tool_use.py": {
       "lines": 108,
-      "prose": 8
+      "prose": 5,
+      "docstring": 6
     },
     ".claude/hooks/pre_tool_use.py": {
       "lines": 31,
-      "prose": 0
+      "prose": 0,
+      "docstring": 0
     },
     ".claude/hooks/stop.py": {
       "lines": 98,
-      "prose": 8
+      "prose": 5,
+      "docstring": 6
     },
     ".claude/hooks/validators/commands.py": {
       "lines": 25,
-      "prose": 0
+      "prose": 0,
+      "docstring": 0
     },
     ".claude/hooks/validators/paths.py": {
       "lines": 31,
-      "prose": 0
+      "prose": 0,
+      "docstring": 0
     },
     ".claude/hooks/validators/security.py": {
       "lines": 19,
-      "prose": 0
+      "prose": 0,
+      "docstring": 0
     },
     "__init__.py": {
       "lines": 3,
-      "prose": 1
+      "prose": 0,
+      "docstring": 1
     },
     "api/__init__.py": {
       "lines": 6,
-      "prose": 1
+      "prose": 0,
+      "docstring": 1
     },
     "api/app.py": {
       "lines": 362,
-      "prose": 36
+      "prose": 14,
+      "docstring": 21
     },
     "api/search.py": {
       "lines": 59,
-      "prose": 19
+      "prose": 7,
+      "docstring": 7
     },
     "app.py": {
       "lines": 407,
-      "prose": 41
+      "prose": 31,
+      "docstring": 13
     },
     "core/__init__.py": {
       "lines": 28,
-      "prose": 1
+      "prose": 0,
+      "docstring": 1
     },
     "core/config.py": {
       "lines": 95,
-      "prose": 48
+      "prose": 21,
+      "docstring": 19
     },
     "core/hardware.py": {
       "lines": 458,
-      "prose": 158
+      "prose": 78,
+      "docstring": 69
     },
     "core/llm_config.py": {
       "lines": 291,
-      "prose": 69
+      "prose": 15,
+      "docstring": 15
     },
     "ingestion/__init__.py": {
       "lines": 89,
-      "prose": 23
+      "prose": 17,
+      "docstring": 13
     },
     "ingestion/catalog.py": {
       "lines": 314,
-      "prose": 89
+      "prose": 24,
+      "docstring": 32
     },
     "ingestion/documents/__init__.py": {
-      "lines": 105,
-      "prose": 58
+      "lines": 57,
+      "prose": 6,
+      "docstring": 5
     },
     "ingestion/documents/content.py": {
-      "lines": 451,
-      "prose": 155
+      "lines": 430,
+      "prose": 26,
+      "docstring": 52
     },
     "ingestion/documents/download.py": {
-      "lines": 621,
-      "prose": 186
+      "lines": 598,
+      "prose": 51,
+      "docstring": 53
     },
     "ingestion/documents/extract.py": {
-      "lines": 1061,
-      "prose": 293
+      "lines": 1026,
+      "prose": 120,
+      "docstring": 79
     },
     "ingestion/documents/sections.py": {
-      "lines": 169,
-      "prose": 70
+      "lines": 127,
+      "prose": 20,
+      "docstring": 11
     },
     "ingestion/documents/storage.py": {
-      "lines": 207,
-      "prose": 95
+      "lines": 163,
+      "prose": 24,
+      "docstring": 29
     },
     "ingestion/fetcher.py": {
       "lines": 332,
-      "prose": 26
+      "prose": 7,
+      "docstring": 20
     },
     "reporting/__init__.py": {
       "lines": 5,
-      "prose": 4
+      "prose": 2,
+      "docstring": 3
     },
     "reporting/analytics.py": {
       "lines": 456,
-      "prose": 94
+      "prose": 56,
+      "docstring": 50
     },
     "reporting/charts.py": {
       "lines": 1331,
-      "prose": 228
+      "prose": 116,
+      "docstring": 120
     },
     "reporting/client.py": {
       "lines": 209,
-      "prose": 59
+      "prose": 14,
+      "docstring": 14
     },
     "reporting/composites.py": {
       "lines": 1652,
-      "prose": 413
+      "prose": 213,
+      "docstring": 236
     },
     "reporting/engine.py": {
       "lines": 257,
-      "prose": 76
+      "prose": 43,
+      "docstring": 8
     },
     "reporting/fmt.py": {
       "lines": 219,
-      "prose": 96
+      "prose": 35,
+      "docstring": 52
     },
     "reporting/selfcheck.py": {
       "lines": 663,
-      "prose": 110
+      "prose": 63,
+      "docstring": 58
     },
     "reporting/snapshot.py": {
       "lines": 638,
-      "prose": 136
+      "prose": 58,
+      "docstring": 83
     },
     "reporting/tokens.py": {
       "lines": 186,
-      "prose": 55
+      "prose": 44,
+      "docstring": 18
     },
     "reporting/typst_doc.py": {
       "lines": 2171,
-      "prose": 255
+      "prose": 136,
+      "docstring": 139
     },
     "run.py": {
       "lines": 56,
-      "prose": 6
+      "prose": 2,
+      "docstring": 4
     },
     "scripts/__init__.py": {
       "lines": 1,
-      "prose": 1
+      "prose": 0,
+      "docstring": 1
     },
     "scripts/checks.py": {
       "lines": 160,
-      "prose": 44
+      "prose": 18,
+      "docstring": 32
     },
     "scripts/cli.py": {
       "lines": 55,
-      "prose": 24
+      "prose": 10,
+      "docstring": 10
     },
     "scripts/gdrive_auth.py": {
       "lines": 289,
-      "prose": 50
+      "prose": 17,
+      "docstring": 27
     },
     "scripts/generate_report.py": {
       "lines": 124,
-      "prose": 17
+      "prose": 7,
+      "docstring": 7
     },
     "scripts/parity_gate.py": {
-      "lines": 253,
-      "prose": 78
+      "lines": 255,
+      "prose": 35,
+      "docstring": 34
     },
     "scripts/verify_documents.py": {
-      "lines": 753,
-      "prose": 102
+      "lines": 805,
+      "prose": 69,
+      "docstring": 61
     },
     "scripts/verify_gdrive.py": {
       "lines": 580,
-      "prose": 29
+      "prose": 12,
+      "docstring": 22
     },
     "scripts/verify_reporting.py": {
       "lines": 530,
-      "prose": 78
+      "prose": 48,
+      "docstring": 43
     },
     "scripts/verify_style.py": {
-      "lines": 355,
-      "prose": 34
+      "lines": 371,
+      "prose": 22,
+      "docstring": 32
     },
     "storage/__init__.py": {
       "lines": 21,
-      "prose": 1
+      "prose": 0,
+      "docstring": 1
     },
     "storage/gdrive.py": {
       "lines": 567,
-      "prose": 144
+      "prose": 38,
+      "docstring": 56
     }
   },
   "findings": {
-    "docstring": 69,
+    "docstring": 60,
     "annotations": 9,
     "generics": 0,
     "history": 5,

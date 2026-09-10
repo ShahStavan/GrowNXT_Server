@@ -1,32 +1,9 @@
 """Concurrent, resumable download of catalogued filings into the store.
 
-An ingest of one company pulls four to a dozen PDFs from unrelated hosts -- an
-exchange attachment handler, the issuer's investor-relations CDN, sometimes a
-registrar -- and any one of them can be slow or down. So downloads run on a
-small thread pool and results are consumed **as they land**: a 40 MB annual
-report behind a slow exchange host no longer holds up six transcripts that are
-already available.
-
-Four host behaviours shape the code, all observed rather than guessed:
-
-* Exchange hosts refuse requests without a browser user agent, and want a
-  referer from their own site. The referer is therefore derived per request from
-  the URL being fetched, because the catalogue mixes hosts freely.
-* Investor-relations sites answer a moved document with an HTML error page and a
-  **200**. A response is accepted only once its bytes parse as a PDF, so an
-  error page can never be filed as a filing.
-* A 404 is not a 503. Permanent statuses are not retried; transient ones back
-  off exponentially, honouring ``Retry-After`` when the host sends it.
-* Hosts rate-limit per connection, so each worker thread keeps its own
-  `Session` rather than sharing one `requests` does not promise to serialise.
-
-Bytes stream to a temporary file **inside the destination directory** and are
-renamed into place: an interrupted run leaves no truncated PDF for a later run
-to mistake for a complete one, and the rename is atomic because it never crosses
-a filesystem. The hash is computed from the stream, so a 40 MB filing is read
-once rather than twice.
-
-Google Python Style Guide Compliant.
+Hosts vary and any can be slow, so downloads run on a thread pool and results
+are consumed as they land. Bytes stream to a temporary inside the destination
+directory and are renamed into place. **Four observed host behaviours are
+load-bearing**: `.claude/specs/document-acquisition.md` section 2.
 """
 
 from __future__ import annotations

@@ -3,6 +3,10 @@
 Ruff has no rule that caps a docstring's length or measures a prose ratio, so
 the `code-style` skill's budget needs its own check or it drifts back.
 
+"Prose" is narrative only: comments, plus docstring summary lines beyond the
+one line per definition the skill mandates. `Args:`/`Returns:` blocks and that
+mandated line are excluded -- counting either would penalise compliance.
+
 Runs as a ratchet: `scripts/style_budget.json` records where each module
 stands today, and a module that gets worse fails. `--strict` enforces the
 final target instead, and `--update` lowers the ratchet after a refactor.
@@ -71,13 +75,21 @@ class ModuleStats:
     path: str
     lines: int = 0
     docstring: int = 0
+    documented: int = 0
     comment: int = 0
     findings: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def prose(self) -> int:
-        """Returns the docstring and comment line count."""
-        return self.docstring + self.comment
+        """Returns narrative prose only: comments plus over-long summaries.
+
+        Two exclusions, both because counting them would penalise the style
+        the skill mandates. The one-line docstring every definition owes: 13
+        public accessors in storage.py owe 13 lines, already 8% of the file.
+        And `Args:`/`Returns:` blocks, which the skill permits where a
+        signature is ambiguous -- they are structured, not narrative.
+        """
+        return max(0, self.docstring - self.documented) + self.comment
 
     @property
     def ratio(self) -> float:
@@ -152,7 +164,9 @@ def analyse(path: Path) -> ModuleStats | None:
         ):
             doc = ast.get_docstring(node, clean=False)
             if doc:
-                stats.docstring += len(doc.splitlines())
+                # Summary lines only; an Args:/Returns: block is structured.
+                stats.docstring += summary_length(doc)
+                stats.documented += 1
                 head = summary_length(doc)
                 if head > MAX_SUMMARY:
                     name = getattr(node, "name", "<module>")
@@ -196,7 +210,9 @@ def write_budget(modules: list[ModuleStats]) -> None:
         "never raise by hand.",
         "target": {"ratio": TARGET_RATIO, "floor": TARGET_FLOOR},
         "modules": {
-            m.path: {"lines": m.lines, "prose": m.prose} for m in modules if m.lines
+            m.path: {"lines": m.lines, "prose": m.prose, "docstring": m.docstring}
+            for m in modules
+            if m.lines
         },
         "findings": {
             kind: sum(len(m.findings.get(kind, [])) for m in modules)
@@ -291,7 +307,7 @@ def render_ranking(modules: list[ModuleStats]) -> str:
     )
     out = [
         "",
-        f"  {'prose':>6} {'lines':>6} {'doc':>5} {'cmt':>5} {'over':>6}  module",
+        f"  {'xs%':>5} {'lines':>6} {'doc':>5} {'cmt':>5} {'over':>6}  module",
     ]
     for m in rows[:15]:
         over = m.prose - m.allowance

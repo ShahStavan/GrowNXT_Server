@@ -1,27 +1,9 @@
 """The data model for everything extracted from a filing.
 
-This is the boundary between "read the PDF" and "decide what a chunk is": the
-extractor fills it, the chunker consumes it, and it is cached to disk in between
-so that re-chunking a 500-page annual report never means re-reading the PDF.
-
-Three decisions here shape what retrieval can later do:
-
-* **A block carries its heading trail** (`Block.path`, outermost first), so a
-  chunker can say "this paragraph is inside Management Discussion, under Segment
-  Review" from the document's own structure instead of guessing from keywords.
-* **A table stays a table.** Header rows are kept apart from the body, so the
-  header can be re-attached to every fragment the table is split into. A row
-  reading ``Revenue from operations 926,163 790,935`` without its header is not
-  evidence -- nothing in it says which column is which year, and that is the
-  commonest way a financial table becomes unusable downstream.
-* **A figure is a file plus what is known about it**: the image beside the
-  document, its caption, and the classifier verdict, so a later vision pass can
-  tell a bar chart from a logo.
-
-Every dataclass round-trips through `to_dict`/`from_dict`: this is a cache
-format as much as an in-memory model.
-
-Google Python Style Guide Compliant.
+The extractor fills it, the chunker consumes it, and it is cached in between
+so re-chunking never re-reads the PDF. Every dataclass round-trips through
+`to_dict`/`from_dict` -- a cache format as much as a model. Heading trails
+and table headers: `.claude/specs/document-acquisition.md` section 4.
 """
 
 from __future__ import annotations
@@ -361,11 +343,8 @@ class ExtractedDocument:
     def empty_pages(self) -> list[int]:
         """Returns the declared pages that yielded no content of any kind.
 
-        Blocks, not characters, are what count: a slide holding one chart and no
-        prose was extracted successfully, so counting characters would report
-        every page of an investor deck as a failure. This looks for the page that
-        produced *nothing* -- a scanned insert no text extractor recovers, which
-        is otherwise indistinguishable from a page that was genuinely blank.
+        Blocks, not characters: a chart-only slide extracted fine, so counting
+        characters would call every page of a deck a failure.
         """
         seen = self.blocks_by_page()
         total = self.n_source_pages or self.n_pages

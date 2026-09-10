@@ -1,34 +1,9 @@
-"""Locates the financial section of an annual report, before Docling sees it.
+"""Locates an annual report's financial section, before Docling sees it.
 
-An Indian annual report is mostly not financial. Of Adani Enterprises' 396-page
-FY2026 filing, the balance sheet, profit and loss, cash flow, notes, auditor's
-report and MD&A occupy pages 222 onward; the 221 before them are the notice of
-AGM, the directors' report and its annexures, the corporate governance report
-and the business responsibility statement. Docling costs seconds per page, so
-converting those 221 pages is the single largest avoidable expense in a run.
-
-The trick that makes this cheap and safe: the financial content of an annual
-report is a **contiguous tail**. Statements, notes and MD&A appear together, at
-the back, and nothing financial follows them. So this module does not have to
-classify every page -- it only has to find where that tail *starts*, which a
-plain text pass over the PDF does in tens of milliseconds per page against
-Docling's seconds. Docling then converts one contiguous `page_range`.
-
-**Two rules this module exists to enforce.**
-
-*Fail toward keeping pages.* Every uncertain outcome -- no anchor found, an
-unreadable PDF, a document too short to have sections -- returns None, meaning
-"convert the whole thing". Dropping a page makes it permanently unsearchable;
-converting a spare one costs seconds. The asymmetry is not close.
-
-*An anchor must be the financial statements, not a phrase near them.* The
-motivating false positive is real: page 191 of that filing begins "INDEPENDENT
-AUDITOR'S **CERTIFICATE** ON COMPLIANCE WITH THE CORPORATE GOVERNANCE
-REQUIREMENTS". A pattern matching merely "independent auditor" anchors there
-and drags in 31 pages of the governance report this module was written to
-exclude. `AUDITOR_REPORT` therefore requires the word "report".
-
-Google Python Style Guide Compliant.
+The financial content is a contiguous tail, so this only finds where that tail
+starts -- a pypdf pass at ~60 ms/page against Docling's seconds. Every
+uncertain case returns None, meaning convert everything. Both rules and the
+ADANIENT measurements: `.claude/specs/document-acquisition.md` section 5.
 """
 
 from __future__ import annotations
@@ -41,26 +16,22 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["PAGE_FILTER_SUFFIX", "financial_page_range", "page_texts"]
 
-# Appended to the extractor version when a run filters pages, because a
-# filtered extraction is not the same document as an unfiltered one and Layer 1
-# must re-extract rather than reuse it. Mirrors `FAST_TABLES_SUFFIX`.
+# Part of the extractor version: a filtered extraction is not the same
+# document as a full one and must not satisfy its cache entry.
 PAGE_FILTER_SUFFIX: str = "+fin-pages"
 
-# Characters of each page inspected. Section headings sit at the top of a page;
-# reading further finds the phrase "balance sheet" in running prose and anchors
-# on a page that merely mentions one.
+# Headings sit at the top of a page; reading further matches "balance sheet"
+# in running prose and anchors on a page that merely mentions one.
 HEAD_CHARS: int = 900
 
-# A document shorter than this has no section structure worth filtering -- a
-# concall transcript or an investor deck -- so it is always converted whole.
+# Below this there is no section structure to filter -- a transcript or deck.
 MIN_PAGES: int = 60
 
-# Anchors for the start of the financial tail. Each must name a statement, the
-# notes, or the auditor's *report*; see the module docstring on why "auditor"
-# alone is not allowed.
 ANCHORS: tuple[str, ...] = (
     r"management\s+discussion\s+and\s+analysis",
-    # "AUDITOR'S REPORT", "AUDITORS' REPORT", curly or straight apostrophe.
+    # "report" is required: a bare "independent auditor" also matches page
+    # 191's governance CERTIFICATE and drags in 31 pages. Guarded by
+    # check_page_filter.
     r"independent\s+auditor.{0,3}\s+report",
     r"balance\s+sheet",
     r"statement\s+of\s+profit\s+and\s+loss",
@@ -80,14 +51,8 @@ _ANCHOR_RE: tuple[re.Pattern[str], ...] = tuple(
 def page_texts(pdf: Path | str) -> list[str]:
     """Extracts each page's raw text, cheaply and without raising.
 
-    Args:
-        pdf: The PDF to read.
-
-    Returns:
-        One string per page, empty where a page yields nothing. An empty list
-        when the file cannot be opened at all -- the caller reads that as
-        "no opinion", not "no pages".
-
+    An empty list means the file could not be opened at all -- read that as
+    "no opinion", not "no pages".
     """
     try:
         from pypdf import PdfReader
@@ -115,15 +80,8 @@ def financial_page_range(
 ) -> tuple[int, int] | None:
     """Returns the 1-based inclusive page range holding the financial content.
 
-    Args:
-        pdf: The annual report to inspect.
-        min_pages: Documents shorter than this are never filtered.
-
-    Returns:
-        ``(start, end)`` for Docling's `page_range`, or None to convert the
-        whole document. None is returned whenever the answer is uncertain --
-        see the module docstring on failing toward keeping pages.
-
+    None means convert the whole document, and is returned for every
+    uncertain case.
     """
     texts = page_texts(pdf)
     total = len(texts)

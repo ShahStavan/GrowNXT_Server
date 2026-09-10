@@ -1,30 +1,9 @@
 """Docling-based extraction of a filing into text, tables and figures.
 
-This replaces a hand-tuned pdfplumber stack -- word boxes, a recursive XY-cut
-for multi-column pages, point thresholds for gutters and cells, a keyword
-classifier over running heads -- all of which reconstructed from geometry what a
-layout model reports directly, on thresholds calibrated against a handful of
-reports.
-
-What Docling supplies that the old stack could not:
-
-* **Reading order from a layout model**, so a three-column page or a two-page
-  spread comes out in the order a person reads it.
-* **Table structure from TableFormer**, a grid with its header cells marked --
-  the difference between evidence and a trap, since ``Revenue from operations
-  926,163 790,935`` means nothing without the header naming the years.
-* **A heading hierarchy**, so every block carries the trail it sits under: the
-  document's own statement of its structure, and what the chunker sections on.
-* **Figures as images, and OCR for pages that are pictures of text.** An
-  investor deck is mostly charts and a scanned filing is entirely one; both used
-  to yield nothing at all, silently.
-
-Two operational notes. Model weights download once, on the first conversion,
-into Docling's cache (``~/.cache/docling`` unless ``DOCLING_ARTIFACTS_PATH``
-says otherwise). And this is the expensive stage -- a 500-page annual report is
-minutes of CPU -- which is why its output is cached under ``extracted/``.
-
-Google Python Style Guide Compliant.
+The expensive stage -- minutes of CPU per annual report -- so output is cached
+under ``extracted/``. Weights download once into ``~/.cache/docling`` (or
+``DOCLING_ARTIFACTS_PATH``). Cache-key rules that must not change:
+`.claude/specs/document-acquisition.md` section 3.
 """
 
 from __future__ import annotations
@@ -128,12 +107,9 @@ class ExtractionError(RuntimeError):
 def extract_version(accurate_tables: bool = True, page_filter: bool = False) -> str:
     """Returns the extractor version a given set of content settings produces.
 
-    Both arguments change the extracted *text*, so both belong in the version
-    Layer 1 compares -- a filtered extraction holds a fraction of the pages an
-    unfiltered one does, and reusing one for the other would silently serve a
-    partial document. Device and thread count still have no place here: they
-    produce the same text, and including them would invalidate every cache the
-    moment a run moved machine.
+    Both arguments change the extracted text, so both belong here. Device and
+    thread count must not: they produce the same text, and including them would
+    invalidate every cache the moment a run moved machine.
 
     Args:
         accurate_tables: Whether TableFormer runs in accurate mode.
@@ -264,13 +240,9 @@ class Extractor:
         """Points Docling's models at the resolved device and thread count.
 
         Left unset, Docling runs four threads on any machine and resolves
-        ``device="auto"`` through whichever torch is installed -- which on a
-        CPU-only wheel means the GPU is never tried and nothing says so. This
-        makes both explicit and logs what was chosen, once per converter.
-
-        A Docling release that renames or drops `AcceleratorOptions` costs the
-        acceleration, not the run: the conversion then proceeds on Docling's
-        own defaults.
+        ``device="auto"`` through whichever torch is installed -- on a CPU-only
+        wheel the GPU is never tried and nothing says so. A Docling release that
+        drops `AcceleratorOptions` costs the acceleration, not the run.
         """
         from core.hardware import DOCLING_DEFAULT_THREADS, profile
 
@@ -321,12 +293,8 @@ class Extractor:
     ) -> dict[str, Any]:
         """Returns the inputs that determine this extraction's content.
 
-        Everything here changes the extracted text; nothing here is merely
-        about how fast it was produced. `device` and `num_threads` are
-        deliberately absent -- they yield the same document, and including
-        them would invalidate every cache the moment a run moved machine,
-        which is the same reasoning `extract_version` follows for the table
-        mode. `accurate_tables` needs no entry of its own because
+        `device` and `num_threads` are deliberately absent -- same reasoning as
+        `extract_version`. `accurate_tables` needs no entry because
         `self.version` already carries it as a suffix.
 
         Args:
@@ -781,11 +749,8 @@ class Extractor:
     def _report(self, document: ExtractedDocument) -> None:
         """Logs what the extraction recovered, and what it did not.
 
-        The second half matters more: an extraction that returns something for
-        most pages looks successful, so the pages that produced nothing are
-        named. A run of them inside an otherwise dense document is the signature
-        of image-only pages -- a reason to enable OCR, not a property of the
-        filing.
+        The second half matters more. A run of empty pages inside a dense
+        document is the signature of image-only pages -- enable OCR.
         """
         counts = document.kind_counts()
         logger.info(
