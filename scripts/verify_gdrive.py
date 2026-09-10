@@ -48,6 +48,7 @@ class FakeResponse:
         self.text = text or (json.dumps(payload) if payload is not None else "")
 
     def json(self):
+        """Returns the decoded JSON body, raising when there is none."""
         if self._payload is None:
             raise ValueError("no JSON body")
         return self._payload
@@ -87,6 +88,7 @@ class FakeDrive:
         json=None,
         timeout=None,  # noqa: ARG002 - mirrors the real transport's signature
     ):
+        """Records the call and returns the queued fake response."""
         params = params or {}
         self.calls.append((method, url, params, headers or {}))
 
@@ -252,7 +254,6 @@ def check_configuration(r: Report) -> None:
 
 def check_tokens(r: Report) -> None:
     """Access-token lifecycle: the part that keeps a long-running server alive."""
-
     fake = FakeDrive()
     store = _store(fake)
     first = store.access_token()
@@ -379,6 +380,7 @@ def check_tokens(r: Report) -> None:
     original = fake.request
 
     def flaky(method, url, **kwargs):
+        """Fails the first call with 401, then succeeds."""
         calls["n"] += 1
         if calls["n"] == 1:
             return FakeResponse(401, {"error": {"message": "Invalid Credentials"}})
@@ -396,7 +398,6 @@ def check_tokens(r: Report) -> None:
 
 def check_upload(r: Report) -> None:
     """Upload, replacement and sharing."""
-
     with tempfile.TemporaryDirectory() as tmp:
         pdf = _write_pdf(Path(tmp))
 
@@ -491,7 +492,6 @@ def check_upload(r: Report) -> None:
 
 def check_caching(r: Report) -> None:
     """The sidecar: what stops every request re-uploading the same report."""
-
     original_output = config.OUTPUT_DIR
     with tempfile.TemporaryDirectory() as tmp:
         config.OUTPUT_DIR = Path(tmp)

@@ -115,6 +115,7 @@ class DownloadRequest:
         doc_id: Stable identifier; also the PDF's filename in the store.
         url: URL to fetch.
         label: Period label, used only to make logs readable.
+
     """
 
     doc_id: str
@@ -141,6 +142,7 @@ class DownloadResult:
         attempts: HTTP attempts made.
         seconds: Wall time spent on this document.
         error: Failure reason when `ok` is False.
+
     """
 
     doc_id: str
@@ -172,6 +174,7 @@ class DownloadBatch:
 
     Attributes:
         total: Documents submitted.
+
     """
 
     total: int
@@ -215,6 +218,7 @@ class Downloader:
         verify: Read the stored PDF's page count as a structural check. Cheap --
             it parses the cross-reference table, not the content -- and it
             catches a truncated download that still begins with a PDF header.
+
     """
 
     def __init__(
@@ -245,6 +249,7 @@ class Downloader:
 
         Returns:
             A result. Failures are reported, never raised.
+
         """
         started = time.monotonic()
         target = self._store.pdf(request.doc_id)
@@ -317,6 +322,7 @@ class Downloader:
 
         Returns:
             A batch whose `completed` yields results as they land.
+
         """
         pending = list(requests_)
         if not pending:
@@ -418,6 +424,7 @@ class Downloader:
         Raises:
             _Transient: The attempt may succeed if repeated.
             _Permanent: The request itself is wrong; do not repeat it.
+
         """
         try:
             response = self._session.get(
@@ -487,6 +494,7 @@ class Downloader:
 
         Returns:
             (temporary path, sha256, bytes written).
+
         """
         destination.mkdir(parents=True, exist_ok=True)
         digest = hashlib.sha256()

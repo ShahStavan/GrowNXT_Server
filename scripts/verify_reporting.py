@@ -513,6 +513,7 @@ def main() -> int:
 
     Returns:
         Process exit code: 0 when every check held, 1 otherwise.
+
     """
     cli.setup(logging.ERROR, cli.PLAIN, stream=sys.stderr)
     banner("Report engine verification")

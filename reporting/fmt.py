@@ -53,6 +53,7 @@ def num(value: Any, decimals: int = 0) -> str:
 
     Returns:
         Grouped string, parenthesised when negative, or an em-dash.
+
     """
     if not _is_number(value):
         return DASH
@@ -115,6 +116,7 @@ def growth(current: Any, prior: Any) -> float | None:
     Returns:
         Growth in percentage points, or None when it cannot be computed. A
         non-positive base returns None rather than a misleading figure.
+
     """
     if not _is_number(current) or not _is_number(prior):
         return None
@@ -162,6 +164,7 @@ def pos_div(numerator: Any, denominator: Any) -> float | None:
     Returns:
         The quotient, or None when either input is missing or the
         denominator is zero or negative.
+
     """
     if not _is_number(numerator) or not _is_number(denominator):
         return None

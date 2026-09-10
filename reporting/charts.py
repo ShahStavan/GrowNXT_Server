@@ -64,6 +64,7 @@ def _canvas(
 
     Returns:
         The figure, its axis, and the x positions the labels sit at.
+
     """
     fig, axis = plt.subplots(figsize=(width, height))
     return fig, axis, list(range(len(labels)))
@@ -91,6 +92,7 @@ def _period_ticks(
             full-width annual chart relies on.
         **kwargs: Passed through to `set_xticklabels`, for the one chart that
             pins rotation explicitly.
+
     """
     axis.set_xticks(list(positions))
     if size is None:
@@ -524,6 +526,7 @@ def _ranked_panel(
     scatter because peers routinely share almost identical multiples — the
     scatter it replaces put HDFC Bank's label on top of Axis Bank's. Here
     each peer owns a row, so labels cannot collide by construction.
+
     """
     ordered = sorted(entries, key=lambda item: item[1])
     positions = list(range(len(ordered)))
@@ -1282,6 +1285,7 @@ def render_all(
     Returns:
         Mapping of chart key to path, omitting charts with insufficient
         data so the document can lay out around what actually exists.
+
     """
     snapshot_builders = {
         "annual": annual_revenue_profit,

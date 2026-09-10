@@ -49,6 +49,7 @@ def setup(
         fmt: One of `PLAIN`, `NAMED` or `TIMED`.
         stream: Where records go; stderr keeps them clear of piped output.
         datefmt: Timestamp format, for `TIMED`.
+
     """
     console_utf8()
     logging.basicConfig(level=level, format=fmt, stream=stream, datefmt=datefmt)

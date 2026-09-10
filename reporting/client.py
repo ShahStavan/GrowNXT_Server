@@ -68,6 +68,7 @@ class CollectorClient:
             timeout: Per-request timeout in seconds.
             max_retries: Additional attempts for transient failures.
             use_cache: Read from cache when a payload is already present.
+
         """
         self.base_url = base_url.rstrip("/")
         self.cache_dir = Path(cache_dir) if cache_dir else DEFAULT_CACHE_DIR
@@ -116,6 +117,7 @@ class CollectorClient:
         Returns:
             The payload's `data` member when present, else the whole
             document, or None when unavailable.
+
         """
         if name not in ENDPOINTS:
             raise KeyError("Unknown endpoint: " + name)
@@ -193,6 +195,7 @@ class CollectorClient:
         Raises:
             CollectorError: If no endpoint at all could be retrieved,
                 which means the ticker or the service is wrong.
+
         """
         out: dict[str, Any] = {}
         for name in ENDPOINTS:

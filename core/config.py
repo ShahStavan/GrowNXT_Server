@@ -68,6 +68,7 @@ def stock_dir(ticker: str, create: bool = False) -> Path:
 
     Returns:
         Path: ``OUTPUT_DIR/<TICKER>``.
+
     """
     path = OUTPUT_DIR / safe_ticker(ticker)
     if create:
@@ -88,6 +89,7 @@ def report_path(ticker: str, create_parent: bool = False) -> Path:
 
     Returns:
         Path: ``OUTPUT_DIR/<TICKER>/<TICKER>_report.pdf``.
+
     """
     folder = stock_dir(ticker, create=create_parent)
     return folder / f"{safe_ticker(ticker)}_report.pdf"

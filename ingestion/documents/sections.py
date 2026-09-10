@@ -87,6 +87,7 @@ def page_texts(pdf: Path | str) -> list[str]:
         One string per page, empty where a page yields nothing. An empty list
         when the file cannot be opened at all -- the caller reads that as
         "no opinion", not "no pages".
+
     """
     try:
         from pypdf import PdfReader
@@ -122,6 +123,7 @@ def financial_page_range(
         ``(start, end)`` for Docling's `page_range`, or None to convert the
         whole document. None is returned whenever the answer is uncertain --
         see the module docstring on failing toward keeping pages.
+
     """
     texts = page_texts(pdf)
     total = len(texts)

@@ -104,6 +104,7 @@ class StageState:
         return self.status == "done"
 
     def to_dict(self) -> dict[str, Any]:
+        """Returns the stage state as a JSON-ready dict."""
         out: dict[str, Any] = {
             "status": self.status,
             "fingerprint": self.fingerprint,
@@ -117,6 +118,7 @@ class StageState:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any] | None) -> StageState:
+        """Builds a StageState from a stored payload."""
         data = payload or {}
         return cls(
             status=str(data.get("status", "pending")),
@@ -141,23 +143,28 @@ class DocumentRecord:
     history: list[dict[str, Any]] = field(default_factory=list)
 
     def stage(self, name: str) -> StageState:
+        """Returns the named stage's state, creating it when absent."""
         if name not in self.stages:
             self.stages[name] = StageState()
         return self.stages[name]
 
     def record(self, event: str, **fields: Any) -> None:
+        """Appends a timestamped event to the record history."""
         entry: dict[str, Any] = {"event": event, "at": utc_now()}
         entry.update({k: v for k, v in fields.items() if v not in (None, "")})
         self.history.append(entry)
 
     @property
     def url_fingerprint(self) -> str:
+        """Returns the SHA-256 of the document's source URL."""
         return sha256_text(self.source_url)
 
     def relative_path(self, sub_dir: str, suffix: str) -> str:
+        """Returns the document's path within the store, as a POSIX string."""
         return sub_dir + "/" + self.doc_id + suffix
 
     def to_dict(self) -> dict[str, Any]:
+        """Returns the document record as a JSON-ready dict."""
         return {
             "doc_id": self.doc_id,
             "doc_type": self.doc_type,
@@ -171,6 +178,7 @@ class DocumentRecord:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> DocumentRecord:
+        """Builds a DocumentRecord from a stored payload."""
         stages = {
             name: StageState.from_dict(value)
             for name, value in (payload.get("stages") or {}).items()

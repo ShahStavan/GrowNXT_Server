@@ -74,6 +74,7 @@ class CatalogEntry:
         label: Human-readable period label.
         source_url: URL to download.
         period: Raw period fields as published upstream.
+
     """
 
     doc_id: str
@@ -92,6 +93,7 @@ class Catalog:
         company_name: Name as published by the catalogue.
         entries: Every document offered, in pipeline order.
         meta: Provenance and counts, stored in the registry for traceability.
+
     """
 
     ticker: str
@@ -203,6 +205,7 @@ def parse_catalog(ticker: str, payload: dict[str, Any]) -> Catalog:
     Returns:
         A Catalog with entries ordered annual reports first, then transcripts,
         then presentations, each newest first.
+
     """
     entries = _annual_entries(payload) + _concall_entries(payload)
     entries.sort(key=lambda entry: (entry.doc_type, entry.doc_id), reverse=True)
@@ -249,6 +252,7 @@ def fetch_catalog(
     Raises:
         CatalogError: If the catalogue cannot be retrieved or holds no
             documents, which means the ticker or the service is wrong.
+
     """
     # Percent-encode the symbol: an unescaped '&' in a ticker such as 'M&M'
     # would otherwise terminate the path and start a query string.

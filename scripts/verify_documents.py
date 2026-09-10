@@ -88,6 +88,7 @@ def _pdf_bytes(pages: int = 3, pad: int = 20000) -> bytes:
 
     Returns:
         The PDF's bytes.
+
     """
     from pypdf import PdfWriter
 

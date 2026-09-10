@@ -1,0 +1,208 @@
+{
+  "_comment": "Ratchet for scripts/verify_style.py. Lower with --update; never raise by hand.",
+  "target": {
+    "ratio": 0.08,
+    "floor": 12
+  },
+  "modules": {
+    ".claude/hooks/post_tool_use.py": {
+      "lines": 108,
+      "prose": 8
+    },
+    ".claude/hooks/pre_tool_use.py": {
+      "lines": 31,
+      "prose": 0
+    },
+    ".claude/hooks/stop.py": {
+      "lines": 98,
+      "prose": 8
+    },
+    ".claude/hooks/validators/commands.py": {
+      "lines": 25,
+      "prose": 0
+    },
+    ".claude/hooks/validators/paths.py": {
+      "lines": 31,
+      "prose": 0
+    },
+    ".claude/hooks/validators/security.py": {
+      "lines": 19,
+      "prose": 0
+    },
+    "__init__.py": {
+      "lines": 3,
+      "prose": 1
+    },
+    "api/__init__.py": {
+      "lines": 6,
+      "prose": 1
+    },
+    "api/app.py": {
+      "lines": 362,
+      "prose": 36
+    },
+    "api/search.py": {
+      "lines": 59,
+      "prose": 19
+    },
+    "app.py": {
+      "lines": 407,
+      "prose": 41
+    },
+    "core/__init__.py": {
+      "lines": 28,
+      "prose": 1
+    },
+    "core/config.py": {
+      "lines": 95,
+      "prose": 48
+    },
+    "core/hardware.py": {
+      "lines": 458,
+      "prose": 158
+    },
+    "core/llm_config.py": {
+      "lines": 291,
+      "prose": 69
+    },
+    "ingestion/__init__.py": {
+      "lines": 89,
+      "prose": 23
+    },
+    "ingestion/catalog.py": {
+      "lines": 314,
+      "prose": 89
+    },
+    "ingestion/documents/__init__.py": {
+      "lines": 105,
+      "prose": 58
+    },
+    "ingestion/documents/content.py": {
+      "lines": 451,
+      "prose": 155
+    },
+    "ingestion/documents/download.py": {
+      "lines": 621,
+      "prose": 186
+    },
+    "ingestion/documents/extract.py": {
+      "lines": 1061,
+      "prose": 293
+    },
+    "ingestion/documents/sections.py": {
+      "lines": 169,
+      "prose": 70
+    },
+    "ingestion/documents/storage.py": {
+      "lines": 207,
+      "prose": 95
+    },
+    "ingestion/fetcher.py": {
+      "lines": 332,
+      "prose": 26
+    },
+    "reporting/__init__.py": {
+      "lines": 5,
+      "prose": 4
+    },
+    "reporting/analytics.py": {
+      "lines": 456,
+      "prose": 94
+    },
+    "reporting/charts.py": {
+      "lines": 1331,
+      "prose": 228
+    },
+    "reporting/client.py": {
+      "lines": 209,
+      "prose": 59
+    },
+    "reporting/composites.py": {
+      "lines": 1652,
+      "prose": 413
+    },
+    "reporting/engine.py": {
+      "lines": 257,
+      "prose": 76
+    },
+    "reporting/fmt.py": {
+      "lines": 219,
+      "prose": 96
+    },
+    "reporting/selfcheck.py": {
+      "lines": 663,
+      "prose": 110
+    },
+    "reporting/snapshot.py": {
+      "lines": 638,
+      "prose": 136
+    },
+    "reporting/tokens.py": {
+      "lines": 186,
+      "prose": 55
+    },
+    "reporting/typst_doc.py": {
+      "lines": 2171,
+      "prose": 255
+    },
+    "run.py": {
+      "lines": 56,
+      "prose": 6
+    },
+    "scripts/__init__.py": {
+      "lines": 1,
+      "prose": 1
+    },
+    "scripts/checks.py": {
+      "lines": 160,
+      "prose": 44
+    },
+    "scripts/cli.py": {
+      "lines": 55,
+      "prose": 24
+    },
+    "scripts/gdrive_auth.py": {
+      "lines": 289,
+      "prose": 50
+    },
+    "scripts/generate_report.py": {
+      "lines": 124,
+      "prose": 17
+    },
+    "scripts/parity_gate.py": {
+      "lines": 253,
+      "prose": 78
+    },
+    "scripts/verify_documents.py": {
+      "lines": 753,
+      "prose": 102
+    },
+    "scripts/verify_gdrive.py": {
+      "lines": 580,
+      "prose": 29
+    },
+    "scripts/verify_reporting.py": {
+      "lines": 530,
+      "prose": 78
+    },
+    "scripts/verify_style.py": {
+      "lines": 355,
+      "prose": 34
+    },
+    "storage/__init__.py": {
+      "lines": 21,
+      "prose": 1
+    },
+    "storage/gdrive.py": {
+      "lines": 567,
+      "prose": 144
+    }
+  },
+  "findings": {
+    "docstring": 69,
+    "annotations": 9,
+    "generics": 0,
+    "history": 5,
+    "length": 83
+  }
+}

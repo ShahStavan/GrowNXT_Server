@@ -635,6 +635,7 @@ def run(
         A SelfCheck holding one record per verification, each retaining both
         sides of its comparison so the report can print the residual rather
         than merely assert success.
+
     """
     checks: list[Check] = []
     _cashflow_articulation(snap, checks)

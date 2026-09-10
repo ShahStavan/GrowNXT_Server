@@ -127,6 +127,7 @@ def authorise(client_id: str, client_secret: str) -> str:
 
     Returns:
         str: The refresh token.
+
     """
     port = _free_port()
     redirect_uri = f"http://127.0.0.1:{port}/"
@@ -224,6 +225,7 @@ def check() -> int:
 
     Returns:
         int: Process exit code.
+
     """
     try:
         store = DriveStore()

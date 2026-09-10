@@ -63,6 +63,7 @@ class DocumentStore:
     Attributes:
         ticker: Directory-safe ticker symbol.
         root: The stock's directory, ``<data_dir>/<TICKER>``.
+
     """
 
     ticker: str
@@ -80,6 +81,7 @@ class DocumentStore:
         Returns:
             The store. Directories are created by `ensure`, so naming a path
             cannot leave empty directories behind.
+
         """
         symbol = safe_ticker(ticker)
         base = Path(data_dir) if data_dir is not None else OUTPUT_DIR
@@ -125,6 +127,7 @@ class DocumentStore:
         Returns:
             Bytes reclaimed. Never raises: an un-deletable temporary is a
             wasted megabyte, not a failed run.
+
         """
         cutoff = time.time() - max(0.0, ttl_hours) * 3600.0
         reclaimed = 0
@@ -174,6 +177,7 @@ class DocumentStore:
         Returns:
             The path, zero-padded so a directory listing sorts into document
             order -- what makes a figure directory reviewable by eye.
+
         """
         name = f"p{max(0, page):04d}-{max(0, index):02d}{FIGURE_SUFFIX}"
         return self.figure_dir(doc_id) / name

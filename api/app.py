@@ -89,6 +89,7 @@ def _pdf(sym: str, refresh: bool) -> tuple[Path, bool]:
     Raises:
         ReportError: If the collector has nothing to report on, or Typst
             refuses the generated source.
+
     """
     pdf = report_path(sym)
     if pdf.exists() and not refresh:

@@ -139,6 +139,7 @@ def matplotlib_rc() -> dict:
 
     Returns:
         Mapping suitable for `matplotlib.rcParams.update`.
+
     """
     return {
         "font.family": "sans-serif",

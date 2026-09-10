@@ -219,6 +219,7 @@ class HardwareProfile:
             established without torch's help.
         overrides: Names of the settings that came from the environment or a
             caller rather than from detection.
+
     """
 
     device: str = "cpu"
@@ -305,6 +306,7 @@ def profile(
 
     Returns:
         The resolved profile. Pure: nothing is applied to the process.
+
     """
     overrides: list[str] = []
 
@@ -411,6 +413,7 @@ def configure(
 
     Returns:
         The profile that was applied.
+
     """
     prof = resolved or profile(
         device=device,

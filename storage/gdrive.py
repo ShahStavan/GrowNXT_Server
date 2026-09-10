@@ -85,6 +85,7 @@ class DriveFile:
         direct_link: Direct download URL.
         shared: Whether link-sharing is in place.
         uploaded_at: UTC ISO-8601 timestamp of the upload.
+
     """
 
     file_id: str
@@ -140,6 +141,7 @@ def save_refresh_token(refresh_token: str) -> Path:
 
     Returns:
         Path: The file written.
+
     """
     path = _token_file()
     payload = {"refresh_token": refresh_token, "saved_at": _now_iso()}
@@ -171,6 +173,7 @@ class DriveStore:
         folder_id: Destination folder. Defaults to ``GDRIVE_FOLDER_ID``; when
             unset, files land in the account's root.
         session: HTTP session, injectable for tests.
+
     """
 
     def __init__(
@@ -217,6 +220,7 @@ class DriveStore:
         Raises:
             DriveAuthError: If the grant is no longer valid.
             DriveError: On a transport failure.
+
         """
         try:
             response = self.session.post(
@@ -353,6 +357,7 @@ class DriveStore:
 
         Raises:
             DriveError: If the upload or the sharing call fails.
+
         """
         path = Path(pdf_path)
         if not path.exists():
@@ -413,6 +418,7 @@ class DriveStore:
 
         Returns:
             bool: True when link-sharing is in place.
+
         """
         body = self._call(
             "GET",
@@ -534,6 +540,7 @@ def ensure_uploaded(
 
     Returns:
         DriveFile: The file in Drive.
+
     """
     path = Path(pdf_path)
     digest = _sha256(path)

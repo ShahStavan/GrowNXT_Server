@@ -124,8 +124,8 @@ version string folded into a cache key.
 | Frozen thing | Where | Why |
 | :--- | :--- | :--- |
 | `EXTRACT_VERSION`, `extract_version()` | `documents/extract.py:64,128` | folded into `_cache_key`; a change invalidates every extraction on disk |
-| `PAGE_FILTER_SUFFIX`, `FAST_TABLES_SUFFIX` | `sections.py:53`, `extract.py:81` | same cache key |
-| The 20 self-check names | `reporting/selfcheck.py` | asserted by `check_cached_reports_verify` |
+| `PAGE_FILTER_SUFFIX`, `FAST_TABLES_SUFFIX` | `sections.py:47`, `extract.py:81` | same cache key |
+| The self-check count | `reporting/selfcheck.py` | **16 literal `name=` sites expand to the 20 runtime checks.** `check_cached_reports_verify` asserts they *pass*, never that they all still exist -- a refactor deleting one would go unnoticed. `verify_style.py:check_frozen` now pins the count. |
 | `pos_div` / `pos_ratio` sign semantics | `reporting/fmt.py` | the one docstring whose *content* is a contract |
 | `MAPPING_FILE_PATH`, `safe_ticker` | `core/config.py:27` | path construction across the tree |
 
@@ -173,18 +173,42 @@ not a bonus.
 
 ## E. Phases
 
-### Phase 0 — Enforcement first (half day)
+### Phase 0 — Enforcement first ✅ **done 2026-09-10**
 
-Nothing is refactored until the ratchet exists, or Phase 1's gains leak back.
+Shipped: `scripts/verify_style.py` + `scripts/style_budget.json`, wired into
+`parity_gate.py`. `pyproject.toml` gained `D`, ignoring `D401` (F3), `D203`/`D213` (conflicts)
+and `D105`/`D107`; the dead per-file-ignores are gone (F4).
 
-- `scripts/verify_style.py` — per-module prose ratio, docstring-length findings, budget from C.1,
-  built on `scripts/checks.py`. Promote the AST measurement used in this plan.
-- Wire it into `parity_gate.py` `SUITES`, and record the new baseline.
-- `pyproject.toml`: add `D`, ignore `D401` (F3); delete the dead per-file-ignores (F4).
-- `ruff check --select D --fix` for the 84 auto-fixable.
+**Parity gate baseline: 14 of 16**, up from 12/14. Same two pre-existing failures.
 
-*Gate*: parity gate green at its new baseline; `verify_style.py` reports today's 21% as failing,
-with a per-module ranking that matches this plan's tables.
+`verify_style.py` reports 21% tree-wide against an 8% target, and its per-module ranking
+reproduces this plan's tables exactly: `documents/__init__.py` 55%, `core/config.py` 49%,
+`storage.py` 45%, `fmt.py` 43%, `cli.py` 43%, `sections.py` 41%.
+
+Recorded findings, now ratcheted: **69** docstring summaries over 5 lines, **83** functions over
+40 lines, **9** public defs missing an annotation, **5** history comments, **0** legacy generics
+(already clean).
+
+**Four deviations from this plan as written:**
+
+1. **It is a ratchet, not a fails-until-done check.** The plan wanted `verify_style.py` red until
+   the refactor lands. A permanently-red gate check gets ignored, and it cannot tell a regression
+   from the pre-existing debt. So `style_budget.json` records today's numbers as a ceiling and
+   the default mode fails only on *increase* — regression is blocked from now, not from Phase 5.
+   `--strict` enforces the 8% target (fails today, 15/48 modules pass), `--update` lowers the
+   ceiling after each phase, `--ranking` prints the table.
+2. **14 one-line docstrings written**, beyond the 84 auto-fixes the plan scoped. Adopting `D`
+   left 34 `undocumented-public-*` findings, which would have held `ruff check` red and taken the
+   gate with it. `app.py` 1, `ingestion/fetcher.py` 8, `verify_gdrive.py` 3, `verify_style.py` 3.
+3. **`D105`/`D107` ignored as noise.** A docstring reading `"""Initialises the downloader."""` on
+   `__init__` restates the signature, which the skill itself calls worse than nothing. Document
+   the class instead.
+4. **`.claude/hooks/*.py` excluded from `D`.** Claude Code harness scripts, not shipped code;
+   12 of the 34 findings were there and the skill does not govern them.
+
+*Gate*: 14/16. `generate_report.py WIPRO` produces a **byte-identical** 719,879-byte PDF with
+20/20 self-checks — and `git diff` confirms criterion 7: the only non-docstring lines changed in
+the whole phase are the two that wire the new suite into the gate.
 
 ### Phase 1 — `ingestion/documents/` (1 day) — best coverage, worst bloat
 
@@ -264,7 +288,7 @@ six of the skill's top ten.
 
 ## H. Checklist
 
-- [ ] Phase 0 — `verify_style.py`, `D` minus `D401`, dead per-file-ignores removed, baseline recorded
+- [x] Phase 0 — `verify_style.py` ratchet, `D` minus `D401`/`D105`/`D107`, dead per-file-ignores removed, gate baseline 14/16
 - [ ] Phase 1 — `ingestion/documents/` five modules; 53/53 checks hold
 - [ ] Phase 2 — `storage/gdrive.py`, `reporting/fmt.py`
 - [ ] Phase 3 — reporting spec created; `verify_reporting.py` 7 → ~25 checks; then the big files

@@ -95,6 +95,7 @@ fastapi_app.add_middleware(
 
 @fastapi_app.get("/health")
 def health() -> dict[str, str]:
+    """Returns a liveness payload for the platform."""
     return {"status": "ok", "app": "grownxt-server"}
 
 

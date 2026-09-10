@@ -88,10 +88,27 @@ select = [
     "RSE",    # flake8-raise
     "ARG",    # flake8-unused-arguments
     "PTH",    # flake8-use-pathlib
+    "D",      # pydocstyle -- see the D401 note below
 ]
 
 ignore = [
+    # Long lines are wrapped by the formatter at line-length 88, never
+    # rejected. Keeping this off is deliberate while prose is being shortened.
     "E501",
+    # Non-imperative mood. Wants "Return the quotient" over "Returns the
+    # quotient" -- 275 first-word edits for no readability gain, and the
+    # reference style in .agents/skills/code-style is itself non-imperative.
+    # Do not re-enable.
+    "D401",
+    # Conflicts, resolved: keep D211 (no blank line before class) over D203,
+    # and D212 (summary on the first line) over D213.
+    "D203",
+    "D213",
+    # Magic methods and __init__. A docstring reading "Initialises the
+    # downloader." restates the signature, which the skill calls out as worse
+    # than nothing. Document the class instead.
+    "D105",
+    "D107",
 ]
 
 fixable = [
@@ -111,18 +128,12 @@ unfixable = [
     "T201",
 ]
 
-# Pre-Docling-refactor scripts. Both reference DocumentRegistry, IngestionPipeline,
-# DEFAULT_EMBED_MODEL, and (verify_ingestion.py only) ingestion.layout/parsers/embedder/
-# prompts -- none of which exist in the current catalog -> download -> extract -> chunk
-# -> indexer architecture. Neither can run until rewritten against the current
-# pipeline; ignored here rather than fixed line-by-line since the undefined names are
-# the whole point of the file, not a style nit.
-"scripts/ingest_documents.py" = [
-    "F821",
+# Claude Code harness hooks, not project code. The code-style skill governs
+# what ships; requiring Google-style docstrings here is scope creep.
+".claude/hooks/*.py" = [
+    "D",
 ]
-"scripts/verify_ingestion.py" = [
-    "F821",
-]
+
 
 [tool.ruff.format]
 quote-style = "double"

@@ -224,6 +224,7 @@ def _table(
     Returns:
         Typst markup, or an italic note when there are no rows — an empty
         table frame is worse than an explicit absence.
+
     """
     if not rows:
         return f"#text(size: {tokens.SIZE_SMALL}, fill: {C_MUTED})[_Not reported by the data provider._]\n"
@@ -283,6 +284,7 @@ def _section(title: str, question: str = "") -> str:
         question: Optional one-line statement of what the section answers,
             which is what keeps the grouping legible to a reader who is
             scanning rather than reading.
+
     """
     subtitle = ""
     if question:
@@ -2146,6 +2148,7 @@ def build_document(
 
     Returns:
         Typst source ready to compile.
+
     """
     stamp = as_of or date.today().strftime("%d %b %Y")
     doc = Doc(snap, derived, comp, check, charts, findings=findings)

@@ -355,6 +355,7 @@ def _income_rows(payload: Any, prefix: str) -> list[IncomePeriod]:
 
     Returns:
         Periods in payload order (oldest first).
+
     """
     out: list[IncomePeriod] = []
     for row in _rows(payload):
@@ -482,6 +483,7 @@ def build_snapshot(ticker: str, payloads: dict[str, Any]) -> CompanySnapshot:
         A populated snapshot. Endpoints that failed leave their fields
         empty and append an entry to `warnings` rather than raising, so a
         partial report still renders with honest gaps.
+
     """
     snap = CompanySnapshot(ticker=ticker.upper())
 

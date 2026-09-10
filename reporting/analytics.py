@@ -403,6 +403,7 @@ def compute(snap: CompanySnapshot) -> DerivedAnalytics:
     Returns:
         DerivedAnalytics, with `notes` recording any metric family that had
         to be withheld so the report can say so rather than omit silently.
+
     """
     notes: list[str] = []
     annual = _annual_metrics(snap)

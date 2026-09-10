@@ -627,6 +627,7 @@ def _signal(
 
     Returns:
         The signal, scored or explicitly unavailable.
+
     """
     known = value is not None and comparator is not None
     return ScoreTest(
@@ -666,6 +667,7 @@ def _piotroski_at(
         A populated Piotroski record. Signals that cannot be evaluated carry
         a reason and contribute to neither the numerator nor the denominator
         of the score.
+
     """
     income, balance, cash = rows[position]
     prior_income, prior_balance, prior_cash = rows[position - 1]
@@ -1187,6 +1189,7 @@ def _balance_corroboration(
 
     Returns:
         Change in total debt, and change in share count as a percentage.
+
     """
     window = {c.period for c in years}
     balances = [b for b in snap.balance if b.period in window]
@@ -1229,6 +1232,7 @@ def _sources_and_uses(snap: CompanySnapshot, window: int) -> SourcesAndUses:
         A SourcesAndUses record. Years missing any of the five inputs are
         excluded from the accumulation rather than treated as nil, and the
         window actually used is recorded on the result.
+
     """
     usable = [
         c
@@ -1361,6 +1365,7 @@ def _reinvestment_window(
         Total reinvestment, total NOPAT and the aggregate rate; all three are
         None unless every year in the window reports both figures, since a
         partial total would be read as a complete one.
+
     """
     reinvestments = [y.reinvestment for y in years if y.reinvestment is not None]
     nopats = [y.nopat for y in years if y.nopat is not None]
@@ -1603,6 +1608,7 @@ def compute(
         A Composites record. Frameworks that do not apply to the company
         carry a withholding reason instead of a number, and `notes` collects
         anything the report should state about what was withheld and why.
+
     """
     financial = is_financial(snap)
     rows = _aligned(snap)

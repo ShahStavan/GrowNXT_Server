@@ -56,6 +56,7 @@ PACKAGES: tuple[str, ...] = (
 # exactly why they get their own sweep.
 SCRIPTS: tuple[str, ...] = (
     "scripts.generate_report",
+    "scripts.verify_style",
     "scripts.verify_documents",
     "scripts.verify_reporting",
     "scripts.verify_gdrive",
@@ -69,6 +70,7 @@ KNOWN_BROKEN: dict[str, str] = {}
 
 # Verification suites, slowest last. Skipped by `--quick`.
 SUITES: tuple[str, ...] = (
+    "scripts/verify_style.py",
     "scripts/verify_reporting.py",
     "scripts/verify_documents.py",
 )
@@ -88,6 +90,7 @@ def _import_ok(module: str) -> tuple[bool, str]:
     Returns:
         ``(ok, detail)``; `detail` is the exception type and message when the
         import failed, and empty otherwise.
+
     """
     try:
         importlib.import_module(module)
@@ -110,6 +113,7 @@ def _run(args: tuple[str, ...], timeout: int = 900) -> tuple[bool, str]:
     Returns:
         ``(ok, detail)`` where `detail` is the last meaningful output line on
         failure.
+
     """
     try:
         proc = subprocess.run(
@@ -143,6 +147,7 @@ def _failure_detail(output: str, returncode: int) -> str:
 
     Returns:
         A single line, truncated for the listing.
+
     """
     lines = [ln.rstrip() for ln in output.splitlines() if ln.strip()]
     if not lines:

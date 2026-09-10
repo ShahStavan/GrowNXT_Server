@@ -71,6 +71,7 @@ def generate_report(
     Raises:
         ReportError: If the snapshot is too sparse to report on, or Typst
             fails to compile the generated source.
+
     """
     # The unfolded symbol addresses the collector; the folded one addresses
     # the filesystem, because Indian symbols carry ampersands.
@@ -235,6 +236,7 @@ def _sweep_build(work_dir: Path, pdf_path: Path) -> int:
 
     Returns:
         How many entries were removed.
+
     """
     removed = 0
     patterns = list(BUILD_GLOBS) + ["*.tmp", "*.temp"]

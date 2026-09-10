@@ -36,6 +36,7 @@ def find(q: str) -> list[Hit]:
 
     Returns:
         Matching company records, in the order the service returns them.
+
     """
     q = (q or "").strip()
     if len(q) < MIN_CHARS:

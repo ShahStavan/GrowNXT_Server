@@ -80,6 +80,7 @@ def clean_thinking_tokens(text: str) -> str:
 
     Returns:
         Cleaned string with thinking tokens removed.
+
     """
     if not text:
         return ""
@@ -98,6 +99,7 @@ def extract_thinking_and_content(text: str) -> tuple[str, str]:
 
     Returns:
         Tuple of (thinking_trace, clean_content).
+
     """
     if not text:
         return "", ""
@@ -153,6 +155,7 @@ def generate_llm_response(
 
     Raises:
         LLMError: If the request fails or the response carries no content.
+
     """
     full_prompt = (
         f"{prompt}\n\nGround Truth Context Data:\n{context}" if context else prompt
@@ -209,6 +212,7 @@ def stream_llm_response(
 
     Yields:
         str: Individual text token chunks as they arrive from the SLM.
+
     """
     full_prompt = (
         f"{prompt}\n\nGround Truth Context Data:\n{context}" if context else prompt

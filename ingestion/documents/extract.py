@@ -142,6 +142,7 @@ def extract_version(accurate_tables: bool = True, page_filter: bool = False) -> 
     Returns:
         `EXTRACT_VERSION` with a suffix per non-default setting, in a fixed
         order so the same settings always yield the same string.
+
     """
     from ingestion.documents.sections import PAGE_FILTER_SUFFIX
 
@@ -178,6 +179,7 @@ class Extractor:
         num_threads: CPU threads for model inference and PDF parsing. None
             resolves to the machine's physical core count; Docling's own
             default is four regardless of the machine.
+
     """
 
     ocr: bool = True
@@ -210,6 +212,7 @@ class Extractor:
 
         Raises:
             ExtractionError: If Docling is not installed.
+
         """
         if self._converter is None:
             self._converter = self._build()
@@ -338,6 +341,7 @@ class Extractor:
         Returns:
             A JSON-round-trippable dict, compared whole against what an
             extraction on disk recorded.
+
         """
         return {
             "extractor": self.version,
@@ -422,6 +426,7 @@ class Extractor:
         Raises:
             ExtractionError: If Docling is unavailable or the file cannot be
                 opened as a PDF at all.
+
         """
         source = Path(pdf)
         if not source.exists():

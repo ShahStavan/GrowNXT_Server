@@ -73,6 +73,7 @@ class Table:
             no recognisable header -- worth recording rather than papering over.
         caption: Caption as printed, when one was found.
         page: Page the table starts on.
+
     """
 
     rows: list[list[str]] = field(default_factory=list)
@@ -126,6 +127,7 @@ class Table:
 
         Returns:
             The markdown table, or "" when there are no rows.
+
         """
         if not self.rows:
             return ""
@@ -184,6 +186,7 @@ class Figure:
         page: Page the figure was cropped from.
         width: Pixel width of the saved image.
         height: Pixel height of the saved image.
+
     """
 
     path: str = ""
@@ -234,6 +237,7 @@ class Block:
             phase-2 sectioning is built on.
         table: Structure, when `kind` is a table.
         figure: Image reference, when `kind` is a figure.
+
     """
 
     kind: str
@@ -304,6 +308,7 @@ class ExtractedDocument:
         extractor: Version tag of the code that produced this.
         blocks: Every block, in reading order.
         meta: Counters and extractor settings, for diagnosis.
+
     """
 
     doc_id: str

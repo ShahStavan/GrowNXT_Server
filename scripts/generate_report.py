@@ -88,6 +88,7 @@ def main() -> int:
 
     Returns:
         0 when every report was written, 1 otherwise.
+
     """
     args = _parser().parse_args()
     cli.setup(
