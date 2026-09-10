@@ -58,6 +58,8 @@ RAG_EVALS_AND_ANTI_HALLUCINATION_FRAMEWORK.md
 # System Latency Optimization Architecture Documentation
 SYSTEM_LATENCY_OPTIMIZATION_ARCHITECTURE.md
 
+# Scratch space for verification runs
+.scratch_check/
 
-# Batch job logs (ingestion/runlog.py)
+# Batch job logs
 logs/
