@@ -34,6 +34,9 @@ It is a prototype. These would be regressions here:
 - Missing docstrings (`merge_dicts` has none). One line, always.
 - `##### Banner #####` comment blocks. Noise.
 - No formatter config. Ruff at line-length 88 stays authoritative; the stop hook enforces it.
+- Non-imperative docstrings are fine here — `"""Returns the quotient."""` stays. Ruff's `D401`
+  would flag 275 of them for no readability gain, and the reference itself is non-imperative
+  (`"""Analyzes fundamental data..."""`). `D401` is in `pyproject.toml`'s ignore list.
 - 40-line functions doing five things. `fundamentals_agent` scores profitability, growth,
   health, ratios, runs a DCF, aggregates and builds a message. Split that.
 
@@ -108,22 +111,25 @@ the reporting spec. **That is the move: keep the insight, lose the essay.**
 
 ## Refactor order
 
-By measured prose ratio and absolute docstring lines. Highest leverage first.
+**Coverage first, not bloat first.** Prose ratio and test coverage are inversely related in this
+repo, so ranking by bloat alone does the riskiest edits with no safety net. Full ordering,
+per-phase gates and the modules that need tests written first are in
+[`.claude/plans/code-style-refactor.md`](../../../.claude/plans/code-style-refactor.md).
 
-| # | Module | Lines | Doc | Prose | Target |
-| :--- | :--- | ---: | ---: | ---: | :--- |
-| 1 | `ingestion/documents/__init__.py` | 105 | 54 | **55%** | 49-line module docstring → 5 |
-| 2 | `core/config.py` | 93 | 40 | **49%** | 13-line `report_path` docstring → 1 |
-| 3 | `ingestion/documents/storage.py` | 203 | 80 | **45%** | 21-line module docstring → 5 |
-| 4 | `reporting/fmt.py` | 216 | 92 | **43%** | the `pos_div` case above |
-| 5 | `scripts/cli.py` | 54 | 20 | **43%** | 8-line `setup` docstring → 1 |
-| 6 | `ingestion/documents/sections.py` | 167 | 52 | **41%** | 31-line module docstring → 5 |
-| 7 | `reporting/composites.py` | 1,646 | 363 | 25% | largest absolute; 44-line module docstring |
-| 8 | `ingestion/documents/extract.py` | 1,056 | 217 | 27% | 30-line `run` docstring; split the function |
-| 9 | `reporting/typst_doc.py` | 2,168 | 210 | 12% | biggest file; 27-line `build_document` |
-| 10 | `core/hardware.py` | 455 | 129 | 34% | 36-line module docstring |
+The short version:
 
-Aim for **≤8% prose per module** and no docstring over 5 lines outside a genuine `Args:` block.
+| Do now — well covered | Checks | Do after adding tests | Checks |
+| :--- | :--- | :--- | :--- |
+| `ingestion/documents/*` (55%, 45%, 41%, 27% prose) | 53 | `reporting/*` (25% and up, 7,761 lines) | 7 |
+| `storage/gdrive.py` (24%) | 33 | `core/*` (49%, 34%) | **0** |
+| `reporting/fmt.py` (43%) | covered directly | `scripts/cli.py` (43%), `api/*` | **0** |
+
+Budget: **≤8% prose per module** (or 12 lines, whichever is larger — a 93-line module still
+deserves a docstring) and no docstring over 5 lines without an `Args:` block earning it.
+
+**The budget is enforced by `scripts/verify_style.py`, not by ruff.** No ruff rule caps docstring
+length or measures a prose ratio, so without that check these numbers drift straight back — the
+21% this tree carries was written under a Google-style mandate that also went unmeasured.
 
 ---
 
