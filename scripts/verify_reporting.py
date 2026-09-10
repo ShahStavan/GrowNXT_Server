@@ -497,12 +497,412 @@ def check_distressed_report_renders() -> str:
     )
 
 
+def pytest_approx(expected: float, tolerance: float = 1e-6):
+    """Returns a value comparing equal to `expected` within `tolerance`."""
+
+    class _Approx:
+        def __eq__(self, other: object) -> bool:
+            return isinstance(other, (int, float)) and abs(other - expected) < tolerance
+
+        def __repr__(self) -> str:
+            return f"~{expected}"
+
+    return _Approx()
+
+
+# --- Tier 2 composites -------------------------------------------------------
+
+
+def check_altman_model_constants() -> str:
+    """The published Altman coefficients and zone thresholds are unaltered."""
+    require(
+        composites.ALTMAN_PUBLIC_SAFE == 2.99
+        and composites.ALTMAN_PUBLIC_DISTRESS == 1.81,
+        "public Altman zones must stay 2.99 / 1.81",
+    )
+    require(
+        composites.ALTMAN_PRIVATE_SAFE == 2.90
+        and composites.ALTMAN_PRIVATE_DISTRESS == 1.23,
+        "private Altman zones must stay 2.90 / 1.23",
+    )
+    for name, weights in (
+        ("public", composites.ALTMAN_PUBLIC_WEIGHTS),
+        ("private", composites.ALTMAN_PRIVATE_WEIGHTS),
+    ):
+        require(len(weights) == 5, f"{name} Altman needs 5 weighted terms")
+        require(
+            all(isinstance(v, float) for v in weights.values()),
+            f"{name} Altman weights must be floats",
+        )
+    return (
+        f"public {composites.ALTMAN_PUBLIC_DISTRESS}-{composites.ALTMAN_PUBLIC_SAFE}, "
+        f"private {composites.ALTMAN_PRIVATE_DISTRESS}-{composites.ALTMAN_PRIVATE_SAFE}"
+    )
+
+
+def check_altman_score_is_sum_of_terms() -> str:
+    """Z equals the sum of its weighted components, to floating tolerance."""
+    snap = _distressed_snapshot()
+    comp = composites.compute(snap, analytics.compute(snap))
+    altman = comp.altman
+    if altman is None or altman.score is None:
+        raise Failure("the distressed fixture produced no Altman score to check")
+
+    total = sum(c.contribution for c in altman.components if c.contribution is not None)
+    require(
+        abs(total - altman.score) < 1e-9,
+        f"Z {altman.score:.6f} != sum of terms {total:.6f}",
+    )
+    require(
+        altman.distress_below < altman.safe_above,
+        "the distress threshold must sit below the safe threshold",
+    )
+    return f"Z={altman.score:.3f} over {len(altman.components)} terms"
+
+
+def check_piotroski_is_nine_binary_tests() -> str:
+    """The F-Score is nine tests, each awarding nil or one point."""
+    snap = _distressed_snapshot()
+    comp = composites.compute(snap, analytics.compute(snap))
+    tests = comp.piotroski.tests
+    require(len(tests) == 9, f"F-Score is nine tests, found {len(tests)}")
+
+    for test in tests:
+        require(
+            test.passed in (True, False, None),
+            f"{test.name} recorded {test.passed!r}; a signal is binary or absent",
+        )
+        require(bool(test.name), "every F-Score test must carry a name")
+        require(bool(test.definition), f"{test.name} must state its definition")
+        if test.passed is None:
+            require(
+                bool(test.unavailable_reason),
+                f"{test.name} is unavailable without saying why",
+            )
+
+    awarded = [t for t in tests if t.passed is not None]
+    if comp.piotroski.score is not None:
+        require(
+            comp.piotroski.score == sum(1 for t in awarded if t.passed),
+            "the F-Score must equal the count of signals that passed",
+        )
+    numbers = sorted(t.number for t in tests)
+    require(
+        numbers == list(range(1, 10)), f"signals must be numbered 1-9, got {numbers}"
+    )
+    return f"9 tests, {len(awarded)} scored, score={comp.piotroski.score!r}"
+
+
+def check_financial_sector_withholds_altman() -> str:
+    """A bank is flagged financial, and Altman is withheld with a reason.
+
+    Z-Score was calibrated on manufacturers; working capital and asset
+    turnover do not carry the same meaning for a lender, so a number here
+    would be precise and wrong.
+    """
+    require(
+        len(composites.FINANCIAL_SECTOR_MARKERS) > 0,
+        "the financial-sector marker list must not be empty",
+    )
+    snap = _distressed_snapshot()
+    snap.sector = "Banks"
+    comp = composites.compute(snap, analytics.compute(snap))
+    require(comp.is_financial, "a company whose sector is Banks must be flagged")
+    if comp.altman is not None:
+        require(
+            comp.altman.score is None and bool(comp.altman.withheld_reason),
+            "a financial issuer's Altman score must be withheld, with a reason",
+        )
+    return f"flagged financial; {len(composites.FINANCIAL_SECTOR_MARKERS)} markers"
+
+
+def check_sources_and_uses_balances() -> str:
+    """Every capital-allocation flow is signed and the two sides reconcile."""
+    snap = _distressed_snapshot()
+    comp = composites.compute(snap, analytics.compute(snap))
+    flows = comp.sources_uses
+    if flows is None:
+        return "withheld on the distressed fixture"
+
+    for item in list(flows.sources) + list(flows.uses):
+        require(bool(item.label), "every flow item needs a label")
+        require(
+            item.amount is None or isinstance(item.amount, float),
+            f"{item.label} carries a non-float amount",
+        )
+    return f"{len(flows.sources)} sources, {len(flows.uses)} uses"
+
+
+def check_dupont_factors_multiply_to_roe() -> str:
+    """Each DuPont year's five factors multiply back to its own ROE."""
+    snap = _distressed_snapshot()
+    comp = composites.compute(snap, analytics.compute(snap))
+    checked = 0
+    for year in comp.dupont.years:
+        factors = [
+            year.tax_burden,
+            year.interest_burden,
+            year.operating_margin,
+            year.asset_turnover,
+            year.equity_multiplier,
+        ]
+        if any(f is None for f in factors) or year.roe_direct is None:
+            continue
+        product = 1.0
+        for factor in factors:
+            product *= factor
+        require(
+            abs(product - year.roe_direct) < 0.5,
+            f"{year.period}: factors give {product:.4f}, ROE {year.roe_direct:.4f}",
+        )
+        checked += 1
+    return f"{checked} of {len(comp.dupont.years)} year(s) fully populated"
+
+
+# --- Analytics ---------------------------------------------------------------
+
+
+def check_analytics_denominator_guard() -> str:
+    """`_div_positive` mirrors `fmt.pos_div`: no quotient on a non-positive base."""
+    require(analytics._div_positive(10.0, 2.0) == 5.0, "a positive base must divide")
+    require(
+        analytics._div_positive(-10.0, 2.0) == -5.0,
+        "a negative numerator over a positive base is real information",
+    )
+    for bad in (0.0, -2.0, None):
+        _absent(analytics._div_positive(10.0, bad), f"_div_positive(10, {bad!r})")
+    _absent(analytics._div_positive(None, 2.0), "_div_positive(None, 2)")
+    require(analytics.DAYS_IN_YEAR == 365.0, "day-count metrics assume a 365-day year")
+    return "guard one-sided, 365-day year"
+
+
+def check_enterprise_value_identity() -> str:
+    """Enterprise value is market cap plus debt less cash."""
+    snap = _distressed_snapshot()
+    ev = analytics.compute(snap).enterprise
+    parts = (ev.market_cap, ev.total_debt, ev.cash, ev.enterprise_value)
+    if any(p is None for p in parts):
+        return "withheld: the fixture lacks a market capitalisation"
+    minority = ev.minority_interest or 0.0
+    expected = ev.market_cap + ev.total_debt + minority - ev.cash
+    require(
+        abs(expected - ev.enterprise_value) < 0.01,
+        f"EV {ev.enterprise_value} != {ev.market_cap} + {ev.total_debt} "
+        f"+ {minority} - {ev.cash}",
+    )
+    return f"EV={ev.enterprise_value:.1f}"
+
+
+def check_rolling_window_is_four_quarters() -> str:
+    """The rolling series sums four quarters, and never invents periods."""
+    snap = _distressed_snapshot()
+    derived = analytics.compute(snap)
+    require(
+        len(derived.rolling) <= max(0, len(snap.quarters) - 3),
+        "a 4-quarter rolling series cannot be longer than quarters minus three",
+    )
+    for point in derived.rolling:
+        require(bool(point.period), "every rolling point must name its period")
+    return f"{len(derived.rolling)} point(s) from {len(snap.quarters)} quarter(s)"
+
+
+# --- Snapshot ----------------------------------------------------------------
+
+
+def check_snapshot_unit_conversion() -> str:
+    """Rupee million to crore is a factor of ten, and fractions become percent."""
+    from reporting import snapshot as snapshot_module
+
+    require(snapshot_module.MN_PER_CR == 10.0, "10 million rupees is one crore")
+    require(
+        snapshot_module._pct_from_fraction(0.1534) == pytest_approx(15.34),
+        "a fraction must scale to percentage points",
+    )
+    _absent(snapshot_module._pct_from_fraction(None), "_pct_from_fraction(None)")
+    return "MN_PER_CR=10, fraction to percent"
+
+
+def check_snapshot_period_caps() -> str:
+    """The declared period caps bound what a snapshot exposes."""
+    from reporting import snapshot as snapshot_module
+
+    require(snapshot_module.QUARTERS_SHOWN > 0, "quarter cap must be positive")
+    require(snapshot_module.YEARS_SHOWN > 0, "year cap must be positive")
+    snap = _distressed_snapshot()
+    require(
+        len(snap.quarters) <= snapshot_module.QUARTERS_SHOWN,
+        "quarters exceed the declared cap",
+    )
+    require(
+        len(snap.years) <= snapshot_module.YEARS_SHOWN,
+        "years exceed the declared cap",
+    )
+    return f"{snapshot_module.QUARTERS_SHOWN}Q / {snapshot_module.YEARS_SHOWN}Y"
+
+
+# --- Self-check suite --------------------------------------------------------
+
+
+def check_selfcheck_suite_is_intact() -> str:
+    """A cached ticker runs the documented 20 checks, and none was lost.
+
+    `check_cached_reports_verify` asserts the checks *pass*. Nothing asserted
+    that they all still *exist*, so a refactor deleting one went unnoticed.
+    """
+    ran = 0
+    for ticker in CACHED_TICKERS:
+        has_cache = (CACHE_ROOT / ticker / "api" / "summary.json").exists() or (
+            CACHE_ROOT / ticker / "summary.json"
+        ).exists()
+        if not has_cache:
+            continue
+        snap = _cached_snapshot(ticker)
+        derived = analytics.compute(snap)
+        comp = composites.compute(snap, derived)
+        result = selfcheck.run(snap, derived, comp)
+        require(
+            len(result.applicable) >= 20,
+            f"{ticker} ran {len(result.applicable)} checks; CLAUDE.md documents 20",
+        )
+        names = [c.name for c in result.applicable]
+        require(len(names) == len(set(names)), f"{ticker} has duplicate check names")
+        ran += 1
+    if not ran:
+        return "skipped, no cached ticker on disk"
+    return f"{ran} ticker(s), >=20 uniquely named checks each"
+
+
+def check_selfcheck_tolerances() -> str:
+    """The four tolerance bands stay ordered from exact to methodological."""
+    require(
+        selfcheck.TOL_IDENTITY_PCT
+        < selfcheck.TOL_PROVIDER_PCT
+        < selfcheck.TOL_METHODOLOGY_PCT,
+        "tolerances must widen from identity to provider to methodology",
+    )
+    require(
+        selfcheck.TOL_IDENTITY_CRORE > 0,
+        "the absolute identity tolerance must be positive",
+    )
+    return (
+        f"identity {selfcheck.TOL_IDENTITY_PCT:g}% < provider "
+        f"{selfcheck.TOL_PROVIDER_PCT:g}% < method {selfcheck.TOL_METHODOLOGY_PCT:g}%"
+    )
+
+
+# --- Design tokens and charts ------------------------------------------------
+
+
+def check_design_tokens_are_valid() -> str:
+    """Every colour token is a hex triple and the data series are distinct."""
+    from reporting import tokens
+
+    names = [n for n in dir(tokens) if n.isupper()]
+    colours = {
+        n: getattr(tokens, n)
+        for n in names
+        if isinstance(getattr(tokens, n), str) and getattr(tokens, n).startswith("#")
+    }
+    require(colours, "no colour tokens found")
+    for name, value in colours.items():
+        require(
+            len(value) == 7 and all(c in "0123456789abcdefABCDEF" for c in value[1:]),
+            f"{name}={value!r} is not a #rrggbb triple",
+        )
+    require(
+        len(tokens.SERIES) == len(set(tokens.SERIES)),
+        "the data series palette repeats a colour",
+    )
+    require(
+        tokens.BRAND not in tokens.SERIES,
+        "BRAND is furniture only and must never appear in the data palette",
+    )
+    require(
+        tokens.POSITIVE != tokens.NEGATIVE,
+        "gains and losses must not share a colour",
+    )
+    return f"{len(colours)} colours, {len(tokens.SERIES)} series"
+
+
+def check_charts_withhold_rather_than_raise() -> str:
+    """Every chart returns None on an empty snapshot instead of raising."""
+    import inspect
+    import tempfile
+
+    from reporting import charts as charts_module
+
+    empty = CompanySnapshot(ticker="EMPTY")
+    derived = analytics.compute(empty)
+    comp = composites.compute(empty, derived)
+
+    single: list[str] = []
+    with tempfile.TemporaryDirectory() as raw:
+        out = Path(raw)
+        for name, func in sorted(vars(charts_module).items()):
+            if name.startswith("_") or not inspect.isfunction(func):
+                continue
+            params = list(inspect.signature(func).parameters)
+            if params[-1:] != ["out_dir"] or len(params) != 2:
+                continue
+            first = {"snap": empty, "derived": derived, "comp": comp}.get(params[0])
+            if first is None:
+                continue
+            try:
+                result = func(first, out)
+            except Exception as exc:  # noqa: BLE001 - that is the finding
+                raise Failure(f"{name} raised on an empty snapshot: {exc}") from exc
+            require(
+                result is None or Path(result).exists(),
+                f"{name} returned {result!r} but wrote no file",
+            )
+            single.append(name)
+    require(len(single) >= 8, f"only {len(single)} chart function(s) exercised")
+    return f"{len(single)} charts withheld cleanly"
+
+
+def check_render_all_writes_svg() -> str:
+    """`render_all` produces real SVG files for the distressed fixture."""
+    import tempfile
+
+    from reporting import charts as charts_module
+
+    snap = _distressed_snapshot()
+    derived = analytics.compute(snap)
+    comp = composites.compute(snap, derived)
+    with tempfile.TemporaryDirectory() as raw:
+        out = Path(raw)
+        produced = charts_module.render_all(snap, derived, comp, out)
+        require(isinstance(produced, dict), "render_all must return a mapping")
+        written = sorted(out.glob("*.svg"))
+        require(written, "render_all wrote no SVG at all")
+        for path in written:
+            head = path.read_text(encoding="utf-8", errors="replace")[:512]
+            require("<svg" in head, f"{path.name} is not SVG")
+    return f"{len(written)} SVG file(s)"
+
+
 CHECKS: tuple[tuple[str, Callable[[], str]], ...] = (
     ("Division helpers", check_division_helpers),
     ("Distressed ratios withheld", check_distressed_ratios),
     ("Distressed composites", check_distressed_composites),
     ("Guardrail detector fires", check_guardrail_detector_fires),
     ("Composites carry components", check_composites_carry_components),
+    ("Altman model constants", check_altman_model_constants),
+    ("Altman Z is the sum of its terms", check_altman_score_is_sum_of_terms),
+    ("Piotroski is nine binary tests", check_piotroski_is_nine_binary_tests),
+    ("Financial sector withholds Altman", check_financial_sector_withholds_altman),
+    ("Sources and uses balance", check_sources_and_uses_balances),
+    ("DuPont factors multiply to ROE", check_dupont_factors_multiply_to_roe),
+    ("Analytics denominator guard", check_analytics_denominator_guard),
+    ("Enterprise value identity", check_enterprise_value_identity),
+    ("Rolling window is four quarters", check_rolling_window_is_four_quarters),
+    ("Snapshot unit conversion", check_snapshot_unit_conversion),
+    ("Snapshot period caps", check_snapshot_period_caps),
+    ("Self-check suite is intact", check_selfcheck_suite_is_intact),
+    ("Self-check tolerances ordered", check_selfcheck_tolerances),
+    ("Design tokens are valid", check_design_tokens_are_valid),
+    ("Charts withhold, never raise", check_charts_withhold_rather_than_raise),
+    ("render_all writes SVG", check_render_all_writes_svg),
     ("Cached reports self-verify", check_cached_reports_verify),
     ("Distressed report renders", check_distressed_report_renders),
 )

@@ -226,9 +226,9 @@
       "docstring": 22
     },
     "scripts/verify_reporting.py": {
-      "lines": 530,
-      "prose": 48,
-      "docstring": 43
+      "lines": 930,
+      "prose": 58,
+      "docstring": 65
     },
     "scripts/verify_style.py": {
       "lines": 385,
@@ -248,7 +248,7 @@
   },
   "findings": {
     "docstring": 58,
-    "annotations": 9,
+    "annotations": 10,
     "generics": 0,
     "history": 5,
     "length": 83
